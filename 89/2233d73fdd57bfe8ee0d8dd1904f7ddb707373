@@ -1,0 +1,34 @@
+src/lib/geo.ts
+  s_9eac5591444b2d::t_398f2653e14cfa 1-63
+src/lib/credibility.ts
+  s_9eac5591444b2d::t_716f0ac0f8db16 1-61
+src/app/api/verify/route.ts
+  s_9eac5591444b2d::t_9520f014c7331d 26-32
+src/lib/geo.test.ts
+  s_9eac5591444b2d::t_bd38cf17384cc8 1-53
+src/lib/credibility.test.ts
+  s_9eac5591444b2d::t_3932005c05d58a 1-75
+vitest.config.ts
+  s_9eac5591444b2d::t_c35c361424e46a 1-15
+src/components/map/DataPoints.tsx
+  s_9eac5591444b2d::t_74811d072968b4 8-11,16,20,22
+package.json
+  s_9eac5591444b2d::t_ec52fad66f4fad 35-36
+  s_9eac5591444b2d::t_fcaa50c8758b1d 9-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "892233d73fdd57bfe8ee0d8dd1904f7ddb707373",
+  "prompts": {},
+  "sessions": {
+    "s_9eac5591444b2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd52a2dc-c2ba-41b7-878a-c6b08c497e63",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Levy Brandon <levy.brandon24@gmail.com>"
+    }
+  }
+}

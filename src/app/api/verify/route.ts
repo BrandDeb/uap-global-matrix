@@ -23,7 +23,13 @@
 
 import exifr from 'exifr';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
-import type { ClassificationTier, SensorEvidenceType } from '@/types';
+import {
+  clamp01,
+  computeCredibilityIndex,
+  tierFromCredibility,
+  type CredibilitySignals,
+} from '@/lib/credibility';
+import type { SensorEvidenceType } from '@/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,20 +40,6 @@ export const dynamic = 'force-dynamic';
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB hard cap
 const ACCEPTED_PREFIXES = ['image/', 'video/'] as const;
-
-/**
- * Weights for the Credibility Index. They MUST sum to 1 so that `C` lands in
- * [0, 100]. This weighting is the core domain judgement of the system — tune
- * it to reflect how much each signal should move the needle.
- */
-const CREDIBILITY_WEIGHTS = {
-  mediaAuthenticity: 0.35, // 1 - deepfake probability (most important signal)
-  prosaicImprobability: 0.2, // how unlikely a mundane explanation is
-  geoConsistency: 0.15, // EXIF GPS vs. reported coordinates
-  exifIntegrity: 0.1, // how complete the camera metadata is
-  temporalConsistency: 0.1, // EXIF capture time vs. reported timestamp
-  descriptiveRichness: 0.1, // quality/length of the human report
-} as const;
 
 /* ===========================================================================
  * Types
@@ -86,20 +78,10 @@ interface ProximityAssessment {
   readonly weatherSummary: string;
 }
 
-interface CredibilitySignals {
-  readonly mediaAuthenticity: number;
-  readonly prosaicImprobability: number;
-  readonly geoConsistency: number;
-  readonly exifIntegrity: number;
-  readonly temporalConsistency: number;
-  readonly descriptiveRichness: number;
-}
-
 /* ===========================================================================
  * Small math helpers
  * ======================================================================== */
 
-const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
 const toRad = (deg: number): number => (deg * Math.PI) / 180;
 
 /** Great-circle distance in kilometres between two WGS84 points. */
@@ -349,27 +331,6 @@ function computeSignals(
     temporalConsistency,
     descriptiveRichness,
   };
-}
-
-/** Weighted linear combination of the signals, projected onto [0, 100]. */
-function computeCredibilityIndex(signals: CredibilitySignals): number {
-  const c =
-    signals.mediaAuthenticity * CREDIBILITY_WEIGHTS.mediaAuthenticity +
-    signals.prosaicImprobability * CREDIBILITY_WEIGHTS.prosaicImprobability +
-    signals.geoConsistency * CREDIBILITY_WEIGHTS.geoConsistency +
-    signals.exifIntegrity * CREDIBILITY_WEIGHTS.exifIntegrity +
-    signals.temporalConsistency * CREDIBILITY_WEIGHTS.temporalConsistency +
-    signals.descriptiveRichness * CREDIBILITY_WEIGHTS.descriptiveRichness;
-  // NUMERIC(5,2) column → two decimal places.
-  return Math.round(clamp01(c) * 10000) / 100;
-}
-
-/** Map the automated score onto the `classification_tier` enum. */
-function tierFromCredibility(credibility: number): ClassificationTier {
-  if (credibility >= 85) return 'CLASS_A';
-  if (credibility >= 65) return 'CLASS_B';
-  if (credibility >= 40) return 'CLASS_C';
-  return 'FLAGGED';
 }
 
 /** Infer the sensor-evidence enum array from the uploaded media's MIME type. */

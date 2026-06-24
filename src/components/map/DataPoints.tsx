@@ -5,24 +5,21 @@
  * ---------------------------------------------------------------------------
  * High-performance sighting layer for the 3D globe.
  *
- * Renders every sighting as one instance of a single `THREE.InstancedMesh`,
- * so N markers cost one draw call instead of N meshes. Each instance is:
- *   - positioned by converting (latitude, longitude) → a Cartesian point on a
- *     sphere of radius `GLOBE_RADIUS` (2), and
- *   - tinted by interpolating a credibility gradient from the sighting's
- *     `credibilityScore` (0..100).
+ * Renders every sighting as one instance of a single THREE.InstancedMesh, so N
+ * markers cost one draw call instead of N meshes. Positioning (lat/lng → sphere)
+ * and credibility colouring live in the framework-free, unit-tested `@/lib/geo`
+ * module.
  * ---------------------------------------------------------------------------
  */
 
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import type { InstancedMesh } from 'three';
-import { Color, Object3D } from 'three';
+import { Color, Object3D, type InstancedMesh } from 'three';
 // Importing from @react-three/fiber pulls in the JSX intrinsic-element
 // augmentation (<instancedMesh>, <sphereGeometry>, …) used below.
 import type { ThreeElements } from '@react-three/fiber';
+import { GLOBE_RADIUS, latLngToCartesian, credibilityColor } from '@/lib/geo';
 
-/** Radius of the globe the markers sit on. Must match the Earth mesh. */
-export const GLOBE_RADIUS = 2;
+export { GLOBE_RADIUS };
 
 /** Minimal data contract the map needs from a sighting. */
 export interface MapSighting {
@@ -39,67 +36,6 @@ interface DataPointsProps {
   /** Marker radius in world units. */
   readonly markerSize?: number;
 }
-
-/* ===========================================================================
- * Geospatial → Cartesian
- * ======================================================================== */
-
-/**
- * Convert WGS84 (lat, lng) in degrees to a point on a sphere of `radius`,
- * writing into `target` to avoid per-call allocation. Uses the standard
- * Three.js globe convention (Y-up, longitude 0 toward -Z).
- */
-export function latLngToCartesian(
-  latitude: number,
-  longitude: number,
-  radius: number,
-  target: Object3D,
-): void {
-  const phi = (90 - latitude) * (Math.PI / 180);
-  const theta = (longitude + 180) * (Math.PI / 180);
-  target.position.set(
-    -radius * Math.sin(phi) * Math.cos(theta),
-    radius * Math.cos(phi),
-    radius * Math.sin(phi) * Math.sin(theta),
-  );
-}
-
-/* ===========================================================================
- * Credibility gradient
- * ======================================================================== */
-
-/**
- * Tactical credibility ramp: low scores read hostile-red, mid amber, high
- * cyan. Stops are sorted by their normalized position in [0, 1].
- */
-const GRADIENT_STOPS: ReadonlyArray<{ at: number; color: Color }> = [
-  { at: 0.0, color: new Color('#ef4444') }, // red-500  — low credibility
-  { at: 0.5, color: new Color('#f59e0b') }, // amber-500 — uncertain
-  { at: 1.0, color: new Color('#22d3ee') }, // cyan-400 — high credibility
-];
-
-/**
- * Interpolate the gradient at `score` (0..100), writing the result into
- * `target`. Piecewise-linear in RGB across the stops above.
- */
-export function credibilityColor(score: number, target: Color): Color {
-  const t = Math.min(1, Math.max(0, score / 100));
-
-  for (let i = 0; i < GRADIENT_STOPS.length - 1; i++) {
-    const lo = GRADIENT_STOPS[i];
-    const hi = GRADIENT_STOPS[i + 1];
-    if (t <= hi.at) {
-      const span = hi.at - lo.at || 1;
-      const localT = (t - lo.at) / span;
-      return target.copy(lo.color).lerp(hi.color, localT);
-    }
-  }
-  return target.copy(GRADIENT_STOPS[GRADIENT_STOPS.length - 1].color);
-}
-
-/* ===========================================================================
- * Component
- * ======================================================================== */
 
 export function DataPoints({ points, markerSize = 0.018 }: DataPointsProps) {
   const meshRef = useRef<InstancedMesh>(null);

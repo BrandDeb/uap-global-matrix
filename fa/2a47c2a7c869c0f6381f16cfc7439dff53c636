@@ -1,0 +1,36 @@
+src/components/ui/CaseDossier.tsx
+  s_9eac5591444b2d::t_efb6453f90b355 6-12,14,19,30-34,58-62,72-90,92-99,131,135-182,186,191-192,194,196-197,202-203,205-208,211,216,218-219,222-246,248,250-263,266-294,296-315,318,322,327,331
+src/app/page.tsx
+  s_9eac5591444b2d::t_39c063dccaf4b0 6,8-11,13-14,19,26,34,38-45,50-57,60,62-63,65-66,77,79-80,82,91-93,101,104-105,114-116
+src/app/api/ai/analyze-report/route.ts
+  s_9eac5591444b2d::t_19591b828d93c9 1-66
+package.json
+  s_9eac5591444b2d::t_7e97693cba1c50 14
+src/lib/sightings.ts
+  s_9eac5591444b2d::t_6be09bf9e94e29 17-22
+  s_9eac5591444b2d::t_0c696ad38aca51 43,45,47
+  s_9eac5591444b2d::t_92b977265d2518 36-38
+  s_9eac5591444b2d::t_2d4fcecc3bfac0 70-77
+src/app/api/ai/summarize-thread/route.ts
+  s_9eac5591444b2d::t_df27352c9ad2c2 1-106
+src/components/ui/MatrixControlHUD.tsx
+  s_9eac5591444b2d::t_16d121cf21989a 1-83
+package-lock.json
+  s_9eac5591444b2d::t_ace8617cab906c 11,926-949,1831-1887,2776-2781,3611-3619,3941-3949,4032-4037,4259-4267,4435-4443,5174-5179,5241-5263,5350-5361,5421-5448,5588-5613,5751-5763,6384-6392,6443-6463,6813-6818,7071-7090,7110-7127,7343-7355,7498-7520,7692-7700,7790-7809,9070-9078,9221-9241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "fa2a47c2a7c869c0f6381f16cfc7439dff53c636",
+  "prompts": {},
+  "sessions": {
+    "s_9eac5591444b2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd52a2dc-c2ba-41b7-878a-c6b08c497e63",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Levy Brandon <levy.brandon24@gmail.com>"
+    }
+  }
+}

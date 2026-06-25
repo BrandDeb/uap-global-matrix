@@ -25,6 +25,8 @@ import TimelineScrubber from '@/components/ui/TimelineScrubber';
 import SubmissionModal from '@/components/ui/SubmissionModal';
 import MatrixControlHUD, { type FeedTab } from '@/components/ui/MatrixControlHUD';
 import CommandPalette from '@/components/ui/CommandPalette';
+import IntelAnalytics from '@/components/ui/IntelAnalytics';
+import { computeAnalytics } from '@/lib/analytics';
 
 const MAX_YEAR = 2026;
 
@@ -35,6 +37,7 @@ export default function GlobalMatrixDashboard() {
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
 
   // ⌘K / Ctrl+K opens the command palette.
   useEffect(() => {
@@ -59,6 +62,8 @@ export default function GlobalMatrixDashboard() {
     [sightings, selectedYear, feedTab],
   );
 
+  const analytics = useMemo(() => computeAnalytics(sightings), [sightings]);
+
   return (
     <main className="flex h-screen w-screen select-none flex-col space-y-3 overflow-hidden bg-zinc-950 p-3 text-zinc-200">
       <MatrixControlHUD
@@ -68,6 +73,7 @@ export default function GlobalMatrixDashboard() {
         totalCount={sightings.length}
         loading={loading}
         onSearch={() => setPaletteOpen(true)}
+        onStats={() => setStatsOpen(true)}
         onSubmit={() => setModalOpen(true)}
       />
 
@@ -167,6 +173,8 @@ export default function GlobalMatrixDashboard() {
         minYear={1947}
         maxYear={MAX_YEAR}
         currentYear={selectedYear}
+        decades={analytics.decades}
+        maxDecadeCount={analytics.maxDecadeCount}
         onYearChange={(year) => {
           setSelectedYear(year);
           if (caseData && new Date(caseData.eventTimestamp).getUTCFullYear() > year) {
@@ -184,6 +192,8 @@ export default function GlobalMatrixDashboard() {
           onSelect={(id) => fetchCaseFile(id)}
         />
       )}
+
+      {statsOpen && <IntelAnalytics data={analytics} onClose={() => setStatsOpen(false)} />}
     </main>
   );
 }

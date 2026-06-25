@@ -14,6 +14,12 @@ import {
   type SensorEvidenceType,
 } from '@/types';
 
+/** One item in a sighting's media gallery (declassified docs / sensor stills). */
+export interface MediaItem {
+  readonly url: string;
+  readonly type: string;
+}
+
 /** App-facing sighting: flat coordinates for the map + fields for the dossier. */
 export interface LiveSighting {
   readonly id: string;
@@ -27,15 +33,18 @@ export interface LiveSighting {
   readonly locationName: string;
   readonly sourceTier: ClassificationTier;
   readonly evidenceTypes: SensorEvidenceType[];
+  readonly isGovDeclassified: boolean;
+  readonly mediaGallery: MediaItem[];
+  readonly documentVaultUrl: string | null;
 }
 
 /** Lean columns for the bulk feed — no `description` (fetched lazily per case). */
 export const SIGHTING_LIST_COLUMNS =
-  'id,title,event_timestamp,location_name,source_tier,evidence_types,credibility_score,latitude,longitude';
+  'id,title,event_timestamp,location_name,source_tier,evidence_types,credibility_score,is_gov_declassified,latitude,longitude';
 
-/** Full columns for a single case file (adds description + created_at). */
+/** Full columns for a single case file (adds description, media + gov fields). */
 export const SIGHTING_DETAIL_COLUMNS =
-  'id,title,description,event_timestamp,created_at,location_name,source_tier,evidence_types,credibility_score,latitude,longitude';
+  'id,title,description,event_timestamp,created_at,location_name,source_tier,evidence_types,credibility_score,is_gov_declassified,media_gallery,document_vault_url,latitude,longitude';
 
 /** Map a decoded view row to a LiveSighting, validating at the boundary. */
 export function toLiveSighting(row: Record<string, unknown>): LiveSighting | null {
@@ -58,5 +67,13 @@ export function toLiveSighting(row: Record<string, unknown>): LiveSighting | nul
     evidenceTypes: Array.isArray(row.evidence_types)
       ? row.evidence_types.filter(isSensorEvidenceType)
       : [],
+    isGovDeclassified: row.is_gov_declassified === true,
+    mediaGallery: Array.isArray(row.media_gallery)
+      ? (row.media_gallery as Record<string, unknown>[])
+          .filter((m) => m && typeof m.url === 'string')
+          .map((m) => ({ url: String(m.url), type: String(m.type ?? 'media') }))
+      : [],
+    documentVaultUrl:
+      typeof row.document_vault_url === 'string' ? row.document_vault_url : null,
   };
 }

@@ -5,7 +5,8 @@
  * Top recon bar: status, feed-tab filter (all / FOIA / citizen), node count, intake.
  */
 
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud, Radio } from 'lucide-react';
+import Link from 'next/link';
 
 export type FeedTab = 'all' | 'verified' | 'citizen';
 
@@ -71,6 +72,12 @@ export default function MatrixControlHUD({
             {nodeCount} / {totalCount}
           </span>
         </div>
+        <Link
+          href="/feed"
+          className="flex items-center gap-2 rounded-md border border-emerald-700/50 bg-emerald-600/10 px-3 py-1.5 font-mono text-xs font-semibold text-emerald-300 transition-colors hover:bg-emerald-600/20"
+        >
+          <Radio size={14} /> FEED
+        </Link>
         <button
           onClick={onSubmit}
           className="flex items-center gap-2 rounded-md border border-cyan-700 bg-cyan-600/10 px-3 py-1.5 font-mono text-xs font-semibold text-cyan-300 transition-colors hover:bg-cyan-600/20"

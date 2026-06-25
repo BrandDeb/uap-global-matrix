@@ -16,8 +16,9 @@
  */
 
 import { useEffect, useState } from 'react';
-import { X, Send, MessageSquare, BrainCircuit, ShieldAlert, Eye } from 'lucide-react';
+import { X, Send, MessageSquare, BrainCircuit, ShieldAlert, Eye, Lock } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import type { LiveSighting } from '@/lib/sightings';
 
 interface IntelThread {
@@ -52,6 +53,7 @@ interface CaseDossierProps {
 }
 
 export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossierProps) {
+  const { profile, signInWithGitHub } = useAuth();
   const [comments, setComments] = useState<IntelThread[]>([]);
   const [handle, setHandle] = useState('');
   const [message, setMessage] = useState('');
@@ -125,10 +127,13 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
 
   if (!sighting) return null;
 
+  // Verified operator handle when signed in; falls back to the anon input.
+  const operatorHandle = profile?.operatorHandle ?? (handle.trim() || 'ANON_OPERATOR');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
-    await onAddIntel(sighting.id, handle.trim() || 'ANON_OPERATOR', message.trim());
+    await onAddIntel(sighting.id, operatorHandle, message.trim());
     setMessage('');
   };
 
@@ -166,7 +171,7 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
 
   const registerCoWitness = async () => {
     const supabase = getSupabaseBrowserClient();
-    const operator = handle.trim() || 'ANON_OPERATOR';
+    const operator = operatorHandle;
     const { error } = await supabase
       .from('sighting_co_witnesses')
       .insert({ sighting_id: sighting.id, operator_handle: operator });
@@ -313,14 +318,32 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
             ))}
           </div>
           <form onSubmit={handleSubmit} className="space-y-1.5">
-            <input
-              type="text"
-              placeholder="Crypto handle (e.g. Sentinel_01)"
-              value={handle}
-              maxLength={50}
-              onChange={(e) => setHandle(e.target.value)}
-              className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 font-mono text-[10px] text-zinc-300 focus:outline-none"
-            />
+            {profile ? (
+              <div className="flex items-center justify-between rounded border border-emerald-500/30 bg-emerald-500/5 px-2 py-1">
+                <span className="font-mono text-[10px] text-emerald-400">
+                  ✦ @{profile.operatorHandle} · {profile.operatorRank.replace(/_/g, ' ')}
+                </span>
+                <span className="font-mono text-[9px] text-zinc-500">REP {profile.reputationScore}</span>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <input
+                  type="text"
+                  placeholder="Anonymous handle — or sign in for a verified ID"
+                  value={handle}
+                  maxLength={50}
+                  onChange={(e) => setHandle(e.target.value)}
+                  className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 font-mono text-[10px] text-zinc-300 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => void signInWithGitHub()}
+                  className="flex w-full items-center justify-center gap-1.5 rounded border border-zinc-700 bg-zinc-100/5 py-1 font-mono text-[9px] uppercase tracking-wider text-zinc-300 transition hover:bg-zinc-100/10"
+                >
+                  <Lock size={11} /> Sign in via GitHub for a verified identity
+                </button>
+              </div>
+            )}
             <div className="relative">
               <input
                 type="text"

@@ -1,0 +1,30 @@
+src/app/feed/page.tsx
+  s_9eac5591444b2d::t_f172c6de469bf0 1-142
+src/components/ui/CaseDossier.tsx
+  s_9eac5591444b2d::t_718e963b59cd16 19,21
+  s_9eac5591444b2d::t_578c31991c7108 56
+  s_9eac5591444b2d::t_626f4959dfdba0 174
+  s_9eac5591444b2d::t_f56ce9c6ea86f6 321-346
+  s_9eac5591444b2d::t_ce5a5c1a4a6495 130-132,136
+src/components/ui/MatrixControlHUD.tsx
+  s_9eac5591444b2d::t_61eb967dd903f6 75-80
+  s_9eac5591444b2d::t_6e27724132aa3c 8-9
+src/hooks/useAuth.ts
+  s_9eac5591444b2d::t_6aa4208d27737f 1-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "f5f62f0c3ef249316f4ce21f3d538c00562b504d",
+  "prompts": {},
+  "sessions": {
+    "s_9eac5591444b2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd52a2dc-c2ba-41b7-878a-c6b08c497e63",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Levy Brandon <levy.brandon24@gmail.com>"
+    }
+  }
+}

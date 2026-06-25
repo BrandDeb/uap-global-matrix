@@ -1,0 +1,26 @@
+src/components/ui/CaseDossier.tsx
+  s_9eac5591444b2d::t_db917b8ae1405e 228-234
+  s_9eac5591444b2d::t_685aa5f6ce3109 20
+src/app/page.tsx
+  s_9eac5591444b2d::t_2f03904dec3e35 54-59
+src/components/ui/CaseThread.tsx
+  s_9eac5591444b2d::t_95d97ebd64a77b 1-203
+src/app/case/[id]/page.tsx
+  s_9eac5591444b2d::t_37114b783cec7f 1-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "1a9ca8c02145c10d7fa5825d200b20ff5008eedb",
+  "prompts": {},
+  "sessions": {
+    "s_9eac5591444b2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd52a2dc-c2ba-41b7-878a-c6b08c497e63",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Levy Brandon <levy.brandon24@gmail.com>"
+    }
+  }
+}

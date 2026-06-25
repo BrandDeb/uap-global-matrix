@@ -10,7 +10,7 @@
 
 import { useCallback, useState } from 'react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { SIGHTING_VIEW_COLUMNS, toLiveSighting, type LiveSighting } from '@/lib/sightings';
+import { SIGHTING_DETAIL_COLUMNS, toLiveSighting, type LiveSighting } from '@/lib/sightings';
 
 export function useLazyCaseFile(): {
   caseData: LiveSighting | null;
@@ -23,7 +23,7 @@ export function useLazyCaseFile(): {
     const supabase = getSupabaseBrowserClient();
     const { data } = await supabase
       .from('v_uap_sightings')
-      .select(SIGHTING_VIEW_COLUMNS)
+      .select(SIGHTING_DETAIL_COLUMNS)
       .eq('id', id)
       .single();
     setCaseData(data ? toLiveSighting(data as Record<string, unknown>) : null);

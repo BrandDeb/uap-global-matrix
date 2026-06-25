@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { SIGHTING_VIEW_COLUMNS, toLiveSighting, type LiveSighting } from '@/lib/sightings';
+import { SIGHTING_LIST_COLUMNS, toLiveSighting, type LiveSighting } from '@/lib/sightings';
 
 export interface HotspotAlert {
   readonly id: string;
@@ -32,6 +32,8 @@ export interface PostIntelResult {
 
 const HOTSPOT_COLUMNS = 'id,location_name,sighting_count,severity_level,last_detected_at';
 const HOTSPOT_LIMIT = 10;
+const PAGE_SIZE = 1000; // PostgREST caps each response at ~1000 rows.
+const MAX_SIGHTINGS = 12000;
 
 function toHotspot(row: Record<string, unknown>): HotspotAlert {
   return {
@@ -58,29 +60,35 @@ export function useSocialMatrix(): {
     let cancelled = false;
 
     (async () => {
-      const [sRes, hRes] = await Promise.all([
-        supabase
-          .from('v_uap_sightings')
-          .select(SIGHTING_VIEW_COLUMNS)
-          .order('event_timestamp', { ascending: false }),
-        supabase
-          .from('hotspot_alerts')
-          .select(HOTSPOT_COLUMNS)
-          .order('last_detected_at', { ascending: false })
-          .limit(HOTSPOT_LIMIT),
-      ]);
-      if (cancelled) return;
-      if (sRes.data) {
-        setSightings(
-          sRes.data
-            .map((r) => toLiveSighting(r as Record<string, unknown>))
-            .filter((s): s is LiveSighting => s !== null),
-        );
-      }
-      if (hRes.data) {
+      // Hotspots (small).
+      const hRes = await supabase
+        .from('hotspot_alerts')
+        .select(HOTSPOT_COLUMNS)
+        .order('last_detected_at', { ascending: false })
+        .limit(HOTSPOT_LIMIT);
+      if (!cancelled && hRes.data) {
         setHotspots(hRes.data.map((r) => toHotspot(r as Record<string, unknown>)));
       }
-      setLoading(false);
+
+      // Sightings — paginated, since PostgREST returns at most ~1000 per request.
+      const all: LiveSighting[] = [];
+      for (let from = 0; from < MAX_SIGHTINGS && !cancelled; from += PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from('v_uap_sightings')
+          .select(SIGHTING_LIST_COLUMNS)
+          .order('event_timestamp', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error || !data || data.length === 0) break;
+        for (const r of data) {
+          const s = toLiveSighting(r as Record<string, unknown>);
+          if (s) all.push(s);
+        }
+        if (data.length < PAGE_SIZE) break;
+      }
+      if (!cancelled) {
+        setSightings(all);
+        setLoading(false);
+      }
     })();
 
     const channel = supabase
@@ -93,7 +101,7 @@ export function useSocialMatrix(): {
           if (!id) return;
           const { data } = await supabase
             .from('v_uap_sightings')
-            .select(SIGHTING_VIEW_COLUMNS)
+            .select(SIGHTING_LIST_COLUMNS)
             .eq('id', id)
             .single();
           const mapped = data ? toLiveSighting(data as Record<string, unknown>) : null;

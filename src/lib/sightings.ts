@@ -29,7 +29,12 @@ export interface LiveSighting {
   readonly evidenceTypes: SensorEvidenceType[];
 }
 
-export const SIGHTING_VIEW_COLUMNS =
+/** Lean columns for the bulk feed — no `description` (fetched lazily per case). */
+export const SIGHTING_LIST_COLUMNS =
+  'id,title,event_timestamp,location_name,source_tier,evidence_types,credibility_score,latitude,longitude';
+
+/** Full columns for a single case file (adds description + created_at). */
+export const SIGHTING_DETAIL_COLUMNS =
   'id,title,description,event_timestamp,created_at,location_name,source_tier,evidence_types,credibility_score,latitude,longitude';
 
 /** Map a decoded view row to a LiveSighting, validating at the boundary. */

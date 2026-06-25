@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Standalone ops script (run with tsx, not part of the app build).
+    "scripts/**",
   ]),
 ]);
 

@@ -1,0 +1,33 @@
+src/hooks/useSocialMatrix.ts
+  s_9eac5591444b2d::t_1f2f188064d439 1-140
+src/components/ui/TimelineScrubber.tsx
+  s_9eac5591444b2d::t_ed17fee47f9153 1-44
+src/components/ui/CaseDossier.tsx
+  s_9eac5591444b2d::t_694e4e857722e4 6-11,15-34,39-43,46-92,95-101,106,109,111,114,118,121,125-135,137,139-142,145-150,152-169,171-198,200
+src/hooks/useLazyCaseFile.ts
+  s_9eac5591444b2d::t_7103a28ea63bfb 1-35
+src/lib/sightings.ts
+  s_9eac5591444b2d::t_c4ed46bfea2891 1-57
+src/components/ui/SubmissionModal.tsx
+  s_9eac5591444b2d::t_41f4f159cac2fc 1-122
+src/app/page.tsx
+  s_9eac5591444b2d::t_8600e8ae53b107 158-163
+  s_9eac5591444b2d::t_a4bf2a555019c7 6,8-16,18-19,24-26,29-30,32,34-38,40-43,46-54,56-61,63-67,71-72,74,76-121,124-146,151-157,164-165,167-181
+  s_9eac5591444b2d::t_c47849c4c49e7a 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "363d39f02fffe7242a4566be932a04cf71101be4",
+  "prompts": {},
+  "sessions": {
+    "s_9eac5591444b2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd52a2dc-c2ba-41b7-878a-c6b08c497e63",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Levy Brandon <levy.brandon24@gmail.com>"
+    }
+  }
+}

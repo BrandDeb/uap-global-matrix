@@ -1,5 +1,7 @@
 # UAP Global Matrix
 
+[![CI](https://github.com/BrandDeb/uap-global-matrix/actions/workflows/ci.yml/badge.svg)](https://github.com/BrandDeb/uap-global-matrix/actions/workflows/ci.yml)
+
 A tactical, dark-themed 3D globe for visualizing and verifying UAP (unidentified
 aerial phenomena) sightings. Reports are submitted with media, automatically
 scored for credibility (EXIF provenance, a simulated multi-model deep-fake

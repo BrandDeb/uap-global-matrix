@@ -17,6 +17,7 @@
 
 import { useEffect, useState } from 'react';
 import { X, Send, MessageSquare, BrainCircuit, ShieldAlert, Eye, Lock } from 'lucide-react';
+import Link from 'next/link';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { LiveSighting } from '@/lib/sightings';
@@ -223,6 +224,13 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
           <span className="mb-1 block text-[9px] text-zinc-500">TRANSMISSION SUMMARY</span>
           <p className="font-sans text-xs leading-relaxed text-zinc-300">{sighting.description}</p>
         </div>
+
+        <Link
+          href={`/case/${sighting.id}`}
+          className="block rounded border border-cyan-500/30 bg-cyan-500/5 py-1.5 text-center font-mono text-[10px] uppercase tracking-wider text-cyan-300 transition hover:bg-cyan-500/10"
+        >
+          ⤢ Open full case file &amp; forum
+        </Link>
 
         {/* Media vault */}
         {sighting.mediaGallery.length > 0 && (

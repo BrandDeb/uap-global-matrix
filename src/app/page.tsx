@@ -51,6 +51,12 @@ export default function GlobalMatrixDashboard() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Deep link: ?case=<id> opens that dossier on load.
+  useEffect(() => {
+    const caseId = new URLSearchParams(window.location.search).get('case');
+    if (caseId) fetchCaseFile(caseId);
+  }, [fetchCaseFile]);
+
   const filtered = useMemo(
     () =>
       sightings.filter((s) => {

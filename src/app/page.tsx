@@ -3,298 +3,181 @@
 /**
  * src/app/page.tsx
  * ---------------------------------------------------------------------------
- * UAP Global Matrix — tactical command dashboard.
+ * UAP Global Matrix — social intelligence command console.
  *
- *   ┌──────────────┬─────────────────────────────────────────┐
- *   │ Controls 25% │ 3D Globe (R3F Canvas) 75%                │
- *   │  · search    │   · Night-Earth textured globe (r=2)     │
- *   │  · date band │   · InstancedMesh sighting markers       │
- *   │  · intake    │     coloured by credibility              │
- *   └──────────────┴─────────────────────────────────────────┘
+ *   ┌─────────────────────────────────────────────────────────┐
+ *   │ HUD  ·  live status  ·  node count  ·  [Submit]          │
+ *   ├──────────────┬──────────────────────────────────────────┤
+ *   │ Hotspots     │                                          │
+ *   │ Community    │   3D globe (click → dossier + thread)     │
+ *   │ ticker       │                                          │
+ *   ├──────────────┴──────────────────────────────────────────┤
+ *   │ Timeline scrubber (year filter)                         │
+ *   └─────────────────────────────────────────────────────────┘
  *
- * Data: `useLiveSightings` loads the archive + subscribes to realtime INSERTs,
- * so new sightings appear without a refresh. Filter state flows one way →
- * `filtered` → <GlobeOverlay>; clicking a marker opens the <CaseDossier>.
+ * Data comes from `useSocialMatrix` (sightings + hotspots + realtime). Clicking
+ * a marker or ticker row lazily loads the case file into the <CaseDossier>.
  * ---------------------------------------------------------------------------
  */
 
 import { useMemo, useState } from 'react';
-import { Radar, Search, SlidersHorizontal, UploadCloud, X } from 'lucide-react';
+import { ShieldAlert, Radio, UploadCloud } from 'lucide-react';
+import { useSocialMatrix } from '@/hooks/useSocialMatrix';
+import { useLazyCaseFile } from '@/hooks/useLazyCaseFile';
 import GlobeOverlay from '@/components/map/GlobeOverlay';
 import CaseDossier from '@/components/ui/CaseDossier';
-import { useLiveSightings, type LiveSighting } from '@/hooks/useLiveSightings';
+import TimelineScrubber from '@/components/ui/TimelineScrubber';
+import SubmissionModal from '@/components/ui/SubmissionModal';
 
-/* ===========================================================================
- * Filtering
- * ======================================================================== */
+const MAX_YEAR = 2026;
 
-interface Filters {
-  readonly query: string;
-  readonly minCredibility: number;
-  readonly startDate: string; // yyyy-mm-dd or ''
-  readonly endDate: string; // yyyy-mm-dd or ''
-}
+export default function GlobalMatrixDashboard() {
+  const { sightings, hotspots, loading, postIntelMessage } = useSocialMatrix();
+  const { caseData, fetchCaseFile, clearCaseFile } = useLazyCaseFile();
+  const [selectedYear, setSelectedYear] = useState(MAX_YEAR);
+  const [modalOpen, setModalOpen] = useState(false);
 
-function applyFilters(
-  sightings: readonly LiveSighting[],
-  filters: Filters,
-): LiveSighting[] {
-  const q = filters.query.trim().toLowerCase();
-  const startMs = filters.startDate ? new Date(`${filters.startDate}T00:00:00.000Z`).getTime() : -Infinity;
-  const endMs = filters.endDate ? new Date(`${filters.endDate}T23:59:59.999Z`).getTime() : Infinity;
-
-  return sightings.filter((s) => {
-    if (s.credibilityScore < filters.minCredibility) return false;
-    const t = new Date(s.eventTimestamp).getTime();
-    if (t < startMs || t > endMs) return false;
-    if (q && !`${s.title} ${s.locationName}`.toLowerCase().includes(q)) return false;
-    return true;
-  });
-}
-
-/* ===========================================================================
- * Drag-and-drop submission modal
- * ======================================================================== */
-
-function SubmissionModal({
-  onClose,
-  onSubmitted,
-}: {
-  onClose: () => void;
-  onSubmitted: () => void;
-}) {
-  const [file, setFile] = useState<File | null>(null);
-  const [dragActive, setDragActive] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!file) {
-      setMessage('Attach an image or video first.');
-      return;
-    }
-    const form = new FormData(event.currentTarget);
-    form.set('file', file);
-    const localTs = String(form.get('timestamp') ?? '');
-    if (localTs) form.set('timestamp', new Date(localTs).toISOString());
-
-    setSubmitting(true);
-    setMessage(null);
-    try {
-      const res = await fetch('/api/verify', { method: 'POST', body: form });
-      const body = (await res.json()) as {
-        success: boolean;
-        data?: { credibilityScore: number; sourceTier: string };
-        error?: string;
-      };
-      if (body.success && body.data) {
-        setMessage(`Logged. Credibility C=${body.data.credibilityScore} → ${body.data.sourceTier}.`);
-        onSubmitted(); // refresh the globe behind the modal
-      } else {
-        setMessage(`Rejected: ${body.error ?? 'unknown error'}`);
-      }
-    } catch (err: unknown) {
-      setMessage(err instanceof Error ? err.message : 'Network error.');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  const inputClass =
-    'w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-cyan-500 focus:outline-none';
+  const filtered = useMemo(
+    () => sightings.filter((s) => new Date(s.eventTimestamp).getUTCFullYear() <= selectedYear),
+    [sightings, selectedYear],
+  );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-900 p-5 shadow-2xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-semibold tracking-widest text-cyan-400">
-            <UploadCloud size={16} /> SUBMIT SIGHTING
-          </h2>
-          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200" aria-label="Close">
-            <X size={18} />
+    <main className="flex h-screen w-screen select-none flex-col space-y-3 overflow-hidden bg-zinc-950 p-3 text-zinc-200">
+      {/* ── HUD ─────────────────────────────────────────────────────── */}
+      <header className="flex items-center justify-between rounded-xl border border-zinc-900 bg-zinc-900/40 px-4 py-2.5 backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <span
+            className={`h-2.5 w-2.5 rounded-full ${loading ? 'bg-amber-500' : 'animate-ping bg-emerald-500'}`}
+          />
+          <div>
+            <h1 className="font-mono text-base font-bold tracking-wider text-zinc-100">
+              MATRIX_SOCIAL_NETWORK <span className="text-zinc-600">{'//'}</span>{' '}
+              <span className="text-emerald-400">{loading ? 'SYNCING' : 'LIVE_FEED'}</span>
+            </h1>
+            <p className="font-mono text-[10px] text-zinc-500">
+              Continuous PostGIS clustering active &amp; syncing
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="text-right font-mono text-[11px]">
+            <span className="block text-zinc-500">MAP DATA LEVEL</span>
+            <span className="font-bold text-emerald-400">
+              {filtered.length} / {sightings.length} NODES
+            </span>
+          </div>
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-2 rounded-md border border-cyan-700 bg-cyan-600/10 px-3 py-1.5 font-mono text-xs font-semibold text-cyan-300 transition-colors hover:bg-cyan-600/20"
+          >
+            <UploadCloud size={14} /> SUBMIT
           </button>
         </div>
+      </header>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <label
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragActive(true);
-            }}
-            onDragLeave={() => setDragActive(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragActive(false);
-              const dropped = e.dataTransfer.files?.[0];
-              if (dropped) setFile(dropped);
-            }}
-            className={`flex h-28 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed text-center text-xs transition-colors ${
-              dragActive ? 'border-cyan-500 bg-cyan-500/10' : 'border-zinc-700 bg-zinc-950'
-            }`}
-          >
-            <UploadCloud size={22} className="mb-1 text-zinc-500" />
-            <span className="text-zinc-400">
-              {file ? file.name : 'Drag & drop image/video, or click to browse'}
-            </span>
-            <input
-              type="file"
-              accept="image/*,video/*"
-              className="hidden"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
-          </label>
-
-          <input name="title" placeholder="Title" required className={inputClass} />
-          <textarea name="description" placeholder="Description" rows={2} className={inputClass} />
-          <div className="grid grid-cols-2 gap-3">
-            <input name="latitude" type="number" step="any" placeholder="Latitude" required className={inputClass} />
-            <input name="longitude" type="number" step="any" placeholder="Longitude" required className={inputClass} />
-          </div>
-          <input name="location_name" placeholder="Location name (optional)" className={inputClass} />
-          <input name="timestamp" type="datetime-local" required className={inputClass} />
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-md bg-cyan-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-500 disabled:opacity-50"
-          >
-            {submitting ? 'Analyzing…' : 'Run Verification'}
-          </button>
-          {message && <p className="text-xs text-zinc-400">{message}</p>}
-        </form>
-      </div>
-    </div>
-  );
-}
-
-/* ===========================================================================
- * Page
- * ======================================================================== */
-
-export default function Home() {
-  const [filters, setFilters] = useState<Filters>({
-    query: '',
-    minCredibility: 0,
-    startDate: '',
-    endDate: '',
-  });
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selected, setSelected] = useState<LiveSighting | null>(null);
-
-  // Live data: historical archive + realtime INSERTs (new sightings appear
-  // without a refresh). Filtering stays client-side over the live set.
-  const { sightings, loading } = useLiveSightings();
-  const filtered = useMemo(() => applyFilters(sightings, filters), [sightings, filters]);
-
-  const patch = (next: Partial<Filters>) => setFilters((prev) => ({ ...prev, ...next }));
-
-  const fieldLabel = 'mb-1 block text-[10px] font-semibold uppercase tracking-widest text-zinc-500';
-  const inputClass =
-    'w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-cyan-500 focus:outline-none';
-
-  return (
-    <div className="flex h-screen w-full overflow-hidden bg-zinc-950 text-zinc-200">
-      {/* ── Left control rail (25%) ──────────────────────────────────── */}
-      <aside className="flex w-1/4 min-w-[280px] flex-col border-r border-zinc-800 bg-zinc-900/40">
-        <header className="flex items-center gap-2 border-b border-zinc-800 px-4 py-4">
-          <Radar size={20} className="text-cyan-400" />
-          <div>
-            <h1 className="text-sm font-bold tracking-widest text-zinc-100">UAP GLOBAL MATRIX</h1>
-            <p className="text-[10px] tracking-wider text-zinc-500">TACTICAL SIGHTING LEDGER</p>
-          </div>
-        </header>
-
-        <div className="flex-1 space-y-5 overflow-y-auto px-4 py-5">
-          {/* Search */}
-          <div>
-            <label className={fieldLabel}>
-              <Search size={11} className="mr-1 inline" /> Search
-            </label>
-            <input
-              value={filters.query}
-              onChange={(e) => patch({ query: e.target.value })}
-              placeholder="Title or location…"
-              className={inputClass}
-            />
-          </div>
-
-          {/* Credibility threshold */}
-          <div>
-            <label className={fieldLabel}>
-              <SlidersHorizontal size={11} className="mr-1 inline" /> Min credibility · {filters.minCredibility}
-            </label>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={filters.minCredibility}
-              onChange={(e) => patch({ minCredibility: Number(e.target.value) })}
-              className="w-full accent-cyan-500"
-            />
-          </div>
-
-          {/* Date timeline range */}
-          <div>
-            <label className={fieldLabel}>Event timeline</label>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="date"
-                value={filters.startDate}
-                onChange={(e) => patch({ startDate: e.target.value })}
-                className={inputClass}
-              />
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => patch({ endDate: e.target.value })}
-                className={inputClass}
-              />
+      {/* ── Workspace ───────────────────────────────────────────────── */}
+      <div className="flex min-h-0 flex-1 space-x-3 overflow-hidden">
+        {/* Left rail: hotspots + community ticker */}
+        <div className="flex w-80 shrink-0 flex-col space-y-3">
+          {/* Hotspot deviations */}
+          <div className="flex min-h-[180px] flex-col rounded-xl border border-zinc-900 bg-zinc-900/40 p-3">
+            <div className="mb-2 flex items-center gap-1.5 font-mono text-xs font-bold text-amber-500">
+              <ShieldAlert size={14} />
+              <span>AUTOMATED HOTSPOT DEVIATIONS</span>
+            </div>
+            <div className="flex-1 space-y-1.5 overflow-y-auto pr-1 font-mono text-[10px]">
+              {hotspots.length === 0 ? (
+                <div className="py-6 text-center italic text-zinc-600">
+                  Monitoring for multi-point vector flaps…
+                </div>
+              ) : (
+                hotspots.map((h) => (
+                  <div
+                    key={h.id}
+                    className="flex flex-col space-y-1 rounded border border-zinc-800/60 bg-zinc-950/40 p-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="max-w-[150px] truncate font-bold text-zinc-300">
+                        {h.locationName}
+                      </span>
+                      <span
+                        className={`rounded border px-1.5 py-0.5 text-[9px] ${
+                          h.severityLevel === 'CRITICAL_FLAP'
+                            ? 'border-red-500/20 bg-red-500/10 text-red-400'
+                            : 'border-amber-500/20 bg-amber-500/10 text-amber-400'
+                        }`}
+                      >
+                        {h.severityLevel}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-[9px] text-zinc-500">
+                      <span>CONCURRENT: {h.sightingCount}</span>
+                      <span>ACTIVE</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
-          {/* Intake */}
-          <button
-            onClick={() => setModalOpen(true)}
-            className="flex w-full items-center justify-center gap-2 rounded-md border border-cyan-700 bg-cyan-600/10 py-2 text-sm font-semibold text-cyan-300 transition-colors hover:bg-cyan-600/20"
-          >
-            <UploadCloud size={15} /> Submit sighting
-          </button>
+          {/* Community ticker */}
+          <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-zinc-900 bg-zinc-900/40 p-3">
+            <div className="mb-2 flex items-center gap-1.5 font-mono text-xs font-bold text-zinc-400">
+              <Radio size={14} className="animate-pulse text-emerald-500" />
+              <span>COMMUNITY FEED CHRONICLE</span>
+            </div>
+            <div className="flex-1 space-y-2 overflow-y-auto pr-1">
+              {filtered.slice(0, 20).map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => fetchCaseFile(s.id)}
+                  className="block w-full rounded-lg border border-zinc-900 bg-zinc-950/30 p-2 text-left transition hover:border-zinc-700/60"
+                >
+                  <div className="mb-1 flex justify-between font-mono text-[9px]">
+                    <span className="text-zinc-500">
+                      {new Date(s.eventTimestamp).toLocaleDateString()}
+                    </span>
+                    <span className="text-emerald-500">SCORE: {s.credibilityScore}%</span>
+                  </div>
+                  <h4 className="truncate font-mono text-xs font-bold text-zinc-300">{s.title}</h4>
+                  <p className="mt-0.5 truncate text-[10px] text-zinc-500">{s.locationName}</p>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <footer className="flex items-center justify-between border-t border-zinc-800 px-4 py-3 text-[11px] text-zinc-500">
-          <span>
-            Showing <span className="font-semibold text-cyan-400">{filtered.length}</span> /{' '}
-            {sightings.length} contacts
-          </span>
-          <span
-            className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold tracking-widest ${
-              loading ? 'bg-amber-500/15 text-amber-400' : 'bg-emerald-500/15 text-emerald-400'
-            }`}
-          >
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                loading ? 'bg-amber-400' : 'animate-pulse bg-emerald-400'
-              }`}
-            />
-            {loading ? 'SYNC' : 'LIVE'}
-          </span>
-        </footer>
-      </aside>
+        {/* Center: globe + dossier */}
+        <div className="relative min-w-0 flex-1 overflow-hidden rounded-xl border border-zinc-900 bg-zinc-950">
+          <GlobeOverlay
+            points={filtered}
+            activeCount={filtered.length}
+            onSelect={(id) => fetchCaseFile(id)}
+          />
+          <CaseDossier
+            key={caseData?.id ?? 'none'}
+            sighting={caseData}
+            onClose={clearCaseFile}
+            onAddIntel={postIntelMessage}
+          />
+        </div>
+      </div>
 
-      {/* ── Right globe viewport (75%) ───────────────────────────────── */}
-      <main className="relative w-3/4 flex-1">
-        <GlobeOverlay
-          points={filtered}
-          activeCount={filtered.length}
-          onSelect={(id) => setSelected(sightings.find((s) => s.id === id) ?? null)}
-        />
-        {selected && <CaseDossier sighting={selected} onClose={() => setSelected(null)} />}
-      </main>
+      {/* ── Timeline ────────────────────────────────────────────────── */}
+      <TimelineScrubber
+        minYear={1947}
+        maxYear={MAX_YEAR}
+        currentYear={selectedYear}
+        onYearChange={(year) => {
+          setSelectedYear(year);
+          if (caseData && new Date(caseData.eventTimestamp).getUTCFullYear() > year) {
+            clearCaseFile();
+          }
+        }}
+      />
 
-      {modalOpen && (
-        <SubmissionModal onClose={() => setModalOpen(false)} onSubmitted={() => {}} />
-      )}
-    </div>
+      {modalOpen && <SubmissionModal onClose={() => setModalOpen(false)} />}
+    </main>
   );
 }

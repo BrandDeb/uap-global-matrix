@@ -15,7 +15,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ShieldAlert, Radio } from 'lucide-react';
 import { useSocialMatrix } from '@/hooks/useSocialMatrix';
 import { useLazyCaseFile } from '@/hooks/useLazyCaseFile';
@@ -24,6 +24,7 @@ import CaseDossier from '@/components/ui/CaseDossier';
 import TimelineScrubber from '@/components/ui/TimelineScrubber';
 import SubmissionModal from '@/components/ui/SubmissionModal';
 import MatrixControlHUD, { type FeedTab } from '@/components/ui/MatrixControlHUD';
+import CommandPalette from '@/components/ui/CommandPalette';
 
 const MAX_YEAR = 2026;
 
@@ -33,6 +34,19 @@ export default function GlobalMatrixDashboard() {
   const [selectedYear, setSelectedYear] = useState(MAX_YEAR);
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [modalOpen, setModalOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // ⌘K / Ctrl+K opens the command palette.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const filtered = useMemo(
     () =>
@@ -53,6 +67,7 @@ export default function GlobalMatrixDashboard() {
         nodeCount={filtered.length}
         totalCount={sightings.length}
         loading={loading}
+        onSearch={() => setPaletteOpen(true)}
         onSubmit={() => setModalOpen(true)}
       />
 
@@ -161,6 +176,14 @@ export default function GlobalMatrixDashboard() {
       />
 
       {modalOpen && <SubmissionModal onClose={() => setModalOpen(false)} />}
+
+      {paletteOpen && (
+        <CommandPalette
+          sightings={sightings}
+          onClose={() => setPaletteOpen(false)}
+          onSelect={(id) => fetchCaseFile(id)}
+        />
+      )}
     </main>
   );
 }

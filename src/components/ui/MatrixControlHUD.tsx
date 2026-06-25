@@ -5,7 +5,7 @@
  * Top recon bar: status, feed-tab filter (all / FOIA / citizen), node count, intake.
  */
 
-import { UploadCloud, Radio } from 'lucide-react';
+import { UploadCloud, Radio, Search } from 'lucide-react';
 import Link from 'next/link';
 
 export type FeedTab = 'all' | 'verified' | 'citizen';
@@ -16,6 +16,7 @@ interface MatrixControlHUDProps {
   readonly nodeCount: number;
   readonly totalCount: number;
   readonly loading: boolean;
+  readonly onSearch: () => void;
   readonly onSubmit: () => void;
 }
 
@@ -31,6 +32,7 @@ export default function MatrixControlHUD({
   nodeCount,
   totalCount,
   loading,
+  onSearch,
   onSubmit,
 }: MatrixControlHUDProps) {
   return (
@@ -72,6 +74,12 @@ export default function MatrixControlHUD({
             {nodeCount} / {totalCount}
           </span>
         </div>
+        <button
+          onClick={onSearch}
+          className="flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-800/40 px-3 py-1.5 font-mono text-xs font-semibold text-zinc-300 transition-colors hover:bg-zinc-800"
+        >
+          <Search size={14} /> ⌘K
+        </button>
         <Link
           href="/feed"
           className="flex items-center gap-2 rounded-md border border-emerald-700/50 bg-emerald-600/10 px-3 py-1.5 font-mono text-xs font-semibold text-emerald-300 transition-colors hover:bg-emerald-600/20"

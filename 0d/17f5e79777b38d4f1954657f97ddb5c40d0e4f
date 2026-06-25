@@ -1,0 +1,35 @@
+src/lib/analytics.ts
+  s_9eac5591444b2d::t_140e89e5b605e5 1-85
+src/components/ui/IntelAnalytics.tsx
+  s_9eac5591444b2d::t_9051966050c35d 1-127
+src/components/ui/MatrixControlHUD.tsx
+  s_9eac5591444b2d::t_bae72510e39fb7 37
+  s_9eac5591444b2d::t_a979f38e3f8b74 20
+  s_9eac5591444b2d::t_9e83d5b39482d0 8
+  s_9eac5591444b2d::t_90762b8580f238 85-90
+src/app/page.tsx
+  s_9eac5591444b2d::t_b1bfe865da13c5 195-196
+  s_9eac5591444b2d::t_99edb991c68ee5 40
+  s_9eac5591444b2d::t_24bc3ae8b36610 28-29
+  s_9eac5591444b2d::t_ecd21f4d1945f9 65-66
+  s_9eac5591444b2d::t_aa3141dc23bd17 76
+  s_9eac5591444b2d::t_608ea81a95b91d 176-177
+src/components/ui/TimelineScrubber.tsx
+  s_9eac5591444b2d::t_479f3bab24ea58 6-8,12-13,19-20,28-29,32-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "0d17f5e79777b38d4f1954657f97ddb5c40d0e4f",
+  "prompts": {},
+  "sessions": {
+    "s_9eac5591444b2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd52a2dc-c2ba-41b7-878a-c6b08c497e63",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Levy Brandon <levy.brandon24@gmail.com>"
+    }
+  }
+}

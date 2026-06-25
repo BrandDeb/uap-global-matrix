@@ -105,11 +105,14 @@ export function useSocialMatrix(): {
         },
       )
       .on(
+        // '*' so in-place cluster escalations (UPDATE) stream too, not just new ones.
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'hotspot_alerts' },
+        { event: '*', schema: 'public', table: 'hotspot_alerts' },
         (payload) => {
           if (cancelled) return;
-          const hotspot = toHotspot(payload.new as Record<string, unknown>);
+          const row = payload.new as Record<string, unknown>;
+          if (!row || row.id == null) return; // ignore DELETE (no new row)
+          const hotspot = toHotspot(row);
           setHotspots((curr) =>
             [hotspot, ...curr.filter((h) => h.id !== hotspot.id)].slice(0, HOTSPOT_LIMIT),
           );

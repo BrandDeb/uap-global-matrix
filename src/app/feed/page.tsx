@@ -3,15 +3,20 @@
 /**
  * src/app/feed/page.tsx
  * ---------------------------------------------------------------------------
- * Global Intel Feed — a scrolling social timeline aggregating the latest
- * citizen recon + declassified FOIA drops, with thread-activity counts.
+ * Global Intel Feed — scrolling social timeline (citizen recon + FOIA drops)
+ * with per-card upvoting and a Trending Now strip (top-voted sightings).
+ *
+ * Voting is keyed on a stable per-browser operator id (see lib/operatorId); the
+ * UNIQUE(sighting_id, operator_handle) constraint caps it to one vote per
+ * identity. Real auth supersedes the anon id when configured.
  * ---------------------------------------------------------------------------
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Radio, MessageSquare, Eye } from 'lucide-react';
+import { Radio, MessageSquare, Eye, ThumbsUp, Flame } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getOperatorId } from '@/lib/operatorId';
 
 interface FeedItem {
   readonly id: string;
@@ -22,10 +27,18 @@ interface FeedItem {
   readonly isGovDeclassified: boolean;
   readonly credibilityScore: number;
   readonly threadCount: number;
+  readonly upvoteCount: number;
+}
+
+interface TrendingItem {
+  readonly id: string;
+  readonly title: string;
+  readonly upvoteCount: number;
 }
 
 function toFeedItem(row: Record<string, unknown>): FeedItem {
   const threads = row.uap_intel_threads;
+  const upvotes = row.uap_intel_upvotes;
   return {
     id: String(row.id),
     title: String(row.title ?? ''),
@@ -35,12 +48,32 @@ function toFeedItem(row: Record<string, unknown>): FeedItem {
     isGovDeclassified: row.is_gov_declassified === true,
     credibilityScore: row.credibility_score == null ? 0 : Number(row.credibility_score),
     threadCount: Array.isArray(threads) ? threads.length : 0,
+    upvoteCount: Array.isArray(upvotes) ? upvotes.length : 0,
   };
 }
 
 export default function GlobalIntelFeed() {
   const [items, setItems] = useState<FeedItem[]>([]);
+  const [trending, setTrending] = useState<TrendingItem[]>([]);
+  const [voted, setVoted] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+
+  const loadTrending = useCallback(async () => {
+    const supabase = getSupabaseBrowserClient();
+    const { data } = await supabase.rpc('trending_sightings', { max_rows: 8 });
+    if (Array.isArray(data)) {
+      setTrending(
+        data.map((r) => {
+          const row = r as Record<string, unknown>;
+          return {
+            id: String(row.id),
+            title: String(row.title ?? ''),
+            upvoteCount: Number(row.upvote_count ?? 0),
+          };
+        }),
+      );
+    }
+  }, []);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
@@ -49,20 +82,42 @@ export default function GlobalIntelFeed() {
       const { data, error } = await supabase
         .from('uap_sightings')
         .select(
-          'id,title,description,event_timestamp,location_name,is_gov_declassified,credibility_score,uap_intel_threads(id)',
+          'id,title,description,event_timestamp,location_name,is_gov_declassified,credibility_score,uap_intel_threads(id),uap_intel_upvotes(id)',
         )
         .order('event_timestamp', { ascending: false })
         .limit(40);
       if (cancelled) return;
-      if (!error && data) {
-        setItems(data.map((r) => toFeedItem(r as Record<string, unknown>)));
-      }
-      setLoading(false);
+      if (!error && data) setItems(data.map((r) => toFeedItem(r as Record<string, unknown>)));
+      await loadTrending();
+      if (!cancelled) setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadTrending]);
+
+  const upvote = useCallback(
+    async (sightingId: string) => {
+      if (voted.has(sightingId)) return;
+      const supabase = getSupabaseBrowserClient();
+      const { error } = await supabase
+        .from('uap_intel_upvotes')
+        .insert({ sighting_id: sightingId, operator_handle: getOperatorId() });
+      // 23505 = already voted under this id → still mark voted, no double count.
+      if (!error || error.code === '23505') {
+        setVoted((curr) => new Set(curr).add(sightingId));
+        if (!error) {
+          setItems((curr) =>
+            curr.map((it) =>
+              it.id === sightingId ? { ...it, upvoteCount: it.upvoteCount + 1 } : it,
+            ),
+          );
+          void loadTrending();
+        }
+      }
+    },
+    [voted, loadTrending],
+  );
 
   if (loading) {
     return (
@@ -90,6 +145,26 @@ export default function GlobalIntelFeed() {
             ← STRATEGIC GLOBE
           </Link>
         </div>
+
+        {/* Trending */}
+        {trending.length > 0 && (
+          <div className="rounded-xl border border-amber-500/20 bg-amber-950/10 p-4">
+            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold text-amber-400">
+              <Flame size={13} /> TRENDING NOW
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {trending.map((t) => (
+                <span
+                  key={t.id}
+                  className="flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-950/60 px-3 py-1 text-[10px] text-zinc-300"
+                >
+                  <ThumbsUp size={10} className="text-amber-400" /> {t.upvoteCount}
+                  <span className="max-w-[180px] truncate text-zinc-400">{t.title}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Stream */}
         <div className="space-y-4">
@@ -122,15 +197,25 @@ export default function GlobalIntelFeed() {
               </p>
 
               <div className="flex items-center space-x-6 border-t border-zinc-900 pt-3 text-[11px] text-zinc-500">
-                <div className="flex items-center space-x-1.5 text-zinc-400">
-                  <Eye className="text-zinc-600" size={14} />
-                  <span>
-                    LOCATION: <span className="text-zinc-300">{item.locationName}</span>
-                  </span>
-                </div>
+                <button
+                  onClick={() => upvote(item.id)}
+                  disabled={voted.has(item.id)}
+                  className={`flex items-center space-x-1.5 transition ${
+                    voted.has(item.id)
+                      ? 'cursor-default text-amber-400'
+                      : 'hover:text-amber-400'
+                  }`}
+                >
+                  <ThumbsUp size={14} />
+                  <span>UPVOTE ({item.upvoteCount})</span>
+                </button>
                 <div className="flex items-center space-x-1.5">
                   <MessageSquare size={14} />
-                  <span>ANALYST LOGS ({item.threadCount})</span>
+                  <span>LOGS ({item.threadCount})</span>
+                </div>
+                <div className="flex items-center space-x-1.5 text-zinc-400">
+                  <Eye className="text-zinc-600" size={14} />
+                  <span className="text-zinc-300">{item.locationName}</span>
                 </div>
               </div>
             </div>

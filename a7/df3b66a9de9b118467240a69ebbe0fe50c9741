@@ -1,0 +1,38 @@
+src/components/map/DataPoints.tsx
+  s_9eac5591444b2d::t_e547b96b2afadd 99-101,104
+  s_9eac5591444b2d::t_d7894196deec28 40-41,44
+src/components/map/TacticalGlobe.tsx
+  s_9eac5591444b2d::t_9ee468c99fd77a 6,8-11,13,20-27,29-35,39-41,43,46-59,61,71-82,101,103,105
+src/components/map/GlobeOverlay.tsx
+  s_9eac5591444b2d::t_64907e187b02eb 7-8,12,17-22,27-29,33-43,57-64,81-87
+src/app/page.tsx
+  s_9eac5591444b2d::t_376e709241f627 131-139
+src/lib/geo.ts
+  s_9eac5591444b2d::t_b6c34b0e15bd8b 11
+  s_9eac5591444b2d::t_145dcd524e43ba 16-17,21-22,25,32-42
+  s_9eac5591444b2d::t_037ea045f0fca9 43-44
+src/hooks/useSocialMatrix.ts
+  s_9eac5591444b2d::t_ca142657f850eb 48-49
+  s_9eac5591444b2d::t_bcc8255b2902d9 70
+  s_9eac5591444b2d::t_2661588ac231b3 27-28
+  s_9eac5591444b2d::t_7248b340393b81 124,126-135
+  s_9eac5591444b2d::t_88951f1c8f2cfe 35-36
+src/components/map/GlobeFx.tsx
+  s_9eac5591444b2d::t_f0042d9e9bf3a2 1-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "a7df3b66a9de9b118467240a69ebbe0fe50c9741",
+  "prompts": {},
+  "sessions": {
+    "s_9eac5591444b2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd52a2dc-c2ba-41b7-878a-c6b08c497e63",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Levy Brandon <levy.brandon24@gmail.com>"
+    }
+  }
+}

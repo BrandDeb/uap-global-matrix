@@ -28,11 +28,11 @@ interface TacticalGlobeProps {
 export default function TacticalGlobe({ points }: TacticalGlobeProps) {
   const earthRef = useRef<Mesh>(null);
 
-  // Tag the albedo map sRGB on load (or the night lights render washed-out);
-  // the bump map stays linear — it's data, not colour. Setting it in the load
-  // callback avoids mutating a hook value during render.
-  const [colorMap, bumpMap] = useTexture(
-    ['/textures/earth-dark.jpg', '/textures/earth-topology.png'],
+  // Night-lights albedo (visible continents + glowing cities) + topology bump.
+  // Tag the colour map sRGB on load; the bump map stays linear (it's data, not
+  // colour). Done in the load callback to avoid mutating a hook value in render.
+  const [nightMap, bumpMap] = useTexture(
+    ['/textures/earth-night.jpg', '/textures/earth-topology.png'],
     (loaded) => {
       const albedo = Array.isArray(loaded) ? loaded[0] : loaded;
       if (albedo) albedo.colorSpace = SRGBColorSpace;
@@ -53,11 +53,17 @@ export default function TacticalGlobe({ points }: TacticalGlobeProps) {
       <mesh ref={earthRef}>
         <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
         <meshStandardMaterial
-          map={colorMap}
+          map={nightMap}
+          // Self-illuminate the night lights so geography is visible from every
+          // angle, not just the lit hemisphere (a near-black albedo lit by a
+          // single light was rendering as a black ball).
+          emissive="#ffffff"
+          emissiveMap={nightMap}
+          emissiveIntensity={0.9}
           bumpMap={bumpMap}
-          bumpScale={0.04}
-          roughness={0.85}
-          metalness={0.1}
+          bumpScale={0.03}
+          roughness={1}
+          metalness={0}
         />
         {/* Lift markers a hair above the surface so the texture can't occlude
             them; the group rotates with the Earth. */}

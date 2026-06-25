@@ -29,7 +29,7 @@ export default function GlobeOverlay({ points, activeCount }: GlobeOverlayProps)
         <color attach="background" args={['#09090b']} />
 
         {/* Tactical lighting */}
-        <ambientLight intensity={0.25} />
+        <ambientLight intensity={0.4} />
         <directionalLight position={[5, 3, 5]} intensity={1.6} color="#ffffff" />
         <pointLight position={[-5, -3, -5]} intensity={0.6} color="#4338ca" />
 

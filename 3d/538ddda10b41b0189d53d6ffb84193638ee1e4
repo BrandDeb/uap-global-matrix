@@ -1,0 +1,26 @@
+src/components/map/GlobeOverlay.tsx
+  s_9eac5591444b2d::t_74b1f3b73dc19a 1-58
+src/app/page.tsx
+  s_9eac5591444b2d::t_1a90be4ca08af9 365
+  s_9eac5591444b2d::t_40163778dbd80a 24-25
+  s_9eac5591444b2d::t_71ff396972f40c 10
+src/components/map/TacticalGlobe.tsx
+  s_9eac5591444b2d::t_dc92da6c066cd6 1-30,41-83
+  s_9eac5591444b2d::t_890674d5b7abd1 31-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "3d538ddda10b41b0189d53d6ffb84193638ee1e4",
+  "prompts": {},
+  "sessions": {
+    "s_9eac5591444b2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd52a2dc-c2ba-41b7-878a-c6b08c497e63",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Levy Brandon <levy.brandon24@gmail.com>"
+    }
+  }
+}

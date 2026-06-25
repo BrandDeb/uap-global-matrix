@@ -1,0 +1,39 @@
+scripts/megaImport.ts
+  s_9eac5591444b2d::t_f64d748b119cda 1-164
+src/hooks/useSocialMatrix.ts
+  s_9eac5591444b2d::t_da8be89febc1ee 19
+  s_9eac5591444b2d::t_f0ebe9831ccd4f 63-76,78-86,88-90
+  s_9eac5591444b2d::t_ed8270f06b75bd 35-36
+  s_9eac5591444b2d::t_4c71e6d7407432 104
+.gitignore
+  s_9eac5591444b2d::t_d61aeb0e83371f 43-45
+tsconfig.json
+  s_9eac5591444b2d::t_1052b58d352e8a 33
+package.json
+  s_9eac5591444b2d::t_c7de86b0474d1e 32,36
+src/hooks/useLazyCaseFile.ts
+  s_9eac5591444b2d::t_f2fc1a0daabf66 26
+  s_9eac5591444b2d::t_871562a15f9149 13
+src/lib/sightings.ts
+  s_9eac5591444b2d::t_b6cc14b0a24ec2 32-37
+eslint.config.mjs
+  s_9eac5591444b2d::t_e1f243eda81eec 15-16
+package-lock.json
+  s_9eac5591444b2d::t_3ebca538c49c80 29,33,339-780,4134-4140,4549-4590,8195-8213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "2678de597d1bad69a37c5defb5aebb84e867f4df",
+  "prompts": {},
+  "sessions": {
+    "s_9eac5591444b2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd52a2dc-c2ba-41b7-878a-c6b08c497e63",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Levy Brandon <levy.brandon24@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+src/components/ui/CommandPalette.tsx
+  s_9eac5591444b2d::t_00416a11cca59a 1-5,12-35,37-43,46-48,50-54,56-65,67-81,83-103,108-118,126-130,135-154,156-182
+  s_9eac5591444b2d::t_aa05f9fee1eb45 6-11,36,44-45,49,55,66,82,104-107,119-125,131-134,155
+src/app/page.tsx
+  s_9eac5591444b2d::t_c9bfb8d0059bb3 180-186
+  s_9eac5591444b2d::t_e460fc07a423a0 70
+  s_9eac5591444b2d::t_9bf14c0c7eabcd 27
+  s_9eac5591444b2d::t_26818cb7b18f38 179
+  s_9eac5591444b2d::t_932b3451beb720 37-49
+  s_9eac5591444b2d::t_a362575b9f3c50 18
+src/components/ui/MatrixControlHUD.tsx
+  s_9eac5591444b2d::t_c038566ba94404 35
+  s_9eac5591444b2d::t_dd8291a13c2a8a 8
+  s_9eac5591444b2d::t_54bc18ee5bfe74 77-82
+  s_9eac5591444b2d::t_1e645de1820b66 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "4fb7eab8f69585b40f82c8b5f5c0a890365cfb5a",
+  "prompts": {},
+  "sessions": {
+    "s_9eac5591444b2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd52a2dc-c2ba-41b7-878a-c6b08c497e63",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Levy Brandon <levy.brandon24@gmail.com>"
+    }
+  }
+}

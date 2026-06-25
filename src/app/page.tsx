@@ -7,7 +7,7 @@
  *
  *   ┌──────────────┬─────────────────────────────────────────┐
  *   │ Controls 25% │ 3D Globe (R3F Canvas) 75%                │
- *   │  · search    │   · wireframe Earth (radius 2)           │
+ *   │  · search    │   · Night-Earth textured globe (r=2)     │
  *   │  · date band │   · InstancedMesh sighting markers       │
  *   │  · intake    │     coloured by credibility              │
  *   └──────────────┴─────────────────────────────────────────┘
@@ -20,10 +20,9 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Stars } from '@react-three/drei';
 import { Radar, Search, SlidersHorizontal, UploadCloud, X } from 'lucide-react';
-import { DataPoints, GLOBE_RADIUS, type MapSighting } from '@/components/map/DataPoints';
+import GlobeOverlay from '@/components/map/GlobeOverlay';
+import type { MapSighting } from '@/components/map/DataPoints';
 
 /* ===========================================================================
  * View model + seed data
@@ -109,40 +108,6 @@ function applyFilters(
     if (q && !`${s.title} ${s.locationName}`.toLowerCase().includes(q)) return false;
     return true;
   });
-}
-
-/* ===========================================================================
- * 3D scene
- * ======================================================================== */
-
-function GlobeScene({ points }: { points: readonly MapSighting[] }) {
-  return (
-    <Canvas camera={{ position: [0, 0, 5.5], fov: 50 }} dpr={[1, 2]}>
-      <color attach="background" args={['#09090b']} />
-      <Stars radius={120} depth={60} count={3500} factor={4} fade speed={0.6} />
-
-      {/* Solid dark Earth body */}
-      <mesh>
-        <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
-        <meshBasicMaterial color="#0b1220" />
-      </mesh>
-      {/* Wireframe graticule shell, slightly larger to avoid z-fighting */}
-      <mesh>
-        <sphereGeometry args={[GLOBE_RADIUS * 1.001, 36, 36]} />
-        <meshBasicMaterial color="#1f2937" wireframe transparent opacity={0.45} />
-      </mesh>
-
-      <DataPoints points={points} />
-
-      <OrbitControls
-        autoRotate
-        autoRotateSpeed={0.35}
-        enablePan={false}
-        minDistance={3.2}
-        maxDistance={9}
-      />
-    </Canvas>
-  );
 }
 
 /* ===========================================================================
@@ -397,10 +362,7 @@ export default function Home() {
 
       {/* ── Right globe viewport (75%) ───────────────────────────────── */}
       <main className="relative w-3/4 flex-1">
-        <GlobeScene points={filtered} />
-        <div className="pointer-events-none absolute left-4 top-4 rounded border border-zinc-800 bg-zinc-950/70 px-3 py-1.5 text-[10px] tracking-widest text-zinc-400">
-          ORBITAL VIEW · WGS84 · {filtered.length} ACTIVE
-        </div>
+        <GlobeOverlay points={filtered} activeCount={filtered.length} />
       </main>
 
       {modalOpen && (

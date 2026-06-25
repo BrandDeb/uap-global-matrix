@@ -8,15 +8,30 @@
  * ---------------------------------------------------------------------------
  */
 
-import { Color, Object3D } from 'three';
+import { Color, Object3D, Vector3 } from 'three';
 
 /** Radius of the globe markers sit on. Must match the Earth mesh. */
 export const GLOBE_RADIUS = 2;
 
+/** WGS84 (lat, lng) → a point on a sphere of `radius`, written into a Vector3. */
+export function latLngToVector3(
+  latitude: number,
+  longitude: number,
+  radius: number,
+  target: Vector3,
+): Vector3 {
+  const phi = (90 - latitude) * (Math.PI / 180);
+  const theta = (longitude + 180) * (Math.PI / 180);
+  return target.set(
+    -radius * Math.sin(phi) * Math.cos(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.sin(theta),
+  );
+}
+
 /**
- * Convert WGS84 (lat, lng) in degrees to a point on a sphere of `radius`,
- * writing into `target` to avoid per-call allocation. Standard Three.js globe
- * convention (Y-up, longitude 0 toward -Z).
+ * Convert WGS84 (lat, lng) to a point on a sphere of `radius`, writing into the
+ * Object3D's position. Standard Three.js globe convention (Y-up).
  */
 export function latLngToCartesian(
   latitude: number,
@@ -24,13 +39,7 @@ export function latLngToCartesian(
   radius: number,
   target: Object3D,
 ): void {
-  const phi = (90 - latitude) * (Math.PI / 180);
-  const theta = (longitude + 180) * (Math.PI / 180);
-  target.position.set(
-    -radius * Math.sin(phi) * Math.cos(theta),
-    radius * Math.cos(phi),
-    radius * Math.sin(phi) * Math.sin(theta),
-  );
+  latLngToVector3(latitude, longitude, radius, target.position);
 }
 
 /**

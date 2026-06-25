@@ -24,13 +24,16 @@ export interface HotspotAlert {
   readonly sightingCount: number;
   readonly severityLevel: string; // 'ELEVATED' | 'CRITICAL_FLAP'
   readonly lastDetectedAt: string;
+  readonly latitude: number;
+  readonly longitude: number;
 }
 
 export interface PostIntelResult {
   readonly error: { message: string } | null;
 }
 
-const HOTSPOT_COLUMNS = 'id,location_name,sighting_count,severity_level,last_detected_at';
+const HOTSPOT_COLUMNS =
+  'id,location_name,sighting_count,severity_level,last_detected_at,latitude,longitude';
 const HOTSPOT_LIMIT = 10;
 const PAGE_SIZE = 1000; // PostgREST caps each response at ~1000 rows.
 const MAX_SIGHTINGS = 12000;
@@ -42,6 +45,8 @@ function toHotspot(row: Record<string, unknown>): HotspotAlert {
     sightingCount: Number(row.sighting_count ?? 0),
     severityLevel: String(row.severity_level ?? 'ELEVATED'),
     lastDetectedAt: String(row.last_detected_at ?? ''),
+    latitude: Number(row.latitude ?? 0),
+    longitude: Number(row.longitude ?? 0),
   };
 }
 
@@ -62,7 +67,7 @@ export function useSocialMatrix(): {
     (async () => {
       // Hotspots (small).
       const hRes = await supabase
-        .from('hotspot_alerts')
+        .from('v_hotspot_alerts')
         .select(HOTSPOT_COLUMNS)
         .order('last_detected_at', { ascending: false })
         .limit(HOTSPOT_LIMIT);
@@ -116,11 +121,18 @@ export function useSocialMatrix(): {
         // '*' so in-place cluster escalations (UPDATE) stream too, not just new ones.
         'postgres_changes',
         { event: '*', schema: 'public', table: 'hotspot_alerts' },
-        (payload) => {
+        async (payload) => {
           if (cancelled) return;
-          const row = payload.new as Record<string, unknown>;
-          if (!row || row.id == null) return; // ignore DELETE (no new row)
-          const hotspot = toHotspot(row);
+          const id = (payload.new as { id?: string }).id;
+          if (!id) return; // ignore DELETE (no new row)
+          // Re-fetch from the view to get decoded center coordinates.
+          const { data } = await supabase
+            .from('v_hotspot_alerts')
+            .select(HOTSPOT_COLUMNS)
+            .eq('id', id)
+            .single();
+          if (!data || cancelled) return;
+          const hotspot = toHotspot(data as Record<string, unknown>);
           setHotspots((curr) =>
             [hotspot, ...curr.filter((h) => h.id !== hotspot.id)].slice(0, HOTSPOT_LIMIT),
           );

@@ -128,6 +128,15 @@ export default function GlobalMatrixDashboard() {
           <GlobeOverlay
             points={filtered}
             activeCount={filtered.length}
+            hotspots={hotspots}
+            focusPoint={
+              caseData ? { latitude: caseData.latitude, longitude: caseData.longitude } : null
+            }
+            pingPoint={
+              sightings[0]
+                ? { latitude: sightings[0].latitude, longitude: sightings[0].longitude }
+                : null
+            }
             onSelect={(id) => fetchCaseFile(id)}
           />
           <CaseDossier

@@ -3,35 +3,63 @@
 /**
  * src/components/map/TacticalGlobe.tsx
  * ---------------------------------------------------------------------------
- * Night-Earth textured globe.
+ * Night-Earth textured globe + geo-anchored effects (GlobeFx).
  *
- *   - equirectangular dark albedo map (`earth-dark.jpg`) + topology bump map
- *   - additive back-side shell for a cheap atmospheric rim ("fake fresnel")
- *   - the sighting markers are parented to the Earth mesh, so they rotate WITH
- *     the continents and stay locked to their coordinates
+ *   - equirectangular night-lights albedo (emissive) + topology bump
+ *   - markers + effect rings parented to the Earth, so they rotate WITH it
+ *   - idle: slow quaternion spin. On `focusPoint` (a selected sighting): the
+ *     globe smoothly orients so that point faces the camera and holds.
  *
- * Lighting + the Canvas live in `GlobeOverlay`; this is scene content only.
+ * Lighting + the Canvas live in `GlobeOverlay`.
  * ---------------------------------------------------------------------------
  */
 
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
-import { AdditiveBlending, BackSide, SRGBColorSpace, type Mesh } from 'three';
+import {
+  AdditiveBlending,
+  BackSide,
+  type Mesh,
+  Quaternion,
+  SRGBColorSpace,
+  Vector3,
+} from 'three';
 import DataPoints, { type MapSighting } from './DataPoints';
-import { GLOBE_RADIUS } from '@/lib/geo';
+import GlobeFx, { type GlobeFxHotspot } from './GlobeFx';
+import { GLOBE_RADIUS, latLngToVector3 } from '@/lib/geo';
+
+interface GeoPoint {
+  readonly latitude: number;
+  readonly longitude: number;
+}
 
 interface TacticalGlobeProps {
   readonly points: readonly MapSighting[];
+  readonly hotspots: readonly GlobeFxHotspot[];
+  readonly pingPoint?: GeoPoint | null;
+  readonly focusPoint?: GeoPoint | null;
   readonly onSelect?: (id: string) => void;
+  readonly onHover?: (id: string | null) => void;
 }
 
-export default function TacticalGlobe({ points, onSelect }: TacticalGlobeProps) {
-  const earthRef = useRef<Mesh>(null);
+// Scratch reused across frames (single globe instance in the scene).
+const Y_AXIS = new Vector3(0, 1, 0);
+const CAMERA_DIR = new Vector3(0, 0, 1);
+const tmpDir = new Vector3();
+const tmpQuat = new Quaternion();
 
-  // Night-lights albedo (visible continents + glowing cities) + topology bump.
-  // Tag the colour map sRGB on load; the bump map stays linear (it's data, not
-  // colour). Done in the load callback to avoid mutating a hook value in render.
+export default function TacticalGlobe({
+  points,
+  hotspots,
+  pingPoint,
+  focusPoint,
+  onSelect,
+  onHover,
+}: TacticalGlobeProps) {
+  const earthRef = useRef<Mesh>(null);
+  const spinRef = useRef(0);
+
   const [nightMap, bumpMap] = useTexture(
     ['/textures/earth-night.jpg', '/textures/earth-topology.png'],
     (loaded) => {
@@ -40,11 +68,18 @@ export default function TacticalGlobe({ points, onSelect }: TacticalGlobeProps) 
     },
   );
 
-  // Passive intelligence-hub spin. DataPoints is a child of this mesh, so the
-  // markers rotate together and never drift off their coordinates.
-  useFrame(({ clock }) => {
-    if (earthRef.current) {
-      earthRef.current.rotation.y = clock.getElapsedTime() * 0.02;
+  useFrame((_, delta) => {
+    const mesh = earthRef.current;
+    if (!mesh) return;
+    spinRef.current += delta * 0.12; // idle spin advances even while focused
+    if (focusPoint) {
+      // Orient so the focused coordinate faces the camera (+Z), then hold.
+      latLngToVector3(focusPoint.latitude, focusPoint.longitude, 1, tmpDir).normalize();
+      tmpQuat.setFromUnitVectors(tmpDir, CAMERA_DIR);
+      mesh.quaternion.slerp(tmpQuat, Math.min(1, delta * 2.5));
+    } else {
+      tmpQuat.setFromAxisAngle(Y_AXIS, spinRef.current);
+      mesh.quaternion.slerp(tmpQuat, Math.min(1, delta * 2));
     }
   });
 
@@ -55,9 +90,6 @@ export default function TacticalGlobe({ points, onSelect }: TacticalGlobeProps) 
         <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
         <meshStandardMaterial
           map={nightMap}
-          // Self-illuminate the night lights so geography is visible from every
-          // angle, not just the lit hemisphere (a near-black albedo lit by a
-          // single light was rendering as a black ball).
           emissive="#ffffff"
           emissiveMap={nightMap}
           emissiveIntensity={0.9}
@@ -66,11 +98,11 @@ export default function TacticalGlobe({ points, onSelect }: TacticalGlobeProps) 
           roughness={1}
           metalness={0}
         />
-        {/* Lift markers a hair above the surface so the texture can't occlude
-            them; the group rotates with the Earth. */}
+        {/* Markers lifted just above the surface; rotate/orient with the Earth. */}
         <group scale={1.02}>
-          <DataPoints points={points} onSelect={onSelect} />
+          <DataPoints points={points} onSelect={onSelect} onHover={onHover} />
         </group>
+        <GlobeFx hotspots={hotspots} pingPoint={pingPoint} focusPoint={focusPoint} />
       </mesh>
 
       {/* Atmospheric rim — unlit additive back-side shell. */}

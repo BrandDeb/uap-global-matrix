@@ -37,9 +37,11 @@ interface DataPointsProps {
   readonly markerSize?: number;
   /** Called with the clicked sighting's id (R3F instanced raycasting). */
   readonly onSelect?: (id: string) => void;
+  /** Called with the hovered sighting's id (or null on exit). */
+  readonly onHover?: (id: string | null) => void;
 }
 
-export function DataPoints({ points, markerSize = 0.018, onSelect }: DataPointsProps) {
+export function DataPoints({ points, markerSize = 0.018, onSelect, onHover }: DataPointsProps) {
   const meshRef = useRef<InstancedMesh>(null);
 
   // Instanced raycasting: `e.instanceId` is the index into `points`.
@@ -94,8 +96,12 @@ export function DataPoints({ points, markerSize = 0.018, onSelect }: DataPointsP
         e.stopPropagation();
         document.body.style.cursor = 'pointer';
       }}
+      onPointerMove={(e) => {
+        if (e.instanceId !== undefined && onHover) onHover(points[e.instanceId].id);
+      }}
       onPointerOut={() => {
         document.body.style.cursor = 'default';
+        if (onHover) onHover(null);
       }}
     >
       <sphereGeometry args={[markerSize, 12, 12]} />

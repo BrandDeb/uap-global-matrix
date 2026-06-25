@@ -12,75 +12,17 @@
  *   │  · intake    │     coloured by credibility              │
  *   └──────────────┴─────────────────────────────────────────┘
  *
- * Data: fetched live from `GET /api/sightings` on mount (and re-fetched after a
- * successful submission), falling back to a hardcoded seed set if the feed is
- * unreachable so the globe is never empty. Filter state flows one way →
- * `filtered` → the `points` vector into <DataPoints>.
+ * Data: `useLiveSightings` loads the archive + subscribes to realtime INSERTs,
+ * so new sightings appear without a refresh. Filter state flows one way →
+ * `filtered` → <GlobeOverlay>; clicking a marker opens the <CaseDossier>.
  * ---------------------------------------------------------------------------
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Radar, Search, SlidersHorizontal, UploadCloud, X } from 'lucide-react';
 import GlobeOverlay from '@/components/map/GlobeOverlay';
-import type { MapSighting } from '@/components/map/DataPoints';
-
-/* ===========================================================================
- * View model + seed data
- * ======================================================================== */
-
-interface DashboardSighting extends MapSighting {
-  readonly eventTimestamp: string; // ISO-8601
-  readonly locationName: string;
-}
-
-/** Fallback used only if `GET /api/sightings` is unreachable. */
-const SEED_SIGHTINGS: readonly DashboardSighting[] = [
-  {
-    id: 'seed-bitburg',
-    title: 'Bitburg Air Base Radar-Visual Intercept',
-    latitude: 49.9453,
-    longitude: 6.5642,
-    credibilityScore: 94.5,
-    eventTimestamp: '1954-08-14T23:15:00Z',
-    locationName: 'Bitburg Air Base, West Germany',
-  },
-  {
-    id: 'seed-nimitz',
-    title: 'USS Nimitz "Tic Tac" Encounter',
-    latitude: 32.5,
-    longitude: -119.5,
-    credibilityScore: 88.0,
-    eventTimestamp: '2004-11-14T00:00:00Z',
-    locationName: 'Pacific Ocean, off San Diego',
-  },
-  {
-    id: 'seed-phoenix',
-    title: 'Phoenix Lights',
-    latitude: 33.4484,
-    longitude: -112.074,
-    credibilityScore: 61.0,
-    eventTimestamp: '1997-03-13T19:30:00Z',
-    locationName: 'Phoenix, Arizona, USA',
-  },
-  {
-    id: 'seed-tehran',
-    title: 'Imperial Iranian Air Force Jet Pursuit',
-    latitude: 35.6892,
-    longitude: 51.389,
-    credibilityScore: 79.0,
-    eventTimestamp: '1976-09-19T00:30:00Z',
-    locationName: 'Tehran, Iran',
-  },
-  {
-    id: 'seed-rendlesham',
-    title: 'Rendlesham Forest Incident',
-    latitude: 52.0867,
-    longitude: 1.4419,
-    credibilityScore: 47.0,
-    eventTimestamp: '1980-12-26T03:00:00Z',
-    locationName: 'Rendlesham Forest, Suffolk, UK',
-  },
-];
+import CaseDossier from '@/components/ui/CaseDossier';
+import { useLiveSightings, type LiveSighting } from '@/hooks/useLiveSightings';
 
 /* ===========================================================================
  * Filtering
@@ -94,9 +36,9 @@ interface Filters {
 }
 
 function applyFilters(
-  sightings: readonly DashboardSighting[],
+  sightings: readonly LiveSighting[],
   filters: Filters,
-): DashboardSighting[] {
+): LiveSighting[] {
   const q = filters.query.trim().toLowerCase();
   const startMs = filters.startDate ? new Date(`${filters.startDate}T00:00:00.000Z`).getTime() : -Infinity;
   const endMs = filters.endDate ? new Date(`${filters.endDate}T23:59:59.999Z`).getTime() : Infinity;
@@ -238,34 +180,11 @@ export default function Home() {
     endDate: '',
   });
   const [modalOpen, setModalOpen] = useState(false);
-  const [sightings, setSightings] = useState<readonly DashboardSighting[]>(SEED_SIGHTINGS);
-  const [source, setSource] = useState<'seed' | 'live'>('seed');
+  const [selected, setSelected] = useState<LiveSighting | null>(null);
 
-  const loadSightings = useCallback(async (active: Filters) => {
-    try {
-      const params = new URLSearchParams();
-      if (active.query.trim()) params.set('q', active.query.trim());
-      if (active.minCredibility > 0) params.set('minCredibility', String(active.minCredibility));
-      if (active.startDate) params.set('start', `${active.startDate}T00:00:00.000Z`);
-      if (active.endDate) params.set('end', `${active.endDate}T23:59:59.999Z`);
-      const qs = params.toString();
-      const res = await fetch(`/api/sightings${qs ? `?${qs}` : ''}`, { cache: 'no-store' });
-      const body = (await res.json()) as { success: boolean; data?: DashboardSighting[] };
-      if (body.success && Array.isArray(body.data)) {
-        setSightings(body.data);
-        setSource('live');
-      }
-    } catch {
-      // Keep the current set (seed on first load); the globe stays populated offline.
-    }
-  }, []);
-
-  // Debounced: refetch the server-filtered window whenever filters change.
-  useEffect(() => {
-    const handle = setTimeout(() => loadSightings(filters), 250);
-    return () => clearTimeout(handle);
-  }, [filters, loadSightings]);
-
+  // Live data: historical archive + realtime INSERTs (new sightings appear
+  // without a refresh). Filtering stays client-side over the live set.
+  const { sightings, loading } = useLiveSightings();
   const filtered = useMemo(() => applyFilters(sightings, filters), [sightings, filters]);
 
   const patch = (next: Partial<Filters>) => setFilters((prev) => ({ ...prev, ...next }));
@@ -349,24 +268,32 @@ export default function Home() {
             {sightings.length} contacts
           </span>
           <span
-            className={`rounded px-1.5 py-0.5 text-[9px] font-semibold tracking-widest ${
-              source === 'live'
-                ? 'bg-emerald-500/15 text-emerald-400'
-                : 'bg-amber-500/15 text-amber-400'
+            className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold tracking-widest ${
+              loading ? 'bg-amber-500/15 text-amber-400' : 'bg-emerald-500/15 text-emerald-400'
             }`}
           >
-            {source === 'live' ? 'LIVE' : 'SEED'}
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                loading ? 'bg-amber-400' : 'animate-pulse bg-emerald-400'
+              }`}
+            />
+            {loading ? 'SYNC' : 'LIVE'}
           </span>
         </footer>
       </aside>
 
       {/* ── Right globe viewport (75%) ───────────────────────────────── */}
       <main className="relative w-3/4 flex-1">
-        <GlobeOverlay points={filtered} activeCount={filtered.length} />
+        <GlobeOverlay
+          points={filtered}
+          activeCount={filtered.length}
+          onSelect={(id) => setSelected(sightings.find((s) => s.id === id) ?? null)}
+        />
+        {selected && <CaseDossier sighting={selected} onClose={() => setSelected(null)} />}
       </main>
 
       {modalOpen && (
-        <SubmissionModal onClose={() => setModalOpen(false)} onSubmitted={() => loadSightings(filters)} />
+        <SubmissionModal onClose={() => setModalOpen(false)} onSubmitted={() => {}} />
       )}
     </div>
   );

@@ -16,7 +16,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react';
 import { Color, Object3D, type InstancedMesh } from 'three';
 // Importing from @react-three/fiber pulls in the JSX intrinsic-element
 // augmentation (<instancedMesh>, <sphereGeometry>, …) used below.
-import type { ThreeElements } from '@react-three/fiber';
+import type { ThreeElements, ThreeEvent } from '@react-three/fiber';
 import { GLOBE_RADIUS, latLngToCartesian, credibilityColor } from '@/lib/geo';
 
 export { GLOBE_RADIUS };
@@ -35,10 +35,20 @@ interface DataPointsProps {
   readonly points: readonly MapSighting[];
   /** Marker radius in world units. */
   readonly markerSize?: number;
+  /** Called with the clicked sighting's id (R3F instanced raycasting). */
+  readonly onSelect?: (id: string) => void;
 }
 
-export function DataPoints({ points, markerSize = 0.018 }: DataPointsProps) {
+export function DataPoints({ points, markerSize = 0.018, onSelect }: DataPointsProps) {
   const meshRef = useRef<InstancedMesh>(null);
+
+  // Instanced raycasting: `e.instanceId` is the index into `points`.
+  const handleClick = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation(); // don't click "through" to markers behind the globe
+    if (e.instanceId !== undefined && onSelect) {
+      onSelect(points[e.instanceId].id);
+    }
+  };
 
   // Reusable scratch objects — never recreated across renders/instances.
   const scratch = useMemo(() => ({ dummy: new Object3D(), color: new Color() }), []);
@@ -74,7 +84,20 @@ export function DataPoints({ points, markerSize = 0.018 }: DataPointsProps) {
   ];
 
   return (
-    <instancedMesh key={points.length} ref={meshRef} args={meshArgs} frustumCulled={false}>
+    <instancedMesh
+      key={points.length}
+      ref={meshRef}
+      args={meshArgs}
+      frustumCulled={false}
+      onClick={handleClick}
+      onPointerOver={(e) => {
+        e.stopPropagation();
+        document.body.style.cursor = 'pointer';
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = 'default';
+      }}
+    >
       <sphereGeometry args={[markerSize, 12, 12]} />
       <meshBasicMaterial toneMapped={false} />
     </instancedMesh>

@@ -20,9 +20,10 @@ import type { MapSighting } from './DataPoints';
 interface GlobeOverlayProps {
   readonly points: readonly MapSighting[];
   readonly activeCount: number;
+  readonly onSelect?: (id: string) => void;
 }
 
-export default function GlobeOverlay({ points, activeCount }: GlobeOverlayProps) {
+export default function GlobeOverlay({ points, activeCount, onSelect }: GlobeOverlayProps) {
   return (
     <div className="relative h-full w-full bg-zinc-950">
       <Canvas camera={{ position: [0, 0, 6], fov: 45 }} dpr={[1, 2]}>
@@ -36,7 +37,7 @@ export default function GlobeOverlay({ points, activeCount }: GlobeOverlayProps)
         <Stars radius={120} depth={60} count={3500} factor={4} fade speed={0.5} />
 
         <Suspense fallback={null}>
-          <TacticalGlobe points={points} />
+          <TacticalGlobe points={points} onSelect={onSelect} />
         </Suspense>
 
         <OrbitControls

@@ -23,9 +23,10 @@ import { GLOBE_RADIUS } from '@/lib/geo';
 
 interface TacticalGlobeProps {
   readonly points: readonly MapSighting[];
+  readonly onSelect?: (id: string) => void;
 }
 
-export default function TacticalGlobe({ points }: TacticalGlobeProps) {
+export default function TacticalGlobe({ points, onSelect }: TacticalGlobeProps) {
   const earthRef = useRef<Mesh>(null);
 
   // Night-lights albedo (visible continents + glowing cities) + topology bump.
@@ -68,7 +69,7 @@ export default function TacticalGlobe({ points }: TacticalGlobeProps) {
         {/* Lift markers a hair above the surface so the texture can't occlude
             them; the group rotates with the Earth. */}
         <group scale={1.02}>
-          <DataPoints points={points} />
+          <DataPoints points={points} onSelect={onSelect} />
         </group>
       </mesh>
 

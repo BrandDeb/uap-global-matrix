@@ -23,6 +23,7 @@ import DataPoints, { type MapSighting } from './DataPoints';
 import GlobeFx, { type GlobeFxHotspot } from './GlobeFx';
 import Trajectories from './Trajectories';
 import { TimeDriver } from './sharedTime';
+import AlienFleet from './AlienFleet';
 
 interface GeoPoint {
   readonly latitude: number;
@@ -93,6 +94,7 @@ export default function GlobeOverlay({
             <Trajectories points={points} />
             <GlobeFx hotspots={hotspots} pingPoint={pingPoint} focusPoint={focusPoint} />
           </AlienEarth>
+          <AlienFleet />
         </Suspense>
 
         <OrbitControls

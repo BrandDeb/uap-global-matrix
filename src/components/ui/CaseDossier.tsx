@@ -18,7 +18,8 @@
 import { useEffect, useState } from 'react';
 import { X, Send, MessageSquare, BrainCircuit, ShieldAlert, Eye, Lock } from 'lucide-react';
 import Link from 'next/link';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
+import DecryptedText from '@/components/fx/DecryptedText';
 import { useAuth } from '@/hooks/useAuth';
 import type { LiveSighting } from '@/lib/sightings';
 
@@ -68,61 +69,54 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
 
   useEffect(() => {
     if (!sightingId) return;
-    const supabase = getSupabaseBrowserClient();
     let cancelled = false;
+    let cursor: string | null = null;
+    let timer: number | undefined;
 
-    (async () => {
-      const [threadRes, briefRes, countRes] = await Promise.all([
-        supabase
-          .from('uap_intel_threads')
-          .select('*')
-          .eq('sighting_id', sightingId)
-          .order('created_at', { ascending: true }),
-        supabase
-          .from('uap_ai_briefs')
-          .select('summary_text,threat_assessment')
-          .eq('sighting_id', sightingId)
-          .maybeSingle(),
-        supabase
-          .from('sighting_co_witnesses')
-          .select('*', { count: 'exact', head: true })
-          .eq('sighting_id', sightingId),
-      ]);
-      if (cancelled) return;
-      if (threadRes.data) {
-        setComments(threadRes.data.map((r) => toIntelThread(r as Record<string, unknown>)));
+    // Brief + co-witness count once; the thread polls for new rows.
+    void (async () => {
+      try {
+        const res = await fetch(`/api/sightings/${sightingId}/dossier`, { cache: 'no-store' });
+        if (!res.ok || cancelled) return;
+        const d = (await res.json()) as {
+          brief: { summary_text?: string; threat_assessment?: string } | null;
+          coWitnessCount: number;
+        };
+        if (d.brief) {
+          setAiBrief({
+            summary: String(d.brief.summary_text ?? ''),
+            threatAssessment: String(d.brief.threat_assessment ?? 'LOW'),
+          });
+        }
+        setCoWitnessCount(d.coWitnessCount);
+      } catch {
+        /* offline */
       }
-      if (briefRes.data) {
-        const b = briefRes.data as { summary_text?: string; threat_assessment?: string };
-        setAiBrief({
-          summary: String(b.summary_text ?? ''),
-          threatAssessment: String(b.threat_assessment ?? 'LOW'),
-        });
-      }
-      if (typeof countRes.count === 'number') setCoWitnessCount(countRes.count);
     })();
 
-    const channel = supabase
-      .channel(`case-thread-${sightingId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'uap_intel_threads',
-          filter: `sighting_id=eq.${sightingId}`,
-        },
-        (payload) => {
-          if (cancelled) return;
-          const thread = toIntelThread(payload.new as Record<string, unknown>);
-          setComments((curr) => (curr.some((c) => c.id === thread.id) ? curr : [...curr, thread]));
-        },
-      )
-      .subscribe();
+    const pollThread = async () => {
+      try {
+        const q = cursor ? `?since=${encodeURIComponent(cursor)}` : '';
+        const res = await fetch(`/api/sightings/${sightingId}/intel${q}`, { cache: 'no-store' });
+        if (res.ok && !cancelled) {
+          const d = (await res.json()) as { rows: Record<string, unknown>[]; serverTime: string };
+          const fresh = d.rows.map(toIntelThread);
+          setComments((curr) => {
+            const known = new Set(curr.map((c) => c.id));
+            return [...curr, ...fresh.filter((c) => !known.has(c.id))];
+          });
+          cursor = d.serverTime;
+        }
+      } catch {
+        /* offline */
+      }
+      if (!cancelled) timer = window.setTimeout(pollThread, 8000);
+    };
+    void pollThread();
 
     return () => {
       cancelled = true;
-      supabase.removeChannel(channel);
+      window.clearTimeout(timer);
     };
   }, [sightingId]);
 
@@ -134,7 +128,18 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
-    await onAddIntel(sighting.id, operatorHandle, message.trim());
+    const text = message.trim();
+    const { error } = await onAddIntel(sighting.id, operatorHandle, text);
+    if (error) {
+      toast.error('Transmission failed', { description: error.message });
+      return;
+    }
+    toast.success('Intel transmitted');
+    // Show it immediately; the next poll de-duplicates by id.
+    setComments((curr) => [
+      ...curr,
+      { id: `local-${Date.now()}`, operatorHandle, intelText: text, createdAt: new Date().toISOString() },
+    ]);
     setMessage('');
   };
 
@@ -171,33 +176,40 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
   };
 
   const registerCoWitness = async () => {
-    const supabase = getSupabaseBrowserClient();
-    const operator = operatorHandle;
-    const { error } = await supabase
-      .from('sighting_co_witnesses')
-      .insert({ sighting_id: sighting.id, operator_handle: operator });
-    if (!error) {
-      setCoWitnessCount((n) => n + 1);
-      setCoWitnessNote('Logged.');
-    } else if (error.code === '23505') {
-      setCoWitnessNote('Already logged under that handle.');
-    } else {
-      setCoWitnessNote(error.message);
+    try {
+      const res = await fetch(`/api/sightings/${sighting.id}/co-witness`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ handle: operatorHandle }),
+      });
+      if (res.ok) {
+        setCoWitnessCount((n) => n + 1);
+        setCoWitnessNote('Logged.');
+      } else if (res.status === 409) {
+        setCoWitnessNote('Already logged under that handle.');
+      } else {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        setCoWitnessNote(body.error ?? `HTTP ${res.status}`);
+      }
+    } catch (err: unknown) {
+      setCoWitnessNote(err instanceof Error ? err.message : 'Network error.');
     }
   };
 
   return (
     <div
       style={{ animation: 'dossier-in 0.2s ease-out' }}
-      className="absolute right-4 top-4 z-50 flex max-h-[85vh] w-[430px] flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/95 text-zinc-100 shadow-2xl backdrop-blur-lg"
+      className="xeno-glass relative z-50 flex max-h-full w-[min(430px,90vw)] flex-col overflow-hidden text-zinc-100 shadow-[0_0_80px_rgba(94,255,216,0.12)] animate-[dossier-in_0.6s_cubic-bezier(0.16,1,0.3,1)]"
     >
       {/* Header */}
-      <div className="flex items-start justify-between border-b border-zinc-800 bg-zinc-950/60 p-4">
+      <div className="flex items-start justify-between border-b border-zinc-800 bg-transparent p-4">
         <div>
           <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-emerald-400">
             {sighting.isGovDeclassified ? '🏛️ GOV_DECLASSIFIED' : '📡 CITIZEN_FEED'}
           </span>
-          <h2 className="mt-1.5 text-sm font-bold text-zinc-200">{sighting.title}</h2>
+          <h2 className="mt-2 font-[family-name:var(--font-display)] text-lg font-medium leading-tight text-white">
+            <DecryptedText text={sighting.title} />
+          </h2>
         </div>
         <button onClick={onClose} className="p-1 text-zinc-500 hover:text-zinc-200" aria-label="Close">
           <X size={16} />

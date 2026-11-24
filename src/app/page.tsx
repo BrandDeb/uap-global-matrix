@@ -27,6 +27,8 @@ import MatrixControlHUD, { type FeedTab } from '@/components/ui/MatrixControlHUD
 import CommandPalette from '@/components/ui/CommandPalette';
 import IntelAnalytics from '@/components/ui/IntelAnalytics';
 import { computeAnalytics } from '@/lib/analytics';
+import XenoIntro from '@/components/ui/XenoIntro';
+import { AnimatePresence, motion } from 'motion/react';
 
 const MAX_YEAR = 2026;
 
@@ -71,123 +73,169 @@ export default function GlobalMatrixDashboard() {
   const analytics = useMemo(() => computeAnalytics(sightings), [sightings]);
 
   return (
-    <main className="flex h-screen w-screen select-none flex-col space-y-3 overflow-hidden bg-zinc-950 p-3 text-zinc-200">
-      <MatrixControlHUD
-        activeFeedTab={feedTab}
-        onTabChange={setFeedTab}
-        nodeCount={filtered.length}
-        totalCount={sightings.length}
-        loading={loading}
-        onSearch={() => setPaletteOpen(true)}
-        onStats={() => setStatsOpen(true)}
-        onSubmit={() => setModalOpen(true)}
+    <main className="fixed inset-0 select-none overflow-hidden bg-[var(--xeno-void)] text-zinc-200">
+      <XenoIntro />
+
+      {/* Full-bleed WebGL stage */}
+      <GlobeOverlay
+        points={filtered}
+        activeCount={filtered.length}
+        hotspots={hotspots}
+        focusPoint={caseData ? { latitude: caseData.latitude, longitude: caseData.longitude } : null}
+        pingPoint={
+          sightings[0] ? { latitude: sightings[0].latitude, longitude: sightings[0].longitude } : null
+        }
+        onSelect={(id) => fetchCaseFile(id)}
       />
 
-      <div className="flex min-h-0 flex-1 space-x-3 overflow-hidden">
-        {/* Left rail */}
-        <div className="flex w-80 shrink-0 flex-col space-y-3">
-          {/* Hotspot flaps */}
-          <div className="flex min-h-[160px] flex-col rounded-xl border border-zinc-900 bg-zinc-900/40 p-3">
-            <div className="mb-2 flex items-center gap-1.5 font-mono text-xs font-bold text-amber-500">
-              <ShieldAlert size={13} />
-              <span>AUTOMATED RADIAL FLAPS</span>
-            </div>
-            <div className="flex-1 space-y-1.5 overflow-y-auto pr-1 font-mono text-[10px]">
-              {hotspots.length === 0 ? (
-                <div className="py-6 text-center italic text-zinc-600">
-                  Monitoring for multi-point vector flaps…
-                </div>
-              ) : (
-                hotspots.map((h) => (
-                  <div
-                    key={h.id}
-                    className="flex flex-col gap-1 rounded border border-zinc-800/60 bg-zinc-950/40 p-2"
-                  >
-                    <div className="flex justify-between font-bold">
-                      <span className="max-w-[150px] truncate text-zinc-300">{h.locationName}</span>
-                      <span
-                        className={`rounded border px-1 text-[8px] ${
-                          h.severityLevel === 'CRITICAL_FLAP'
-                            ? 'border-red-500/20 bg-red-500/10 text-red-400'
-                            : 'border-amber-500/20 bg-amber-500/10 text-amber-400'
-                        }`}
-                      >
-                        {h.severityLevel}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-zinc-500">
-                      <span>CONCURRENT NODES: {h.sightingCount}</span>
-                      <span>LIVE SYNC</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Incident stream */}
-          <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-zinc-900 bg-zinc-900/40 p-3">
-            <div className="mb-2 flex items-center gap-1.5 font-mono text-xs font-bold text-zinc-400">
-              <Radio size={13} className="animate-pulse text-emerald-500" />
-              <span>OPERATOR INCIDENT STREAM</span>
-            </div>
-            <div className="flex-1 space-y-2 overflow-y-auto pr-1">
-              {filtered.slice(0, 20).map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => fetchCaseFile(s.id)}
-                  className="block w-full rounded-lg border border-zinc-900 bg-zinc-950/30 p-2 text-left transition hover:border-zinc-700/60"
-                >
-                  <div className="mb-1 flex justify-between font-mono text-[8px] text-zinc-500">
-                    <span>{new Date(s.eventTimestamp).toLocaleDateString()}</span>
-                    <span className="text-emerald-400">INDEX: {s.credibilityScore}%</span>
-                  </div>
-                  <h4 className="truncate font-mono text-xs font-bold text-zinc-300">{s.title}</h4>
-                  <p className="mt-0.5 truncate text-[10px] text-zinc-500">{s.locationName}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Center: globe + dossier */}
-        <div className="relative min-w-0 flex-1 overflow-hidden rounded-xl border border-zinc-900 bg-zinc-950">
-          <GlobeOverlay
-            points={filtered}
-            activeCount={filtered.length}
-            hotspots={hotspots}
-            focusPoint={
-              caseData ? { latitude: caseData.latitude, longitude: caseData.longitude } : null
-            }
-            pingPoint={
-              sightings[0]
-                ? { latitude: sightings[0].latitude, longitude: sightings[0].longitude }
-                : null
-            }
-            onSelect={(id) => fetchCaseFile(id)}
-          />
-          <CaseDossier
-            key={caseData?.id ?? 'none'}
-            sighting={caseData}
-            onClose={clearCaseFile}
-            onAddIntel={postIntelMessage}
-          />
-        </div>
+      {/* Giant editorial backdrop type */}
+      <div className="pointer-events-none absolute inset-x-0 top-[14vh] z-0 text-center mix-blend-screen">
+        <p className="font-mono text-[10px] uppercase tracking-[0.6em] text-white/40">
+          Unidentified anomalous phenomena · 1947 — {MAX_YEAR}
+        </p>
+      </div>
+      <div
+        className={`pointer-events-none absolute bottom-[22vh] left-6 z-0 hidden max-w-sm transition-opacity duration-700 lg:block ${
+          caseData ? 'opacity-0' : 'opacity-100'
+        }`}
+      >
+        <h2 className="font-[family-name:var(--font-display)] text-5xl font-extrabold leading-[0.9] text-white/90">
+          The sky<br />
+          <span className="xeno-gradient-text">is talking.</span>
+        </h2>
+        <p className="mt-4 text-sm leading-relaxed text-white/45">
+          {sightings.length.toLocaleString()} contacts triangulated across the planet. Drag to orbit, scroll to
+          descend, tap a pillar to open its dossier.
+        </p>
       </div>
 
-      <TimelineScrubber
-        minYear={1947}
-        maxYear={MAX_YEAR}
-        currentYear={selectedYear}
-        decades={analytics.decades}
-        maxDecadeCount={analytics.maxDecadeCount}
-        onYearChange={(year) => {
-          setSelectedYear(year);
-          if (caseData && new Date(caseData.eventTimestamp).getUTCFullYear() > year) {
-            clearCaseFile();
-          }
-        }}
-      />
+      {/* HUD layer */}
+      <div className="pointer-events-none absolute inset-0 z-10 flex flex-col p-4 md:p-6">
+        <MatrixControlHUD
+          activeFeedTab={feedTab}
+          onTabChange={setFeedTab}
+          nodeCount={filtered.length}
+          totalCount={sightings.length}
+          loading={loading}
+          onSearch={() => setPaletteOpen(true)}
+          onStats={() => setStatsOpen(true)}
+          onSubmit={() => setModalOpen(true)}
+        />
+
+        <div className="flex min-h-0 flex-1 justify-between gap-4 py-4">
+          {/* Right-side transmission rail (left when a dossier is open) */}
+          <motion.aside
+            layout
+            transition={{ type: 'spring', stiffness: 120, damping: 20 }}
+            className={`pointer-events-auto hidden w-72 shrink-0 flex-col gap-3 md:flex ${
+              caseData ? 'order-first' : 'order-last'
+            }`}
+          >
+            <section className="xeno-glass p-4">
+              <div className="mb-3 flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.3em]">
+                <span className="flex items-center gap-1.5 text-[var(--xeno-d)]">
+                  <ShieldAlert size={11} /> Flap clusters
+                </span>
+                <span className="text-white/30">{hotspots.length}</span>
+              </div>
+              <div className="max-h-40 space-y-1.5 overflow-y-auto pr-1">
+                {hotspots.length === 0 ? (
+                  <p className="py-3 text-center font-mono text-[10px] text-white/30">
+                    Listening for multi-point flaps…
+                  </p>
+                ) : (
+                  hotspots.map((h) => (
+                    <div key={h.id} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="truncate text-white/80">{h.locationName}</span>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 font-mono text-[8px] tracking-widest ${
+                          h.severityLevel === 'CRITICAL_FLAP'
+                            ? 'bg-[var(--xeno-d)]/15 text-[var(--xeno-d)]'
+                            : 'bg-[var(--xeno-b)]/15 text-[var(--xeno-b)]'
+                        }`}
+                      >
+                        {h.sightingCount} · {h.severityLevel === 'CRITICAL_FLAP' ? 'CRIT' : 'ELEV'}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+
+            <section className="xeno-glass flex min-h-0 flex-1 flex-col p-4">
+              <div className="mb-3 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.3em] text-[var(--xeno-a)]">
+                <Radio size={11} className="animate-pulse" /> Incoming transmissions
+              </div>
+              <div className="-mx-1 flex-1 space-y-1 overflow-y-auto px-1">
+                {filtered.slice(0, 24).map((s, i) => (
+                  <button
+                    key={s.id}
+                    onClick={() => fetchCaseFile(s.id)}
+                    className="group block w-full rounded-xl px-2 py-2 text-left transition-colors duration-300 hover:bg-white/5"
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-mono text-[9px] text-white/25">{String(i + 1).padStart(2, '0')}</span>
+                      <h4 className="min-w-0 flex-1 truncate text-[13px] text-white/85 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-white">
+                        {s.title}
+                      </h4>
+                      <span className="font-mono text-[9px] text-[var(--xeno-a)]">{s.credibilityScore}%</span>
+                    </div>
+                    <p className="ml-6 truncate font-mono text-[9px] uppercase tracking-wider text-white/35">
+                      {s.locationName} · {new Date(s.eventTimestamp).getUTCFullYear()}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </section>
+          </motion.aside>
+
+          <div className="relative min-w-0 flex-1">
+            <div className="pointer-events-auto absolute inset-y-0 right-0">
+              <AnimatePresence mode="wait">
+                {caseData && (
+                  <motion.div
+                    key={caseData.id}
+                    className="h-full"
+                    initial={{ opacity: 0, x: 40, filter: 'blur(12px)' }}
+                    animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+                    exit={{ opacity: 0, x: 40, filter: 'blur(12px)' }}
+                    transition={{ type: 'spring', stiffness: 140, damping: 22 }}
+                  >
+                    <CaseDossier sighting={caseData} onClose={clearCaseFile} onAddIntel={postIntelMessage} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
+
+        <TimelineScrubber
+          minYear={1947}
+          maxYear={MAX_YEAR}
+          currentYear={selectedYear}
+          decades={analytics.decades}
+          maxDecadeCount={analytics.maxDecadeCount}
+          onYearChange={(year) => {
+            setSelectedYear(year);
+            if (caseData && new Date(caseData.eventTimestamp).getUTCFullYear() > year) {
+              clearCaseFile();
+            }
+          }}
+        />
+      </div>
+
+      {/* Marquee ticker */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 overflow-hidden py-1 opacity-40">
+        <div className="xeno-marquee font-mono text-[9px] uppercase tracking-[0.4em] text-white/40">
+          {[0, 1].map((k) => (
+            <span key={k} className="flex shrink-0 gap-10 pr-10">
+              {sightings.slice(0, 16).map((s) => (
+                <span key={s.id + k}>◈ {s.locationName}</span>
+              ))}
+            </span>
+          ))}
+        </div>
+      </div>
 
       {modalOpen && <SubmissionModal onClose={() => setModalOpen(false)} />}
 

@@ -9,8 +9,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { SIGHTING_DETAIL_COLUMNS, toLiveSighting, type LiveSighting } from '@/lib/sightings';
+import { toLiveSighting, type LiveSighting } from '@/lib/sightings';
 
 export function useLazyCaseFile(): {
   caseData: LiveSighting | null;
@@ -20,13 +19,12 @@ export function useLazyCaseFile(): {
   const [caseData, setCaseData] = useState<LiveSighting | null>(null);
 
   const fetchCaseFile = useCallback(async (id: string) => {
-    const supabase = getSupabaseBrowserClient();
-    const { data } = await supabase
-      .from('v_uap_sightings')
-      .select(SIGHTING_DETAIL_COLUMNS)
-      .eq('id', id)
-      .single();
-    setCaseData(data ? toLiveSighting(data as Record<string, unknown>) : null);
+    try {
+      const res = await fetch(`/api/sightings/${encodeURIComponent(id)}`, { cache: 'no-store' });
+      setCaseData(res.ok ? toLiveSighting((await res.json()) as Record<string, unknown>) : null);
+    } catch {
+      setCaseData(null);
+    }
   }, []);
 
   const clearCaseFile = useCallback(() => setCaseData(null), []);

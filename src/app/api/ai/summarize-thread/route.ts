@@ -1,13 +1,14 @@
 /**
  * src/app/api/ai/summarize-thread/route.ts
  * POST — summarize a case's operator thread into a tactical brief via Gemini,
- * and cache it in `uap_ai_briefs`. The brief is written here with the SERVICE
- * ROLE so anonymous clients cannot forge "official" briefs. Gated on the key.
+ * and cache it in `uap_ai_briefs`. Briefs are only ever written server-side
+ * here, so clients cannot forge "official" briefs. Gated on the key.
  */
 
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
-import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { upsertBrief } from '@/lib/db/queries';
+import { isUuid } from '@/lib/apiHelpers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,8 +42,8 @@ export async function POST(req: Request): Promise<Response> {
   const sightingId = typeof body.sightingId === 'string' ? body.sightingId : '';
   const caseTitle = typeof body.caseTitle === 'string' ? body.caseTitle : 'Unknown target';
   const comments = Array.isArray(body.comments) ? (body.comments as ThreadComment[]) : [];
-  if (!sightingId) {
-    return NextResponse.json({ error: '"sightingId" is required.' }, { status: 400 });
+  if (!isUuid(sightingId)) {
+    return NextResponse.json({ error: 'A valid "sightingId" is required.' }, { status: 400 });
   }
   if (comments.length === 0) {
     return NextResponse.json({ error: 'No comments to summarize.' }, { status: 400 });
@@ -81,19 +82,12 @@ export async function POST(req: Request): Promise<Response> {
     const threatAssessment =
       typeof parsed.threatAssessment === 'string' ? parsed.threatAssessment : 'LOW';
 
-    // Persist with the service role (anon cannot write uap_ai_briefs).
-    const { error } = await getSupabaseAdmin().from('uap_ai_briefs').upsert(
-      {
-        sighting_id: sightingId,
-        summary_text: summary,
-        threat_assessment: threatAssessment,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'sighting_id' },
-    );
-    if (error) {
+    try {
+      await upsertBrief(sightingId, summary, threatAssessment);
+    } catch (cacheErr: unknown) {
+      const msg = cacheErr instanceof Error ? cacheErr.message : 'unknown error';
       return NextResponse.json(
-        { summary, threatAssessment, warning: `Brief generated but not cached: ${error.message}` },
+        { summary, threatAssessment, warning: `Brief generated but not cached: ${msg}` },
         { status: 207 },
       );
     }

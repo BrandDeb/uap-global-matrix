@@ -2,29 +2,26 @@
  * src/app/case/[id]/page.tsx
  * ---------------------------------------------------------------------------
  * Server-rendered, deep-linkable case file + full-screen operator forum.
- * Fetches the case server-side (anon, RLS) for shareability/SEO; the live
- * thread is a client island.
+ * Fetches the case server-side for shareability/SEO; the live thread is a
+ * client island.
  * ---------------------------------------------------------------------------
  */
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getSupabaseAnonServer } from '@/lib/supabase/anon';
-import { SIGHTING_DETAIL_COLUMNS, toLiveSighting, type LiveSighting } from '@/lib/sightings';
+import { getSighting } from '@/lib/db/queries';
+import { isUuid } from '@/lib/apiHelpers';
+import { toLiveSighting, type LiveSighting } from '@/lib/sightings';
 import CaseThread from '@/components/ui/CaseThread';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 async function loadCase(id: string): Promise<LiveSighting | null> {
-  const supabase = getSupabaseAnonServer();
-  const { data } = await supabase
-    .from('v_uap_sightings')
-    .select(SIGHTING_DETAIL_COLUMNS)
-    .eq('id', id)
-    .maybeSingle();
-  return data ? toLiveSighting(data as Record<string, unknown>) : null;
+  if (!isUuid(id)) return null;
+  const row = await getSighting(id);
+  return row ? toLiveSighting(row) : null;
 }
 
 export async function generateMetadata({

@@ -13,7 +13,7 @@
  */
 
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import { Color, Object3D, type InstancedMesh } from 'three';
+import { AdditiveBlending, Color, Object3D, type InstancedMesh } from 'three';
 // Importing from @react-three/fiber pulls in the JSX intrinsic-element
 // augmentation (<instancedMesh>, <sphereGeometry>, …) used below.
 import type { ThreeElements, ThreeEvent } from '@react-three/fiber';
@@ -43,6 +43,7 @@ interface DataPointsProps {
 
 export function DataPoints({ points, markerSize = 0.018, onSelect, onHover }: DataPointsProps) {
   const meshRef = useRef<InstancedMesh>(null);
+  const beamRef = useRef<InstancedMesh>(null);
 
   // Instanced raycasting: `e.instanceId` is the index into `points`.
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
@@ -73,6 +74,28 @@ export function DataPoints({ points, markerSize = 0.018, onSelect, onHover }: Da
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     mesh.count = points.length;
+
+    // Light pillars: cylinders aligned with the surface normal, height by credibility.
+    const beams = beamRef.current;
+    if (beams) {
+      for (let i = 0; i < points.length; i++) {
+        const point = points[i];
+        latLngToCartesian(point.latitude, point.longitude, GLOBE_RADIUS, scratch.dummy);
+        const h = 0.04 + (point.credibilityScore / 100) * 0.22;
+        scratch.dummy.lookAt(0, 0, 0);
+        scratch.dummy.rotateX(-Math.PI / 2);
+        scratch.dummy.translateY(h / 2);
+        scratch.dummy.scale.set(1, h, 1);
+        scratch.dummy.updateMatrix();
+        beams.setMatrixAt(i, scratch.dummy.matrix);
+        scratch.dummy.scale.set(1, 1, 1);
+        scratch.dummy.rotation.set(0, 0, 0);
+        credibilityColor(point.credibilityScore, scratch.color);
+        beams.setColorAt(i, scratch.color);
+      }
+      beams.instanceMatrix.needsUpdate = true;
+      if (beams.instanceColor) beams.instanceColor.needsUpdate = true;
+    }
   }, [points, scratch]);
 
   if (points.length === 0) return null;
@@ -86,6 +109,17 @@ export function DataPoints({ points, markerSize = 0.018, onSelect, onHover }: Da
   ];
 
   return (
+    <>
+    <instancedMesh
+      key={`b${points.length}`}
+      ref={beamRef}
+      args={meshArgs}
+      frustumCulled={false}
+      raycast={() => null}
+    >
+      <cylinderGeometry args={[0.0025, 0.0025, 1, 6, 1, true]} />
+      <meshBasicMaterial toneMapped={false} transparent opacity={0.55} blending={AdditiveBlending} depthWrite={false} />
+    </instancedMesh>
     <instancedMesh
       key={points.length}
       ref={meshRef}
@@ -104,9 +138,10 @@ export function DataPoints({ points, markerSize = 0.018, onSelect, onHover }: Da
         if (onHover) onHover(null);
       }}
     >
-      <sphereGeometry args={[markerSize, 12, 12]} />
-      <meshBasicMaterial toneMapped={false} />
+      <octahedronGeometry args={[markerSize, 0]} />
+      <meshBasicMaterial toneMapped={false} color="#ffffff" />
     </instancedMesh>
+    </>
   );
 }
 

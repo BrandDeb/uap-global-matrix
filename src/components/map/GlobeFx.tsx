@@ -106,7 +106,7 @@ export default function GlobeFx({ hotspots, pingPoint, focusPoint }: GlobeFxProp
             key={h.id}
             latitude={h.latitude}
             longitude={h.longitude}
-            color={h.severityLevel === 'CRITICAL_FLAP' ? '#ef4444' : '#f59e0b'}
+            color={h.severityLevel === 'CRITICAL_FLAP' ? '#ff3d8b' : '#b18cff'}
             speed={0.5}
             grow={0.7}
             inner={0.035}
@@ -118,7 +118,7 @@ export default function GlobeFx({ hotspots, pingPoint, focusPoint }: GlobeFxProp
         <PulseRing
           latitude={pingPoint.latitude}
           longitude={pingPoint.longitude}
-          color="#22d3ee"
+          color="#5effd8"
           speed={1.1}
           grow={0.4}
           inner={0.02}
@@ -130,7 +130,7 @@ export default function GlobeFx({ hotspots, pingPoint, focusPoint }: GlobeFxProp
         <PulseRing
           latitude={focusPoint.latitude}
           longitude={focusPoint.longitude}
-          color="#34d399"
+          color="#ffffff"
           speed={0.9}
           grow={0.3}
           inner={0.03}

@@ -1,29 +1,224 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+ * XENO design system — deep-void palette, bioluminescent accents.
+ * Tailwind's zinc / emerald / cyan / amber scales are re-pointed at the xeno
+ * palette so every surface (feed, case pages, modals) inherits the look.
+ * ------------------------------------------------------------------------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --xeno-void: #020208;
+  --xeno-a: #5effd8; /* bioluminescent teal */
+  --xeno-b: #a58bff; /* plasma violet */
+  --xeno-c: #38e8ff; /* ion cyan */
+  --xeno-d: #ff5ec8; /* anomaly magenta */
+  --background: var(--xeno-void);
+  --foreground: #e9f2ff;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono-x);
+  --font-display: var(--font-display-x);
+
+  --color-zinc-50: #f3f1ff;
+  --color-zinc-100: #e6e3f7;
+  --color-zinc-200: #cbc7e6;
+  --color-zinc-300: #a9a4cc;
+  --color-zinc-400: #8781ad;
+  --color-zinc-500: #645e8a;
+  --color-zinc-600: #48436a;
+  --color-zinc-700: #322e50;
+  --color-zinc-800: #1f1c36;
+  --color-zinc-900: #110f22;
+  --color-zinc-950: #05040d;
+
+  --color-emerald-300: #9dffe8;
+  --color-emerald-400: #5effd8;
+  --color-emerald-500: #2ee6bd;
+  --color-emerald-600: #14b893;
+  --color-emerald-700: #0d7a63;
+
+  --color-cyan-300: #8af2ff;
+  --color-cyan-400: #38e8ff;
+  --color-cyan-500: #10c4e0;
+  --color-cyan-600: #0b93ad;
+  --color-cyan-700: #08687c;
+
+  --color-amber-400: #c9b4ff;
+  --color-amber-500: #a58bff;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+html,
+body {
+  background: var(--xeno-void);
+  color: var(--foreground);
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+::selection {
+  background: var(--xeno-a);
+  color: #000;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(165, 139, 255, 0.35) transparent;
+}
+
+/* Frosted alien glass panel with a gradient hairline border. */
+.xeno-glass {
+  position: relative;
+  background: linear-gradient(160deg, rgba(20, 16, 44, 0.55), rgba(4, 4, 14, 0.35));
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-radius: 18px;
+  isolation: isolate;
+}
+.xeno-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(94, 255, 216, 0.55),
+    rgba(165, 139, 255, 0.12) 40%,
+    rgba(56, 232, 255, 0.08) 70%,
+    rgba(255, 94, 200, 0.45)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.xeno-gradient-text {
+  background: linear-gradient(100deg, #fff 0%, var(--xeno-a) 35%, var(--xeno-b) 70%, var(--xeno-d) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: xeno-shift 8s ease-in-out infinite alternate;
+}
+
+/* Film grain + scanlines laid over the whole viewport. */
+.xeno-grain {
+  pointer-events: none;
+  position: fixed;
+  inset: -50%;
+  z-index: 60;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: xeno-grain 1.2s steps(6) infinite;
+}
+.xeno-scan {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 59;
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 3px);
+  mix-blend-mode: overlay;
+}
+
+.xeno-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-family: var(--font-mono-x);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #e9f2ff;
+  border: 1px solid rgba(165, 139, 255, 0.25);
+  background: rgba(10, 8, 26, 0.4);
+  overflow: hidden;
+  transition: color 0.35s, border-color 0.35s, box-shadow 0.35s;
+}
+.xeno-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--xeno-a), var(--xeno-c));
+  transform: translateY(101%);
+  transition: transform 0.45s cubic-bezier(0.7, 0, 0.2, 1);
+  z-index: -1;
+}
+.xeno-btn:hover {
+  color: #020208;
+  border-color: var(--xeno-a);
+  box-shadow: 0 0 24px rgba(94, 255, 216, 0.35);
+}
+.xeno-btn:hover::after {
+  transform: translateY(0);
+}
+.xeno-btn {
+  isolation: isolate;
+}
+
+.xeno-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 2px;
+  background: linear-gradient(90deg, var(--xeno-a) var(--p, 100%), rgba(255, 255, 255, 0.1) var(--p, 100%));
+  border-radius: 2px;
+}
+.xeno-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 25%, var(--xeno-a) 30% 45%, transparent 50%);
+  box-shadow: 0 0 18px var(--xeno-a);
+  cursor: grab;
+}
+.xeno-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--xeno-a);
+  box-shadow: 0 0 18px var(--xeno-a);
+}
+
+.xeno-marquee {
+  display: flex;
+  width: max-content;
+  animation: xeno-marquee 60s linear infinite;
+}
+
+@keyframes xeno-shift {
+  to {
+    background-position: 100% 0;
   }
 }
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes xeno-grain {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-5%, 3%); }
+  40% { transform: translate(4%, -6%); }
+  60% { transform: translate(-3%, 7%); }
+  80% { transform: translate(6%, 2%); }
+  100% { transform: translate(-2%, -4%); }
 }
+@keyframes xeno-marquee {
+  to { transform: translateX(-50%); }
+}
+@keyframes xeno-rise {
+  from { transform: translateY(110%); }
+  to { transform: translateY(0); }
+}
+@keyframes xeno-fade {
+  from { opacity: 0; filter: blur(8px); }
+  to { opacity: 1; filter: blur(0); }
+}
+.xeno-rise { animation: xeno-rise 1.1s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.xeno-fade { animation: xeno-fade 1.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 @keyframes dossier-in {
   from {
@@ -34,4 +229,8 @@ body {
     transform: translateX(0);
     opacity: 1;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xeno-grain, .xeno-marquee, .xeno-gradient-text { animation: none; }
 }

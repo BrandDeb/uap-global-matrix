@@ -15,7 +15,9 @@
  *     (`DELETE FROM uap_sightings WHERE source='nuforc'`).
  *   - Idempotency guard: skips if an import already exists.
  *
- * Run AFTER disabling trg_sighting_cluster_sync. Usage: `npx tsx scripts/megaImport.ts`
+ * The clustering trigger is disabled for the bulk load (historical rows would
+ * otherwise spawn spurious hotspots) and re-enabled afterwards.
+ * Usage: `npx tsx scripts/megaImport.ts` (needs DATABASE_URL).
  * ---------------------------------------------------------------------------
  */
 
@@ -23,7 +25,7 @@ import { createReadStream, createWriteStream, existsSync, readFileSync } from 'n
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import { parse } from 'csv-parse';
-import { createClient } from '@supabase/supabase-js';
+import postgres from 'postgres';
 
 // --- env (load .env.local; Node doesn't do this automatically) -------------
 for (const line of (existsSync('.env.local') ? readFileSync('.env.local', 'utf8') : '').split(/\r?\n/)) {
@@ -31,14 +33,11 @@ for (const line of (existsSync('.env.local') ? readFileSync('.env.local', 'utf8'
   if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
 }
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY; // bypasses RLS for batch writes
-if (!SUPABASE_URL || !SERVICE_KEY) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local');
+const DATABASE_URL = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  throw new Error('Missing DATABASE_URL in .env.local');
 }
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+const sql = postgres(DATABASE_URL, { max: 1, onnotice: () => {} });
 
 const DATASET_URL =
   'https://raw.githubusercontent.com/planetsig/ufo-reports/master/csv-data/ufo-scrubbed-geocoded-time-standardized.csv';
@@ -54,7 +53,8 @@ interface SightingRow {
   description: string;
   event_timestamp: string;
   location_name: string;
-  location_coordinates: string;
+  latitude: number;
+  longitude: number;
   source_tier: 'CLASS_C';
   credibility_score: number;
   source: 'nuforc';
@@ -98,11 +98,8 @@ async function ensureDataset(): Promise<void> {
 async function run(): Promise<void> {
   console.log('⚡ NUFORC ingestion engine');
 
-  const { count } = await supabase
-    .from('uap_sightings')
-    .select('id', { count: 'exact', head: true })
-    .eq('source', 'nuforc');
-  if ((count ?? 0) > 0) {
+  const [{ count }] = await sql`SELECT count(*)::int AS count FROM uap_sightings WHERE source = 'nuforc'`;
+  if (count > 0) {
     console.log(`⏭  ${count} 'nuforc' rows already present — skipping (revert with DELETE … WHERE source='nuforc').`);
     return;
   }
@@ -134,7 +131,8 @@ async function run(): Promise<void> {
       description: decodeEntities(row[COL.comments] || '').slice(0, 600) || 'NUFORC archival eyewitness report.',
       event_timestamp: eventTs,
       location_name: locationName.slice(0, 200),
-      location_coordinates: `SRID=4326;POINT(${lng} ${lat})`,
+      latitude: lat,
+      longitude: lng,
       source_tier: 'CLASS_C',
       credibility_score: credibilityForShape(shape),
       source: 'nuforc',
@@ -144,15 +142,30 @@ async function run(): Promise<void> {
   console.log(`📦 prepared ${records.length} valid geocoded records`);
 
   let inserted = 0;
-  for (let i = 0; i < records.length; i += BATCH_SIZE) {
-    const batch = records.slice(i, i + BATCH_SIZE);
-    const { error } = await supabase.from('uap_sightings').insert(batch);
-    if (error) {
-      console.error(`❌ batch @${i} failed: ${error.message}`);
-    } else {
-      inserted += batch.length;
-      console.log(`🚀 synced ${inserted}/${records.length}`);
+  await sql`ALTER TABLE uap_sightings DISABLE TRIGGER trg_sighting_cluster_sync`;
+  try {
+    for (let i = 0; i < records.length; i += BATCH_SIZE) {
+      const batch = records.slice(i, i + BATCH_SIZE);
+      try {
+        await sql`
+          INSERT INTO uap_sightings
+            (title, description, event_timestamp, location_coordinates, location_name,
+             source_tier, credibility_score, source)
+          SELECT r.title, r.description, r.event_timestamp::timestamptz,
+                 ST_SetSRID(ST_MakePoint(r.longitude, r.latitude), 4326)::geography,
+                 r.location_name, r.source_tier::classification_tier, r.credibility_score, r.source
+          FROM json_to_recordset(${sql.json(batch as never)}) AS r(
+            title text, description text, event_timestamp text, latitude float8, longitude float8,
+            location_name text, source_tier text, credibility_score numeric, source text)
+        `;
+        inserted += batch.length;
+        console.log(`🚀 synced ${inserted}/${records.length}`);
+      } catch (err: unknown) {
+        console.error(`❌ batch @${i} failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
+  } finally {
+    await sql`ALTER TABLE uap_sightings ENABLE TRIGGER trg_sighting_cluster_sync`;
   }
 
   console.log(`✨ done — ${inserted} rows ingested.`);

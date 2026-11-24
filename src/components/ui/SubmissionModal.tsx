@@ -9,6 +9,7 @@
  * ---------------------------------------------------------------------------
  */
 
+import { toast } from 'sonner';
 import { useState } from 'react';
 import { UploadCloud, X } from 'lucide-react';
 
@@ -42,6 +43,13 @@ export default function SubmissionModal({ onClose }: SubmissionModalProps) {
         data?: { credibilityScore: number; sourceTier: string };
         error?: string;
       };
+      if (body.success && body.data) {
+        toast.success('Contact logged', {
+          description: `Credibility ${body.data.credibilityScore} · ${body.data.sourceTier}`,
+        });
+      } else {
+        toast.error('Report rejected', { description: body.error ?? 'unknown error' });
+      }
       setMessage(
         body.success && body.data
           ? `Logged. C=${body.data.credibilityScore} → ${body.data.sourceTier}. It will appear on the globe live.`

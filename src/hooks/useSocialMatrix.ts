@@ -3,20 +3,16 @@
 /**
  * src/hooks/useSocialMatrix.ts
  * ---------------------------------------------------------------------------
- * Multi-stream live feed: historical sightings + active hotspot alerts, with
- * realtime INSERTs across both, plus a `postIntelMessage` writer for community
- * threads.
- *
- * Sightings are read from the `v_uap_sightings` view and re-fetched by id on
- * each realtime INSERT (realtime carries raw geography, not lat/lng). Hotspots
- * don't need their geography on the client, so their realtime payload is used
- * directly.
+ * Multi-stream live feed: historical sightings + active hotspot alerts from
+ * GET /api/matrix, then a lightweight poll (`?since=` cursor) every
+ * POLL_MS that merges newly created sightings and refreshed hotspots, plus a
+ * `postIntelMessage` writer for community threads.
  * ---------------------------------------------------------------------------
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { SIGHTING_LIST_COLUMNS, toLiveSighting, type LiveSighting } from '@/lib/sightings';
+import { toLiveSighting, type LiveSighting } from '@/lib/sightings';
+import { getOperatorId } from '@/lib/operatorId';
 
 export interface HotspotAlert {
   readonly id: string;
@@ -32,11 +28,24 @@ export interface PostIntelResult {
   readonly error: { message: string } | null;
 }
 
-const HOTSPOT_COLUMNS =
-  'id,location_name,sighting_count,severity_level,last_detected_at,latitude,longitude';
-const HOTSPOT_LIMIT = 10;
-const PAGE_SIZE = 1000; // PostgREST caps each response at ~1000 rows.
-const MAX_SIGHTINGS = 12000;
+const POLL_MS = 15000;
+
+interface MatrixPayload {
+  sightings: Record<string, unknown>[];
+  hotspots: Record<string, unknown>[];
+  serverTime: string;
+}
+
+async function fetchMatrix(since: string | null): Promise<MatrixPayload | null> {
+  try {
+    const res = await fetch(since ? `/api/matrix?since=${encodeURIComponent(since)}` : '/api/matrix', {
+      cache: 'no-store',
+    });
+    return res.ok ? ((await res.json()) as MatrixPayload) : null;
+  } catch {
+    return null;
+  }
+}
 
 function toHotspot(row: Record<string, unknown>): HotspotAlert {
   return {
@@ -61,100 +70,54 @@ export function useSocialMatrix(): {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
     let cancelled = false;
+    let cursor: string | null = null;
+    let timer: number | undefined;
 
-    (async () => {
-      // Hotspots (small).
-      const hRes = await supabase
-        .from('v_hotspot_alerts')
-        .select(HOTSPOT_COLUMNS)
-        .order('last_detected_at', { ascending: false })
-        .limit(HOTSPOT_LIMIT);
-      if (!cancelled && hRes.data) {
-        setHotspots(hRes.data.map((r) => toHotspot(r as Record<string, unknown>)));
-      }
+    const decode = (rows: Record<string, unknown>[]) =>
+      rows.map(toLiveSighting).filter((x): x is LiveSighting => x !== null);
 
-      // Sightings — paginated, since PostgREST returns at most ~1000 per request.
-      const all: LiveSighting[] = [];
-      for (let from = 0; from < MAX_SIGHTINGS && !cancelled; from += PAGE_SIZE) {
-        const { data, error } = await supabase
-          .from('v_uap_sightings')
-          .select(SIGHTING_LIST_COLUMNS)
-          .order('event_timestamp', { ascending: false })
-          .range(from, from + PAGE_SIZE - 1);
-        if (error || !data || data.length === 0) break;
-        for (const r of data) {
-          const s = toLiveSighting(r as Record<string, unknown>);
-          if (s) all.push(s);
+    const poll = async () => {
+      const data = await fetchMatrix(cursor);
+      if (cancelled) return;
+      if (data) {
+        const fresh = decode(data.sightings);
+        if (cursor === null) {
+          setSightings(fresh);
+        } else if (fresh.length > 0) {
+          setSightings((curr) => {
+            const known = new Set(curr.map((s) => s.id));
+            return [...fresh.filter((s) => !known.has(s.id)), ...curr];
+          });
         }
-        if (data.length < PAGE_SIZE) break;
+        setHotspots(data.hotspots.map(toHotspot));
+        cursor = data.serverTime;
       }
-      if (!cancelled) {
-        setSightings(all);
-        setLoading(false);
-      }
-    })();
-
-    const channel = supabase
-      .channel('social-matrix-stream')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'uap_sightings' },
-        async (payload) => {
-          const id = (payload.new as { id?: string }).id;
-          if (!id) return;
-          const { data } = await supabase
-            .from('v_uap_sightings')
-            .select(SIGHTING_LIST_COLUMNS)
-            .eq('id', id)
-            .single();
-          const mapped = data ? toLiveSighting(data as Record<string, unknown>) : null;
-          if (mapped && !cancelled) {
-            setSightings((curr) =>
-              curr.some((s) => s.id === mapped.id) ? curr : [mapped, ...curr],
-            );
-          }
-        },
-      )
-      .on(
-        // '*' so in-place cluster escalations (UPDATE) stream too, not just new ones.
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'hotspot_alerts' },
-        async (payload) => {
-          if (cancelled) return;
-          const id = (payload.new as { id?: string }).id;
-          if (!id) return; // ignore DELETE (no new row)
-          // Re-fetch from the view to get decoded center coordinates.
-          const { data } = await supabase
-            .from('v_hotspot_alerts')
-            .select(HOTSPOT_COLUMNS)
-            .eq('id', id)
-            .single();
-          if (!data || cancelled) return;
-          const hotspot = toHotspot(data as Record<string, unknown>);
-          setHotspots((curr) =>
-            [hotspot, ...curr.filter((h) => h.id !== hotspot.id)].slice(0, HOTSPOT_LIMIT),
-          );
-        },
-      )
-      .subscribe();
+      setLoading(false);
+      timer = window.setTimeout(poll, POLL_MS);
+    };
+    void poll();
 
     return () => {
       cancelled = true;
-      supabase.removeChannel(channel);
+      window.clearTimeout(timer);
     };
   }, []);
 
   const postIntelMessage = useCallback(
     async (sightingId: string, handle: string, text: string): Promise<PostIntelResult> => {
-      const supabase = getSupabaseBrowserClient();
-      const { error } = await supabase.from('uap_intel_threads').insert({
-        sighting_id: sightingId,
-        operator_handle: handle,
-        intel_text: text,
-      });
-      return { error: error ? { message: error.message } : null };
+      try {
+        const res = await fetch(`/api/sightings/${sightingId}/intel`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ text, handle: handle || getOperatorId() }),
+        });
+        if (res.ok) return { error: null };
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        return { error: { message: body.error ?? `HTTP ${res.status}` } };
+      } catch (err: unknown) {
+        return { error: { message: err instanceof Error ? err.message : 'Network error.' } };
+      }
     },
     [],
   );

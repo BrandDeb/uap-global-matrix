@@ -7,13 +7,15 @@
  * with quick filters (gov-only + evidence type). Selecting a result opens its
  * dossier — and the globe orients to it via the existing focus path.
  *
- * Mounted only while open (fresh state each time); the active row is reset in
- * the change handlers (not effects).
+ * Built on cmdk (keyboard nav, active row, a11y) inside a Radix dialog (focus
+ * trap, Esc). Filtering/ranking stays ours, so cmdk's filter is disabled.
  * ---------------------------------------------------------------------------
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Command } from 'cmdk';
+import { Search } from 'lucide-react';
+import { Dialog } from '@/components/primitives/dialog';
 import type { LiveSighting } from '@/lib/sightings';
 import { SENSOR_EVIDENCE_TYPES, type SensorEvidenceType } from '@/types';
 
@@ -26,10 +28,10 @@ interface CommandPaletteProps {
 const RESULT_CAP = 40;
 
 function chipClass(active: boolean): string {
-  return `rounded border px-2 py-0.5 transition ${
+  return `rounded-full border px-2.5 py-0.5 uppercase tracking-wider transition ${
     active
-      ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300'
-      : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
+      ? 'border-[var(--xeno-a)]/50 bg-[var(--xeno-a)]/10 text-[var(--xeno-a)]'
+      : 'border-white/10 text-white/40 hover:text-white/80'
   }`;
 }
 
@@ -37,12 +39,6 @@ export default function CommandPalette({ sightings, onClose, onSelect }: Command
   const [query, setQuery] = useState('');
   const [evidence, setEvidence] = useState<SensorEvidenceType | null>(null);
   const [govOnly, setGovOnly] = useState(false);
-  const [active, setActive] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -63,75 +59,34 @@ export default function CommandPalette({ sightings, onClose, onSelect }: Command
     return list.slice(0, RESULT_CAP);
   }, [query, evidence, govOnly, sightings]);
 
-  const activeIdx = Math.min(active, Math.max(0, results.length - 1));
-
   const choose = (id: string) => {
     onSelect(id);
     onClose();
   };
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setActive((a) => Math.min(a + 1, results.length - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setActive((a) => Math.max(a - 1, 0));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      const r = results[activeIdx];
-      if (r) choose(r.id);
-    } else if (e.key === 'Escape') {
-      onClose();
-    }
-  };
-
   return (
-    <div
-      className="fixed inset-0 z-[70] flex items-start justify-center bg-black/60 p-4 pt-[12vh]"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-xl overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Search */}
-        <div className="flex items-center gap-2 border-b border-zinc-800 px-3">
-          <Search size={16} className="text-zinc-500" />
-          <input
-            ref={inputRef}
+    <Dialog title="Search sightings" onClose={onClose}>
+      <Command shouldFilter={false} loop label="Search sightings">
+        <div className="flex items-center gap-3 border-b border-white/10 px-4">
+          <Search size={16} className="text-[var(--xeno-a)]" />
+          <Command.Input
+            autoFocus
             value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setActive(0);
-            }}
-            onKeyDown={onKeyDown}
-            placeholder="Search sightings by title or location…"
-            className="w-full bg-transparent py-3 font-mono text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none"
+            onValueChange={setQuery}
+            placeholder="Search contacts by title or location…"
+            className="w-full bg-transparent py-4 text-base text-white placeholder:text-white/30 focus:outline-none"
           />
-          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200" aria-label="Close">
-            <X size={16} />
-          </button>
+          <kbd className="font-mono text-[9px] text-white/30">ESC</kbd>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-zinc-800/60 px-3 py-2 font-mono text-[10px]">
-          <button
-            onClick={() => {
-              setGovOnly((v) => !v);
-              setActive(0);
-            }}
-            className={chipClass(govOnly)}
-          >
-            🏛️ GOV
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-white/5 px-4 py-2.5 font-mono text-[9px]">
+          <button onClick={() => setGovOnly((v) => !v)} className={chipClass(govOnly)}>
+            Declassified
           </button>
           {SENSOR_EVIDENCE_TYPES.map((t) => (
             <button
               key={t}
-              onClick={() => {
-                setEvidence((cur) => (cur === t ? null : t));
-                setActive(0);
-              }}
+              onClick={() => setEvidence((cur) => (cur === t ? null : t))}
               className={chipClass(evidence === t)}
             >
               {t.replace(/_/g, ' ')}
@@ -139,44 +94,38 @@ export default function CommandPalette({ sightings, onClose, onSelect }: Command
           ))}
         </div>
 
-        {/* Results */}
-        <div className="max-h-[50vh] overflow-y-auto">
-          {results.length === 0 ? (
-            <div className="px-4 py-8 text-center font-mono text-xs text-zinc-600">
-              No matching contacts.
-            </div>
-          ) : (
-            results.map((r, i) => (
-              <button
-                key={r.id}
-                onMouseEnter={() => setActive(i)}
-                onClick={() => choose(r.id)}
-                className={`flex w-full items-center justify-between gap-3 px-4 py-2 text-left transition ${
-                  i === activeIdx ? 'bg-zinc-800/60' : 'hover:bg-zinc-800/30'
+        <Command.List className="max-h-[50vh] overflow-y-auto p-2">
+          <Command.Empty className="px-4 py-10 text-center font-mono text-xs text-white/30">
+            No matching contacts.
+          </Command.Empty>
+          {results.map((r) => (
+            <Command.Item
+              key={r.id}
+              value={r.id}
+              onSelect={() => choose(r.id)}
+              className="group flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors data-[selected=true]:bg-white/[0.06]"
+            >
+              <div className="min-w-0">
+                <div className="truncate text-sm text-white/85 group-data-[selected=true]:text-white">{r.title}</div>
+                <div className="truncate font-mono text-[9px] uppercase tracking-wider text-white/35">
+                  {r.locationName} · {new Date(r.eventTimestamp).getUTCFullYear()}
+                </div>
+              </div>
+              <span
+                className={`shrink-0 font-mono text-[10px] ${
+                  r.isGovDeclassified ? 'text-[var(--xeno-b)]' : 'text-[var(--xeno-a)]'
                 }`}
               >
-                <div className="min-w-0">
-                  <div className="truncate font-mono text-xs font-bold text-zinc-200">{r.title}</div>
-                  <div className="truncate text-[10px] text-zinc-500">
-                    {r.locationName} · {new Date(r.eventTimestamp).getUTCFullYear()}
-                  </div>
-                </div>
-                <span
-                  className={`shrink-0 font-mono text-[10px] ${
-                    r.isGovDeclassified ? 'text-amber-400' : 'text-emerald-400'
-                  }`}
-                >
-                  {r.credibilityScore}%
-                </span>
-              </button>
-            ))
-          )}
-        </div>
+                {r.credibilityScore}%
+              </span>
+            </Command.Item>
+          ))}
+        </Command.List>
 
-        <div className="border-t border-zinc-800/60 px-3 py-1.5 font-mono text-[9px] text-zinc-600">
-          ↑↓ navigate · ↵ open · esc close · {results.length} hits
+        <div className="border-t border-white/5 px-4 py-2 font-mono text-[9px] tracking-widest text-white/30">
+          ↑↓ NAVIGATE · ↵ OPEN · ESC CLOSE · {results.length} HITS
         </div>
-      </div>
-    </div>
+      </Command>
+    </Dialog>
   );
 }

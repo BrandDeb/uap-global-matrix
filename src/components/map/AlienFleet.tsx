@@ -13,6 +13,9 @@
  *   - Triangle: black delta with three corner lights and a red core.
  *   - Mothership: huge slow silhouette crossing the deep background.
  *   - Hero alien: a large pilot floating beside the globe, waving.
+ *   - Plus the wider catalogue in ./CraftTypes: bell saucers, cigars, plasma
+ *     orbs, chevrons, diamonds, ring craft, cube-in-sphere, jellyfish, eggs
+ *     and foo-fighter swarms.
  *
  * Every craft rides a tilted orbit; banking comes from the orbit tangent.
  * ---------------------------------------------------------------------------
@@ -34,6 +37,18 @@ import {
 } from 'three';
 import { easing } from 'maath';
 import { SHADER_TIME } from './sharedTime';
+import {
+  BellSaucer,
+  Chevron,
+  Cigar,
+  CubeSphere,
+  Diamond,
+  EggCraft,
+  FooFighters,
+  Jellyfish,
+  PlasmaOrb,
+  RingCraft,
+} from './CraftTypes';
 
 /* -------------------------------------------------------------------------- */
 /* Alien                                                                      */
@@ -440,20 +455,69 @@ export default function AlienFleet() {
       <directionalLight position={[5, 4, 6]} intensity={2.2} color="#e8f4ff" />
       <pointLight position={[-6, -2, -4]} intensity={30} color="#a58bff" />
 
+      {/* Saucers — the classics, in several liveries */}
       <Orbit radius={2.75} speed={0.35} incline={[0.35, 0, 0.2]} phase={0}>
         <Saucer phase={0} />
       </Orbit>
       <Orbit radius={3.1} speed={-0.25} incline={[-0.5, 0.4, -0.3]} phase={2.2}>
         <Saucer color="#a58bff" phase={2} />
       </Orbit>
+      <Orbit radius={3.55} speed={0.2} incline={[0.9, -0.3, 0.5]} phase={5.1}>
+        <Saucer color="#ff5ec8" phase={4} />
+      </Orbit>
+      <Orbit radius={2.9} speed={-0.42} incline={[1.4, 0.2, -0.6]} phase={0.8} bob={0.04}>
+        <Saucer color="#ffd36b" phase={1} pilot={false} />
+      </Orbit>
+      <Orbit radius={3.25} speed={0.3} incline={[-1.2, -0.5, 0.3]} phase={3.3}>
+        <BellSaucer />
+      </Orbit>
+      <Orbit radius={2.55} speed={-0.36} incline={[0.6, 1.1, 0.2]} phase={4.4}>
+        <BellSaucer color="#5effd8" />
+      </Orbit>
+
+      {/* Tic-tacs (UAP-style instant jumps) */}
       <Orbit radius={2.45} speed={0.6} incline={[1.1, 0, 0.4]} phase={1} jumpy bob={0.02}>
         <TicTac />
       </Orbit>
       <Orbit radius={2.6} speed={-0.5} incline={[-0.9, 0.6, 0]} phase={4} jumpy bob={0.02}>
         <TicTac />
       </Orbit>
+
+      {/* Triangles, chevrons, cigars */}
       <Orbit radius={3.4} speed={0.18} incline={[0.15, 0.9, -0.15]} phase={3.5} bob={0.15}>
         <Triangle />
+      </Orbit>
+      <Orbit radius={3.0} speed={0.27} incline={[-0.3, -0.8, 0.9]} phase={2.7}>
+        <Chevron />
+      </Orbit>
+      <Orbit radius={3.7} speed={-0.14} incline={[0.4, 0.3, 1.2]} phase={1.6} bob={0.1}>
+        <Cigar />
+      </Orbit>
+
+      {/* Orbs, eggs, diamonds, rings, cube-in-sphere, jellyfish */}
+      <Orbit radius={2.4} speed={0.75} incline={[-0.2, 0.1, -1.0]} phase={0.3} jumpy bob={0.03}>
+        <PlasmaOrb />
+      </Orbit>
+      <Orbit radius={2.7} speed={-0.65} incline={[1.0, -1.0, 0]} phase={2.9} bob={0.05}>
+        <PlasmaOrb color="#5effd8" />
+      </Orbit>
+      <Orbit radius={2.85} speed={0.48} incline={[-1.3, 0.4, 0.8]} phase={5.8} jumpy bob={0.02}>
+        <EggCraft />
+      </Orbit>
+      <Orbit radius={3.15} speed={-0.33} incline={[0.7, 0.6, -0.9]} phase={3.9}>
+        <Diamond />
+      </Orbit>
+      <Orbit radius={3.45} speed={0.24} incline={[-0.7, 1.3, 0.1]} phase={0.6}>
+        <RingCraft />
+      </Orbit>
+      <Orbit radius={2.65} speed={0.4} incline={[0.2, -1.2, -0.7]} phase={6.2} jumpy bob={0.03}>
+        <CubeSphere />
+      </Orbit>
+      <Orbit radius={3.3} speed={-0.16} incline={[1.2, 0.8, 0.6]} phase={4.9} bob={0.2}>
+        <Jellyfish />
+      </Orbit>
+      <Orbit radius={2.5} speed={0.55} incline={[-0.6, -0.4, -0.3]} phase={1.2} bob={0.04}>
+        <FooFighters />
       </Orbit>
 
       <HeroAlien />

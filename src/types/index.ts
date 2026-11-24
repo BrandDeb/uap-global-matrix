@@ -12,7 +12,7 @@
  *   TABLE verification_logs(...)    → VerificationLogRow / VerificationLog
  *
  * Two layers are modeled deliberately:
- *   1. `*Row` types  — snake_case, exactly what `supabase-js` returns/accepts,
+ *   1. `*Row` types  — snake_case, exactly what the Postgres driver returns,
  *                       with raw PostGIS geography.
  *   2. Domain types  — camelCase, immutable, with geography decoded into the
  *                       flat {@link GeoCoordinates} interface for the app.
@@ -100,7 +100,7 @@ export interface ExifMetadata {
  * Persistence layer — Postgres row types (1:1 with table columns)
  *
  * Timestamps are ISO-8601 `string`s (what `timestamptz` serializes to over the
- * supabase-js wire). Nullability matches the DDL exactly.
+ * JSON wire). Nullability matches the DDL exactly.
  * ======================================================================== */
 
 /** Row shape of the `uap_sightings` table. */
@@ -186,7 +186,7 @@ export interface VerificationLog {
  * Write-side helper (insert payload for POST /api/verify → uap_sightings)
  *
  * DB-managed columns (id, created_at) are omitted. `locationCoordinates` is an
- * EWKT literal string — `SRID=4326;POINT(lng lat)` — which PostgREST casts to
+ * EWKT literal string — `SRID=4326;POINT(lng lat)` — which Postgres casts to
  * geography server-side, so callers never hand-roll WKB.
  * ======================================================================== */
 

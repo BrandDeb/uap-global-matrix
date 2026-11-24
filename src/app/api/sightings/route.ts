@@ -3,11 +3,9 @@
  * ---------------------------------------------------------------------------
  * GET /api/sightings  —  Public, filterable read feed for the globe.
  *
- * Delegates to the `search_sightings` RPC, which filters on the base table so
- * the GiST spatial index (bbox `&&`) and the `event_timestamp` index are used —
- * this is what lets the feed scale past the row cap instead of pulling the
- * whole table and filtering in JS. Runs as the anon role (RLS-enforced); needs
- * no service-role secret.
+ * Delegates to `searchSightings`, which filters on the base table so the GiST
+ * spatial index (bbox `&&`) and the `event_timestamp` index are used — this
+ * lets the feed scale instead of pulling the whole table and filtering in JS.
  *
  * Query params (all optional):
  *   minLat,minLng,maxLat,maxLng  bounding box (all four required together)
@@ -20,7 +18,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { getSupabaseAnonServer } from '@/lib/supabase/anon';
+import { searchSightings } from '@/lib/db/queries';
 import {
   isClassificationTier,
   isSensorEvidenceType,
@@ -68,7 +66,7 @@ function clampLimit(raw: string | null): number {
 }
 
 /**
- * Map an RPC row to the DTO, validating at the boundary. Rows with non-finite
+ * Map a result row to the DTO, validating at the boundary. Rows with non-finite
  * coordinates are dropped (returns null) rather than rendered at (0,0).
  */
 function toDTO(row: Record<string, unknown>): SightingDTO | null {
@@ -98,26 +96,19 @@ export async function GET(request: Request): Promise<Response> {
     const params = new URL(request.url).searchParams;
     const maxRows = clampLimit(params.get('limit'));
 
-    const rpcArgs = {
-      min_lat: finiteOrNull(params.get('minLat')),
-      min_lng: finiteOrNull(params.get('minLng')),
-      max_lat: finiteOrNull(params.get('maxLat')),
-      max_lng: finiteOrNull(params.get('maxLng')),
-      start_ts: isoOrNull(params.get('start')),
-      end_ts: isoOrNull(params.get('end')),
-      min_credibility: finiteOrNull(params.get('minCredibility')),
-      search_text: (params.get('q') ?? '').trim() || null,
-      max_rows: maxRows,
-    };
+    const data = await searchSightings({
+      minLat: finiteOrNull(params.get('minLat')),
+      minLng: finiteOrNull(params.get('minLng')),
+      maxLat: finiteOrNull(params.get('maxLat')),
+      maxLng: finiteOrNull(params.get('maxLng')),
+      start: isoOrNull(params.get('start')),
+      end: isoOrNull(params.get('end')),
+      minCredibility: finiteOrNull(params.get('minCredibility')),
+      q: (params.get('q') ?? '').trim() || null,
+      limit: maxRows,
+    });
 
-    const supabase = getSupabaseAnonServer();
-    const { data, error } = await supabase.rpc('search_sightings', rpcArgs);
-
-    if (error) {
-      return Response.json({ success: false, error: error.message }, { status: 502 });
-    }
-
-    const sightings = ((data ?? []) as unknown[])
+    const sightings = (data as unknown[])
       .map((row) => toDTO(row as Record<string, unknown>))
       .filter((s): s is SightingDTO => s !== null);
 

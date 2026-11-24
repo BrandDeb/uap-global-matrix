@@ -3,17 +3,18 @@
 /**
  * src/hooks/useAuth.ts
  * ---------------------------------------------------------------------------
- * Operator identity: resolves the current Supabase session → profile, and
- * exposes GitHub OAuth sign-in / sign-out.
+ * Operator identity via Auth.js: resolves the signed-in operator profile from
+ * GET /api/me and exposes GitHub sign-in / sign-out.
  *
- * NOTE: GitHub sign-in only works once the GitHub provider is configured in the
- * Supabase dashboard (Authentication → Providers) with a GitHub OAuth app.
- * Until then `signInWithGitHub` returns an error the UI surfaces gracefully.
+ * GitHub sign-in works once AUTH_SECRET, AUTH_GITHUB_ID and AUTH_GITHUB_SECRET
+ * are configured (see .env.example). Until then `signInWithGitHub` returns an
+ * error the UI surfaces gracefully, and posts fall back to the anonymous
+ * per-browser operator id.
  * ---------------------------------------------------------------------------
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { signIn, signOut as authSignOut } from 'next-auth/react';
 
 export interface OperatorProfile {
   readonly id: string;
@@ -40,49 +41,40 @@ export function useAuth(): {
   signOut: () => Promise<void>;
 } {
   const [profile, setProfile] = useState<OperatorProfile | null>(null);
+  const [authAvailable, setAuthAvailable] = useState(false);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
     let cancelled = false;
-
-    const loadProfile = async (userId: string | undefined) => {
-      if (!userId) {
-        if (!cancelled) {
-          setProfile(null);
-          setReady(true);
-        }
-        return;
+    (async () => {
+      try {
+        const res = await fetch('/api/me', { cache: 'no-store' });
+        const body = (await res.json()) as { authAvailable?: boolean; profile?: Record<string, unknown> | null };
+        if (cancelled) return;
+        setAuthAvailable(body.authAvailable === true);
+        setProfile(body.profile ? toProfile(body.profile) : null);
+      } catch {
+        // offline / no database: stay anonymous
+      } finally {
+        if (!cancelled) setReady(true);
       }
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-      if (!cancelled) {
-        setProfile(data ? toProfile(data as Record<string, unknown>) : null);
-        setReady(true);
-      }
-    };
-
-    void supabase.auth.getSession().then(({ data }) => loadProfile(data.session?.user.id));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      void loadProfile(session?.user.id);
-    });
-
+    })();
     return () => {
       cancelled = true;
-      sub.subscription.unsubscribe();
     };
   }, []);
 
   const signInWithGitHub = useCallback(async (): Promise<{ error: { message: string } | null }> => {
-    const supabase = getSupabaseBrowserClient();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined },
-    });
-    return { error: error ? { message: error.message } : null };
-  }, []);
+    if (!authAvailable) {
+      return { error: { message: 'GitHub sign-in is not configured on this deployment.' } };
+    }
+    await signIn('github', { redirectTo: window.location.href });
+    return { error: null };
+  }, [authAvailable]);
 
   const signOut = useCallback(async (): Promise<void> => {
-    await getSupabaseBrowserClient().auth.signOut();
+    await authSignOut({ redirect: false });
+    setProfile(null);
   }, []);
 
   return { profile, ready, signInWithGitHub, signOut };

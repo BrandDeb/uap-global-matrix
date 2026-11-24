@@ -20,7 +20,6 @@ import { X, Send, MessageSquare, BrainCircuit, ShieldAlert, Eye, Lock } from 'lu
 import Link from 'next/link';
 import { toast } from 'sonner';
 import DecryptedText from '@/components/fx/DecryptedText';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { LiveSighting } from '@/lib/sightings';
 
@@ -70,61 +69,54 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
 
   useEffect(() => {
     if (!sightingId) return;
-    const supabase = getSupabaseBrowserClient();
     let cancelled = false;
+    let cursor: string | null = null;
+    let timer: number | undefined;
 
-    (async () => {
-      const [threadRes, briefRes, countRes] = await Promise.all([
-        supabase
-          .from('uap_intel_threads')
-          .select('*')
-          .eq('sighting_id', sightingId)
-          .order('created_at', { ascending: true }),
-        supabase
-          .from('uap_ai_briefs')
-          .select('summary_text,threat_assessment')
-          .eq('sighting_id', sightingId)
-          .maybeSingle(),
-        supabase
-          .from('sighting_co_witnesses')
-          .select('*', { count: 'exact', head: true })
-          .eq('sighting_id', sightingId),
-      ]);
-      if (cancelled) return;
-      if (threadRes.data) {
-        setComments(threadRes.data.map((r) => toIntelThread(r as Record<string, unknown>)));
+    // Brief + co-witness count once; the thread polls for new rows.
+    void (async () => {
+      try {
+        const res = await fetch(`/api/sightings/${sightingId}/dossier`, { cache: 'no-store' });
+        if (!res.ok || cancelled) return;
+        const d = (await res.json()) as {
+          brief: { summary_text?: string; threat_assessment?: string } | null;
+          coWitnessCount: number;
+        };
+        if (d.brief) {
+          setAiBrief({
+            summary: String(d.brief.summary_text ?? ''),
+            threatAssessment: String(d.brief.threat_assessment ?? 'LOW'),
+          });
+        }
+        setCoWitnessCount(d.coWitnessCount);
+      } catch {
+        /* offline */
       }
-      if (briefRes.data) {
-        const b = briefRes.data as { summary_text?: string; threat_assessment?: string };
-        setAiBrief({
-          summary: String(b.summary_text ?? ''),
-          threatAssessment: String(b.threat_assessment ?? 'LOW'),
-        });
-      }
-      if (typeof countRes.count === 'number') setCoWitnessCount(countRes.count);
     })();
 
-    const channel = supabase
-      .channel(`case-thread-${sightingId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'uap_intel_threads',
-          filter: `sighting_id=eq.${sightingId}`,
-        },
-        (payload) => {
-          if (cancelled) return;
-          const thread = toIntelThread(payload.new as Record<string, unknown>);
-          setComments((curr) => (curr.some((c) => c.id === thread.id) ? curr : [...curr, thread]));
-        },
-      )
-      .subscribe();
+    const pollThread = async () => {
+      try {
+        const q = cursor ? `?since=${encodeURIComponent(cursor)}` : '';
+        const res = await fetch(`/api/sightings/${sightingId}/intel${q}`, { cache: 'no-store' });
+        if (res.ok && !cancelled) {
+          const d = (await res.json()) as { rows: Record<string, unknown>[]; serverTime: string };
+          const fresh = d.rows.map(toIntelThread);
+          setComments((curr) => {
+            const known = new Set(curr.map((c) => c.id));
+            return [...curr, ...fresh.filter((c) => !known.has(c.id))];
+          });
+          cursor = d.serverTime;
+        }
+      } catch {
+        /* offline */
+      }
+      if (!cancelled) timer = window.setTimeout(pollThread, 8000);
+    };
+    void pollThread();
 
     return () => {
       cancelled = true;
-      supabase.removeChannel(channel);
+      window.clearTimeout(timer);
     };
   }, [sightingId]);
 
@@ -136,9 +128,18 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
-    const { error } = await onAddIntel(sighting.id, operatorHandle, message.trim());
-    if (error) toast.error('Transmission failed', { description: error.message });
-    else toast.success('Intel transmitted');
+    const text = message.trim();
+    const { error } = await onAddIntel(sighting.id, operatorHandle, text);
+    if (error) {
+      toast.error('Transmission failed', { description: error.message });
+      return;
+    }
+    toast.success('Intel transmitted');
+    // Show it immediately; the next poll de-duplicates by id.
+    setComments((curr) => [
+      ...curr,
+      { id: `local-${Date.now()}`, operatorHandle, intelText: text, createdAt: new Date().toISOString() },
+    ]);
     setMessage('');
   };
 
@@ -175,18 +176,23 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
   };
 
   const registerCoWitness = async () => {
-    const supabase = getSupabaseBrowserClient();
-    const operator = operatorHandle;
-    const { error } = await supabase
-      .from('sighting_co_witnesses')
-      .insert({ sighting_id: sighting.id, operator_handle: operator });
-    if (!error) {
-      setCoWitnessCount((n) => n + 1);
-      setCoWitnessNote('Logged.');
-    } else if (error.code === '23505') {
-      setCoWitnessNote('Already logged under that handle.');
-    } else {
-      setCoWitnessNote(error.message);
+    try {
+      const res = await fetch(`/api/sightings/${sighting.id}/co-witness`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ handle: operatorHandle }),
+      });
+      if (res.ok) {
+        setCoWitnessCount((n) => n + 1);
+        setCoWitnessNote('Logged.');
+      } else if (res.status === 409) {
+        setCoWitnessNote('Already logged under that handle.');
+      } else {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        setCoWitnessNote(body.error ?? `HTTP ${res.status}`);
+      }
+    } catch (err: unknown) {
+      setCoWitnessNote(err instanceof Error ? err.message : 'Network error.');
     }
   };
 

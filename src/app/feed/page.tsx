@@ -15,7 +15,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Radio, MessageSquare, Eye, ThumbsUp, Flame } from 'lucide-react';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getOperatorId } from '@/lib/operatorId';
 
 interface FeedItem {
@@ -37,8 +36,6 @@ interface TrendingItem {
 }
 
 function toFeedItem(row: Record<string, unknown>): FeedItem {
-  const threads = row.uap_intel_threads;
-  const upvotes = row.uap_intel_upvotes;
   return {
     id: String(row.id),
     title: String(row.title ?? ''),
@@ -47,8 +44,8 @@ function toFeedItem(row: Record<string, unknown>): FeedItem {
     locationName: String(row.location_name ?? ''),
     isGovDeclassified: row.is_gov_declassified === true,
     credibilityScore: row.credibility_score == null ? 0 : Number(row.credibility_score),
-    threadCount: Array.isArray(threads) ? threads.length : 0,
-    upvoteCount: Array.isArray(upvotes) ? upvotes.length : 0,
+    threadCount: Number(row.thread_count ?? 0),
+    upvoteCount: Number(row.upvote_count ?? 0),
   };
 }
 
@@ -58,65 +55,61 @@ export default function GlobalIntelFeed() {
   const [voted, setVoted] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
-  const loadTrending = useCallback(async () => {
-    const supabase = getSupabaseBrowserClient();
-    const { data } = await supabase.rpc('trending_sightings', { max_rows: 8 });
-    if (Array.isArray(data)) {
-      setTrending(
-        data.map((r) => {
-          const row = r as Record<string, unknown>;
-          return {
-            id: String(row.id),
-            title: String(row.title ?? ''),
-            upvoteCount: Number(row.upvote_count ?? 0),
-          };
-        }),
-      );
+  const toTrending = (rows: unknown[]): TrendingItem[] =>
+    rows.map((r) => {
+      const row = r as Record<string, unknown>;
+      return { id: String(row.id), title: String(row.title ?? ''), upvoteCount: Number(row.upvote_count ?? 0) };
+    });
+
+  const loadFeed = useCallback(async () => {
+    try {
+      const res = await fetch('/api/feed', { cache: 'no-store' });
+      if (!res.ok) return null;
+      return (await res.json()) as { items: Record<string, unknown>[]; trending: unknown[] };
+    } catch {
+      return null;
     }
   }, []);
 
   useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
-        .from('uap_sightings')
-        .select(
-          'id,title,description,event_timestamp,location_name,is_gov_declassified,credibility_score,uap_intel_threads(id),uap_intel_upvotes(id)',
-        )
-        .order('event_timestamp', { ascending: false })
-        .limit(40);
+      const d = await loadFeed();
       if (cancelled) return;
-      if (!error && data) setItems(data.map((r) => toFeedItem(r as Record<string, unknown>)));
-      await loadTrending();
-      if (!cancelled) setLoading(false);
+      if (d) {
+        setItems(d.items.map(toFeedItem));
+        setTrending(toTrending(d.trending));
+      }
+      setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [loadTrending]);
+  }, [loadFeed]);
 
   const upvote = useCallback(
     async (sightingId: string) => {
       if (voted.has(sightingId)) return;
-      const supabase = getSupabaseBrowserClient();
-      const { error } = await supabase
-        .from('uap_intel_upvotes')
-        .insert({ sighting_id: sightingId, operator_handle: getOperatorId() });
-      // 23505 = already voted under this id → still mark voted, no double count.
-      if (!error || error.code === '23505') {
+      const res = await fetch(`/api/sightings/${sightingId}/upvote`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ handle: getOperatorId() }),
+      }).catch(() => null);
+      // 409 = already voted under this id → still mark voted, no double count.
+      if (res && (res.ok || res.status === 409)) {
         setVoted((curr) => new Set(curr).add(sightingId));
-        if (!error) {
+        if (res.ok) {
           setItems((curr) =>
             curr.map((it) =>
               it.id === sightingId ? { ...it, upvoteCount: it.upvoteCount + 1 } : it,
             ),
           );
-          void loadTrending();
+          const d = await loadFeed();
+          if (d) setTrending(toTrending(d.trending));
         }
       }
     },
-    [voted, loadTrending],
+    [voted, loadFeed],
   );
 
   if (loading) {

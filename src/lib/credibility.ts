@@ -4,7 +4,7 @@
  * Pure scoring math for the Credibility Index `C`.
  *
  * Extracted from the verify route so the core domain logic is unit-testable and
- * reusable independent of the HTTP / Supabase layer. The signal-derivation
+ * reusable independent of the HTTP / database layer. The signal-derivation
  * (EXIF/deepfake/proximity → signals) stays in the route; this module owns the
  * weighting, the [0,100] projection, and the tier mapping.
  * ---------------------------------------------------------------------------

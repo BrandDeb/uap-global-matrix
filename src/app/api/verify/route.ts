@@ -11,10 +11,8 @@
  *   5. Run the (simulated) prosaic-explanation proximity checks
  *      (nearby aircraft / satellite conjunction / weather).
  *   6. Compute the structural Credibility Index `C` from weighted signals.
- *   7. Persist the sighting into `uap_sightings`, writing the position as a
- *      PostGIS geography literal (`SRID=4326;POINT(lng lat)`).
- *   8. Append an automated `verification_logs` forensic entry (incl. the
- *      proximity columns).
+ *   7. Persist the sighting into `uap_sightings` (PostGIS point) and its
+ *      automated `verification_logs` forensic entry in one transaction.
  *
  * Enum types are imported from `@/types` so there is a single source of truth.
  * Runtime: Node.js (required — `exifr` + `Buffer` are not Edge-compatible).
@@ -22,7 +20,7 @@
  */
 
 import exifr from 'exifr';
-import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { insertVerifiedSighting } from '@/lib/db/queries';
 import {
   clamp01,
   computeCredibilityIndex,
@@ -340,18 +338,6 @@ function evidenceTypesFromMedia(mediaType: string): SensorEvidenceType[] {
 }
 
 /* ===========================================================================
- * 7. PostGIS geography literal
- *
- * PostgREST accepts EWKT text for a geography column and casts it server-side.
- * Order is POINT(longitude latitude) — X then Y. Inputs are already validated
- * finite numbers, so the template string cannot carry an injection payload.
- * ======================================================================== */
-
-function toGeographyPoint(latitude: number, longitude: number): string {
-  return `SRID=4326;POINT(${longitude} ${latitude})`;
-}
-
-/* ===========================================================================
  * Route handler
  * ======================================================================== */
 
@@ -380,64 +366,43 @@ export async function POST(request: Request): Promise<Response> {
     const sourceTier = tierFromCredibility(credibility);
     const evidenceTypes = evidenceTypesFromMedia(input.file.type);
 
-    // 7. Persist the sighting (position as a PostGIS geography literal).
-    const supabase = getSupabaseAdmin();
-    const { data: sighting, error: insertError } = await supabase
-      .from('uap_sightings')
-      .insert({
+    // 7. Persist the sighting + its forensic verification log in one transaction.
+    let sightingId: string;
+    try {
+      sightingId = await insertVerifiedSighting({
         title: input.title,
         description: input.description,
-        event_timestamp: input.timestamp,
-        location_coordinates: toGeographyPoint(input.latitude, input.longitude),
-        location_name: input.locationName,
-        source_tier: sourceTier,
-        evidence_types: evidenceTypes,
-        credibility_score: credibility,
-        media_assets: [
-          {
-            filename: input.file.name,
-            mime_type: input.file.type,
-            size_bytes: input.file.size,
-          },
+        eventTimestamp: input.timestamp,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        locationName: input.locationName,
+        sourceTier,
+        evidenceTypes: [...evidenceTypes],
+        credibility,
+        mediaAssets: [
+          { filename: input.file.name, mime_type: input.file.type, size_bytes: input.file.size },
         ],
-      })
-      .select('id')
-      .single();
-
-    if (insertError || !sighting) {
+        log: {
+          exif,
+          isMetadataAuthentic: deepfake.aggregateFakeProbability < 0.5,
+          // NUMERIC(5,4) column → four decimal places.
+          syntheticConfidence: Math.round(deepfake.aggregateFakeProbability * 10000) / 10000,
+          aircraftInProximity: proximity.aircraftInProximityCount,
+          satelliteConjunction: proximity.satelliteConjunction,
+          weatherSummary: proximity.weatherSummary,
+        },
+      });
+    } catch (dbErr: unknown) {
       return json(502, {
         success: false,
-        error: `Failed to persist sighting: ${insertError?.message ?? 'unknown error'}`,
-      });
-    }
-
-    // 8. Append the automated forensic verification-log entry.
-    const { error: logError } = await supabase.from('verification_logs').insert({
-      sighting_id: sighting.id,
-      exif_data_extracted: exif,
-      is_metadata_authentic: deepfake.aggregateFakeProbability < 0.5,
-      // NUMERIC(5,4) column → four decimal places.
-      synthetic_confidence_score:
-        Math.round(deepfake.aggregateFakeProbability * 10000) / 10000,
-      aircraft_in_proximity_count: proximity.aircraftInProximityCount,
-      satellite_conjunction: proximity.satelliteConjunction,
-      weather_condition_summary: proximity.weatherSummary,
-    });
-
-    if (logError) {
-      // The sighting is saved; the audit row failed. Report as partial success
-      // rather than pretending the whole request failed.
-      return json(207, {
-        success: true,
-        data: { id: sighting.id, credibilityScore: credibility, sourceTier },
-        error: `Sighting stored, but verification log failed: ${logError.message}`,
+        error: `Failed to persist sighting: ${dbErr instanceof Error ? dbErr.message : 'unknown error'}`,
       });
     }
 
     return json(201, {
       success: true,
       data: {
-        id: sighting.id,
+        id: sightingId,
         credibilityScore: credibility,
         sourceTier,
         evidenceTypes,

@@ -11,7 +11,6 @@
 
 import { useEffect, useState } from 'react';
 import { Send } from 'lucide-react';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { getOperatorId } from '@/lib/operatorId';
 
@@ -45,36 +44,31 @@ export default function CaseThread({ sightingId }: CaseThreadProps) {
   const [replyText, setReplyText] = useState('');
 
   useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
     let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from('uap_intel_threads')
-        .select('*')
-        .eq('sighting_id', sightingId)
-        .order('created_at', { ascending: true });
-      if (!cancelled && data) setRows(data.map((r) => toRow(r as Record<string, unknown>)));
-    })();
-    const channel = supabase
-      .channel(`case-page-${sightingId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'uap_intel_threads',
-          filter: `sighting_id=eq.${sightingId}`,
-        },
-        (payload) => {
-          if (cancelled) return;
-          const row = toRow(payload.new as Record<string, unknown>);
-          setRows((curr) => (curr.some((x) => x.id === row.id) ? curr : [...curr, row]));
-        },
-      )
-      .subscribe();
+    let cursor: string | null = null;
+    let timer: number | undefined;
+    const poll = async () => {
+      try {
+        const q = cursor ? `?since=${encodeURIComponent(cursor)}` : '';
+        const res = await fetch(`/api/sightings/${sightingId}/intel${q}`, { cache: 'no-store' });
+        if (res.ok && !cancelled) {
+          const d = (await res.json()) as { rows: Record<string, unknown>[]; serverTime: string };
+          const fresh = d.rows.map(toRow);
+          setRows((curr) => {
+            const known = new Set(curr.map((x) => x.id));
+            return [...curr, ...fresh.filter((x) => !known.has(x.id))];
+          });
+          cursor = d.serverTime;
+        }
+      } catch {
+        /* offline */
+      }
+      if (!cancelled) timer = window.setTimeout(poll, 6000);
+    };
+    void poll();
     return () => {
       cancelled = true;
-      supabase.removeChannel(channel);
+      window.clearTimeout(timer);
     };
   }, [sightingId]);
 
@@ -83,12 +77,15 @@ export default function CaseThread({ sightingId }: CaseThreadProps) {
   const post = async (intelText: string, parentId: string | null) => {
     const t = intelText.trim();
     if (!t) return;
-    await getSupabaseBrowserClient().from('uap_intel_threads').insert({
-      sighting_id: sightingId,
-      operator_handle: handle,
-      intel_text: t,
-      parent_id: parentId,
+    const res = await fetch(`/api/sightings/${sightingId}/intel`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: t, parentId, handle }),
     });
+    if (res.ok) {
+      const row = toRow((await res.json()) as Record<string, unknown>);
+      setRows((curr) => (curr.some((x) => x.id === row.id) ? curr : [...curr, row]));
+    }
   };
 
   const tops = rows.filter((r) => !r.parentId);

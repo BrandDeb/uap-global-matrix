@@ -94,7 +94,11 @@ export default function GlobalMatrixDashboard() {
           Unidentified anomalous phenomena · 1947 — {MAX_YEAR}
         </p>
       </div>
-      <div className="pointer-events-none absolute bottom-[22vh] left-6 z-0 hidden max-w-sm lg:block">
+      <div
+        className={`pointer-events-none absolute bottom-[22vh] left-6 z-0 hidden max-w-sm transition-opacity duration-700 lg:block ${
+          caseData ? 'opacity-0' : 'opacity-100'
+        }`}
+      >
         <h2 className="font-[family-name:var(--font-display)] text-5xl font-extrabold leading-[0.9] text-white/90">
           The sky<br />
           <span className="xeno-gradient-text">is talking.</span>

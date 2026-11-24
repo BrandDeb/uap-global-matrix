@@ -3,18 +3,25 @@
 /**
  * src/components/map/GlobeOverlay.tsx
  * ---------------------------------------------------------------------------
- * Canvas wrapper for the tactical globe: tactical lighting, a starfield, orbit
- * controls, a Suspense boundary for the streamed textures, a hover reticle
- * readout, and the effect props (hotspots / live ping / focus) it threads down.
+ * Full-bleed WebGL stage: nebula + starfield, shader xeno-Earth with orbital
+ * halos, sighting pillars, trajectory arcs and radar rings — finished with a
+ * post stack (bloom · chromatic aberration · grain · vignette) and a cinematic
+ * camera fly-in on load.
  * ---------------------------------------------------------------------------
  */
 
-import { Suspense, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Stars } from '@react-three/drei';
-import TacticalGlobe from './TacticalGlobe';
-import type { MapSighting } from './DataPoints';
-import type { GlobeFxHotspot } from './GlobeFx';
+import { Suspense, useRef, useState } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
+import { Bloom, ChromaticAberration, EffectComposer, Noise, Vignette } from '@react-three/postprocessing';
+import { BlendFunction } from 'postprocessing';
+import { Vector2 } from 'three';
+import AlienEarth from './AlienEarth';
+import CosmicBackdrop from './CosmicBackdrop';
+import DataPoints, { type MapSighting } from './DataPoints';
+import GlobeFx, { type GlobeFxHotspot } from './GlobeFx';
+import Trajectories from './Trajectories';
+import { TimeDriver } from './sharedTime';
 
 interface GeoPoint {
   readonly latitude: number;
@@ -30,9 +37,24 @@ interface GlobeOverlayProps {
   readonly onSelect?: (id: string) => void;
 }
 
+/** Ease the camera in from deep space on first mount. */
+function IntroCamera() {
+  const { camera } = useThree();
+  const t = useRef(0);
+  useFrame((_, d) => {
+    if (t.current >= 1) return;
+    t.current = Math.min(1, t.current + d * 0.35);
+    const e = 1 - Math.pow(1 - t.current, 4);
+    camera.position.set(Math.sin((1 - e) * 1.2) * 3, (1 - e) * 4, 8.6 + (1 - e) * 40);
+    camera.lookAt(0, 0, 0);
+  });
+  return null;
+}
+
+const CA_OFFSET = new Vector2(0.0009, 0.0006);
+
 export default function GlobeOverlay({
   points,
-  activeCount,
   hotspots = [],
   pingPoint,
   focusPoint,
@@ -42,47 +64,50 @@ export default function GlobeOverlay({
   const hovered = hoveredId ? (points.find((p) => p.id === hoveredId) ?? null) : null;
 
   return (
-    <div className="relative h-full w-full bg-zinc-950">
-      <Canvas camera={{ position: [0, 0, 6], fov: 45 }} dpr={[1, 2]}>
-        <color attach="background" args={['#09090b']} />
-
-        {/* Tactical lighting */}
-        <ambientLight intensity={0.4} />
-        <directionalLight position={[5, 3, 5]} intensity={1.6} color="#ffffff" />
-        <pointLight position={[-5, -3, -5]} intensity={0.6} color="#4338ca" />
-
-        <Stars radius={120} depth={60} count={3500} factor={4} fade speed={0.5} />
+    <div className="absolute inset-0">
+      <Canvas
+        camera={{ position: [0, 4, 46], fov: 42, near: 0.1, far: 500 }}
+        dpr={[1, 2]}
+        gl={{ antialias: false, powerPreference: 'high-performance' }}
+      >
+        <color attach="background" args={['#020208']} />
+        <TimeDriver />
+        <IntroCamera />
+        <CosmicBackdrop />
 
         <Suspense fallback={null}>
-          <TacticalGlobe
-            points={points}
-            hotspots={hotspots}
-            pingPoint={pingPoint}
-            focusPoint={focusPoint}
-            onSelect={onSelect}
-            onHover={setHoveredId}
-          />
+          <AlienEarth focusPoint={focusPoint}>
+            <group scale={1.02}>
+              <DataPoints points={points} onSelect={onSelect} onHover={setHoveredId} />
+            </group>
+            <Trajectories points={points} />
+            <GlobeFx hotspots={hotspots} pingPoint={pingPoint} focusPoint={focusPoint} />
+          </AlienEarth>
         </Suspense>
 
         <OrbitControls
           enablePan={false}
-          minDistance={2.6}
-          maxDistance={10}
+          minDistance={2.8}
+          maxDistance={14}
           zoomSpeed={0.6}
-          rotateSpeed={0.5}
+          rotateSpeed={0.45}
+          enableDamping
+          dampingFactor={0.06}
         />
+
+        <EffectComposer multisampling={0}>
+          <Bloom intensity={1.1} luminanceThreshold={0.32} luminanceSmoothing={0.4} mipmapBlur radius={0.75} />
+          <ChromaticAberration offset={CA_OFFSET} radialModulation modulationOffset={0.3} />
+          <Noise premultiply blendFunction={BlendFunction.SCREEN} opacity={0.35} />
+          <Vignette eskil={false} offset={0.2} darkness={0.85} />
+        </EffectComposer>
       </Canvas>
 
-      {/* Status overlay */}
-      <div className="pointer-events-none absolute left-4 top-4 flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950/70 px-3 py-1.5 font-mono text-[10px] tracking-widest text-zinc-400">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-        SPATIAL TRACKING ACTIVE · WGS84 · {activeCount} ACTIVE
-      </div>
-
-      {/* Hover reticle readout */}
       {hovered && (
-        <div className="pointer-events-none absolute bottom-4 left-4 max-w-[60%] truncate rounded border border-cyan-500/30 bg-zinc-950/80 px-3 py-1.5 font-mono text-[11px] text-cyan-300">
-          ◎ {hovered.title} <span className="text-zinc-500">· C {hovered.credibilityScore}%</span>
+        <div className="xeno-glass pointer-events-none absolute bottom-40 left-1/2 -translate-x-1/2 px-4 py-2 font-mono text-[11px] tracking-wider text-[var(--xeno-a)]">
+          <span className="mr-2 inline-block h-1.5 w-1.5 animate-ping rounded-full bg-[var(--xeno-a)]" />
+          {hovered.title}
+          <span className="ml-3 text-white/40">CRED {hovered.credibilityScore}%</span>
         </div>
       )}
     </div>

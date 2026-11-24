@@ -189,10 +189,10 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
   return (
     <div
       style={{ animation: 'dossier-in 0.2s ease-out' }}
-      className="absolute right-4 top-4 z-50 flex max-h-[85vh] w-[430px] flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/95 text-zinc-100 shadow-2xl backdrop-blur-lg"
+      className="xeno-glass relative z-50 flex max-h-full w-[min(430px,90vw)] flex-col overflow-hidden text-zinc-100 shadow-[0_0_80px_rgba(94,255,216,0.12)] animate-[dossier-in_0.6s_cubic-bezier(0.16,1,0.3,1)]"
     >
       {/* Header */}
-      <div className="flex items-start justify-between border-b border-zinc-800 bg-zinc-950/60 p-4">
+      <div className="flex items-start justify-between border-b border-zinc-800 bg-transparent p-4">
         <div>
           <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-emerald-400">
             {sighting.isGovDeclassified ? '🏛️ GOV_DECLASSIFIED' : '📡 CITIZEN_FEED'}

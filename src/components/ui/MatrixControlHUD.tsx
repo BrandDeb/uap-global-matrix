@@ -2,7 +2,8 @@
 
 /**
  * src/components/ui/MatrixControlHUD.tsx
- * Top recon bar: status, feed-tab filter (all / FOIA / citizen), node count, intake.
+ * Floating top bar: wordmark, signal-band tabs (all / FOIA / citizen), node
+ * counter and actions. Sits over the full-bleed WebGL stage.
  */
 
 import { UploadCloud, Radio, Search, Activity } from 'lucide-react';
@@ -21,10 +22,10 @@ interface MatrixControlHUDProps {
   readonly onSubmit: () => void;
 }
 
-const TABS: ReadonlyArray<{ id: FeedTab; label: string }> = [
-  { id: 'all', label: '🌐 All Signals' },
-  { id: 'verified', label: '🏛️ FOIA Docs' },
-  { id: 'citizen', label: '📡 Citizen Ops' },
+const TABS: ReadonlyArray<{ id: FeedTab; label: string; idx: string }> = [
+  { id: 'all', label: 'All Signals', idx: '01' },
+  { id: 'verified', label: 'Declassified', idx: '02' },
+  { id: 'citizen', label: 'Citizen Ops', idx: '03' },
 ];
 
 export default function MatrixControlHUD({
@@ -38,67 +39,65 @@ export default function MatrixControlHUD({
   onSubmit,
 }: MatrixControlHUDProps) {
   return (
-    <header className="flex flex-col items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-zinc-900/40 px-4 py-2.5 backdrop-blur-md md:flex-row">
+    <header className="pointer-events-auto flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-3">
-        <span
-          className={`h-2.5 w-2.5 rounded-full ${loading ? 'bg-amber-500' : 'animate-ping bg-emerald-500'}`}
-        />
-        <div>
-          <h1 className="font-mono text-base font-bold tracking-wider text-zinc-100">
-            MATRIX_SOCIAL_NETWORK <span className="text-zinc-600">{'//'}</span>{' '}
-            <span className="text-emerald-400">RECON_HUD</span>
-          </h1>
-          <p className="font-mono text-[10px] text-zinc-500">
-            Continuous PostGIS synchronization &amp; AI analytics core
+        <div className="relative grid h-10 w-10 place-items-center">
+          <span className="absolute inset-0 animate-[spin_9s_linear_infinite] rounded-full border border-dashed border-[var(--xeno-a)]/60" />
+          <span className="absolute inset-2 animate-[spin_5s_linear_infinite_reverse] rounded-full border border-[var(--xeno-b)]/60 border-t-transparent" />
+          <span
+            className={`h-2 w-2 rounded-full ${loading ? 'bg-[var(--xeno-b)]' : 'bg-[var(--xeno-a)] shadow-[0_0_12px_var(--xeno-a)]'}`}
+          />
+        </div>
+        <div className="leading-none">
+          <p className="font-[family-name:var(--font-display)] text-sm font-medium tracking-[0.3em] text-white">
+            UAP<span className="text-[var(--xeno-a)]">/</span>MATRIX
+          </p>
+          <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.35em] text-white/40">
+            Xeno signal atlas · {loading ? 'syncing' : 'live'}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="flex space-x-1 rounded-lg border border-zinc-800 bg-zinc-950 p-1 font-mono text-[11px]">
-          {TABS.map((tab) => (
+      <nav className="xeno-glass flex items-center gap-1 p-1">
+        {TABS.map((tab) => {
+          const active = activeFeedTab === tab.id;
+          return (
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`rounded-md px-3 py-1.5 transition ${
-                activeFeedTab === tab.id
-                  ? 'border border-emerald-500/30 bg-emerald-500/10 font-bold text-emerald-400'
-                  : 'text-zinc-400 hover:text-zinc-200'
+              className={`group relative rounded-[14px] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] transition-all duration-500 ${
+                active ? 'bg-white text-black shadow-[0_0_30px_rgba(94,255,216,0.45)]' : 'text-white/55 hover:text-white'
               }`}
             >
+              <sup className={`mr-1.5 text-[8px] ${active ? 'text-black/50' : 'text-[var(--xeno-a)]'}`}>{tab.idx}</sup>
               {tab.label}
             </button>
-          ))}
-        </div>
-        <div className="hidden text-right font-mono text-[11px] sm:block">
-          <span className="block text-zinc-500">MAP DATA</span>
-          <span className="font-bold text-emerald-400">
-            {nodeCount} / {totalCount}
+          );
+        })}
+      </nav>
+
+      <div className="flex items-center gap-2">
+        <div className="mr-2 hidden text-right font-mono sm:block">
+          <span className="block text-[9px] uppercase tracking-[0.3em] text-white/40">Contacts</span>
+          <span className="text-sm tabular-nums text-[var(--xeno-a)]">
+            {nodeCount.toLocaleString()}
+            <span className="text-white/30"> / {totalCount.toLocaleString()}</span>
           </span>
         </div>
-        <button
-          onClick={onSearch}
-          className="flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-800/40 px-3 py-1.5 font-mono text-xs font-semibold text-zinc-300 transition-colors hover:bg-zinc-800"
-        >
-          <Search size={14} /> ⌘K
+        <button onClick={onSearch} className="xeno-btn" aria-label="Search sightings">
+          <Search size={13} /> ⌘K
         </button>
-        <button
-          onClick={onStats}
-          className="flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-800/40 px-3 py-1.5 font-mono text-xs font-semibold text-zinc-300 transition-colors hover:bg-zinc-800"
-        >
-          <Activity size={14} /> STATS
+        <button onClick={onStats} className="xeno-btn">
+          <Activity size={13} /> Intel
         </button>
-        <Link
-          href="/feed"
-          className="flex items-center gap-2 rounded-md border border-emerald-700/50 bg-emerald-600/10 px-3 py-1.5 font-mono text-xs font-semibold text-emerald-300 transition-colors hover:bg-emerald-600/20"
-        >
-          <Radio size={14} /> FEED
+        <Link href="/feed" className="xeno-btn">
+          <Radio size={13} /> Feed
         </Link>
         <button
           onClick={onSubmit}
-          className="flex items-center gap-2 rounded-md border border-cyan-700 bg-cyan-600/10 px-3 py-1.5 font-mono text-xs font-semibold text-cyan-300 transition-colors hover:bg-cyan-600/20"
+          className="xeno-btn !border-[var(--xeno-a)]/60 !text-[var(--xeno-a)] hover:!text-black"
         >
-          <UploadCloud size={14} /> SUBMIT
+          <UploadCloud size={13} /> Report
         </button>
       </div>
     </header>

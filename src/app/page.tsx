@@ -28,6 +28,7 @@ import CommandPalette from '@/components/ui/CommandPalette';
 import IntelAnalytics from '@/components/ui/IntelAnalytics';
 import { computeAnalytics } from '@/lib/analytics';
 import XenoIntro from '@/components/ui/XenoIntro';
+import { AnimatePresence, motion } from 'motion/react';
 
 const MAX_YEAR = 2026;
 
@@ -72,7 +73,7 @@ export default function GlobalMatrixDashboard() {
   const analytics = useMemo(() => computeAnalytics(sightings), [sightings]);
 
   return (
-    <main className="relative h-screen w-screen select-none overflow-hidden bg-[var(--xeno-void)] text-zinc-200">
+    <main className="fixed inset-0 select-none overflow-hidden bg-[var(--xeno-void)] text-zinc-200">
       <XenoIntro />
 
       {/* Full-bleed WebGL stage */}
@@ -119,8 +120,10 @@ export default function GlobalMatrixDashboard() {
 
         <div className="flex min-h-0 flex-1 justify-between gap-4 py-4">
           {/* Right-side transmission rail (left when a dossier is open) */}
-          <aside
-            className={`pointer-events-auto hidden w-72 shrink-0 flex-col gap-3 transition-all duration-700 md:flex ${
+          <motion.aside
+            layout
+            transition={{ type: 'spring', stiffness: 120, damping: 20 }}
+            className={`pointer-events-auto hidden w-72 shrink-0 flex-col gap-3 md:flex ${
               caseData ? 'order-first' : 'order-last'
             }`}
           >
@@ -180,16 +183,24 @@ export default function GlobalMatrixDashboard() {
                 ))}
               </div>
             </section>
-          </aside>
+          </motion.aside>
 
           <div className="relative min-w-0 flex-1">
             <div className="pointer-events-auto absolute inset-y-0 right-0">
-              <CaseDossier
-                key={caseData?.id ?? 'none'}
-                sighting={caseData}
-                onClose={clearCaseFile}
-                onAddIntel={postIntelMessage}
-              />
+              <AnimatePresence mode="wait">
+                {caseData && (
+                  <motion.div
+                    key={caseData.id}
+                    className="h-full"
+                    initial={{ opacity: 0, x: 40, filter: 'blur(12px)' }}
+                    animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+                    exit={{ opacity: 0, x: 40, filter: 'blur(12px)' }}
+                    transition={{ type: 'spring', stiffness: 140, damping: 22 }}
+                  >
+                    <CaseDossier sighting={caseData} onClose={clearCaseFile} onAddIntel={postIntelMessage} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>

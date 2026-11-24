@@ -16,6 +16,7 @@ import { OrbitControls } from '@react-three/drei';
 import { Bloom, ChromaticAberration, EffectComposer, Noise, Vignette } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
 import { Vector2 } from 'three';
+import { Leva, useControls } from 'leva';
 import AlienEarth from './AlienEarth';
 import CosmicBackdrop from './CosmicBackdrop';
 import DataPoints, { type MapSighting } from './DataPoints';
@@ -61,10 +62,19 @@ export default function GlobeOverlay({
   onSelect,
 }: GlobeOverlayProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  // Live-tunable post FX (panel only shown in development).
+  const fx = useControls('Post FX', {
+    bloom: { value: 1.1, min: 0, max: 4, step: 0.05 },
+    threshold: { value: 0.32, min: 0, max: 1, step: 0.01 },
+    radius: { value: 0.75, min: 0, max: 1, step: 0.01 },
+    grain: { value: 0.35, min: 0, max: 1, step: 0.01 },
+    vignette: { value: 0.85, min: 0, max: 1.5, step: 0.01 },
+  });
   const hovered = hoveredId ? (points.find((p) => p.id === hoveredId) ?? null) : null;
 
   return (
     <div className="absolute inset-0">
+      <Leva hidden={process.env.NODE_ENV === 'production'} collapsed />
       <Canvas
         camera={{ position: [0, 4, 46], fov: 42, near: 0.1, far: 500 }}
         dpr={[1, 2]}
@@ -96,10 +106,10 @@ export default function GlobeOverlay({
         />
 
         <EffectComposer multisampling={0}>
-          <Bloom intensity={1.1} luminanceThreshold={0.32} luminanceSmoothing={0.4} mipmapBlur radius={0.75} />
+          <Bloom intensity={fx.bloom} luminanceThreshold={fx.threshold} luminanceSmoothing={0.4} mipmapBlur radius={fx.radius} />
           <ChromaticAberration offset={CA_OFFSET} radialModulation modulationOffset={0.3} />
-          <Noise premultiply blendFunction={BlendFunction.SCREEN} opacity={0.35} />
-          <Vignette eskil={false} offset={0.2} darkness={0.85} />
+          <Noise premultiply blendFunction={BlendFunction.SCREEN} opacity={fx.grain} />
+          <Vignette eskil={false} offset={0.2} darkness={fx.vignette} />
         </EffectComposer>
       </Canvas>
 

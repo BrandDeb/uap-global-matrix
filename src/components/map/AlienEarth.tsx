@@ -29,6 +29,7 @@ import {
 } from 'three';
 import { GLOBE_RADIUS, latLngToVector3 } from '@/lib/geo';
 import { SHADER_TIME } from './sharedTime';
+import { easing } from 'maath';
 
 
 const surfaceVert = /* glsl */ `
@@ -245,17 +246,14 @@ export default function AlienEarth({
     if (focusPoint) {
       latLngToVector3(focusPoint.latitude, focusPoint.longitude, 1, tmpDir).normalize();
       tmpQuat.setFromUnitVectors(tmpDir, CAMERA_DIR);
-      mesh.quaternion.slerp(tmpQuat, Math.min(1, delta * 2.5));
+      easing.dampQ(mesh.quaternion, tmpQuat, 0.35, delta);
     } else {
       tmpQuat.setFromAxisAngle(Y_AXIS, spin.current);
-      mesh.quaternion.slerp(tmpQuat, Math.min(1, delta * 2));
+      easing.dampQ(mesh.quaternion, tmpQuat, 0.5, delta);
     }
     // Subtle parallax lean toward the pointer.
     const g = tiltRef.current;
-    if (g) {
-      g.rotation.x += (pointer.y * -0.12 - g.rotation.x) * 0.04;
-      g.rotation.y += (pointer.x * 0.18 - g.rotation.y) * 0.04;
-    }
+    if (g) easing.dampE(g.rotation, [pointer.y * -0.12, pointer.x * 0.18, 0], 0.6, delta);
   });
 
   return (

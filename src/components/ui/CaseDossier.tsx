@@ -18,6 +18,8 @@
 import { useEffect, useState } from 'react';
 import { X, Send, MessageSquare, BrainCircuit, ShieldAlert, Eye, Lock } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
+import DecryptedText from '@/components/fx/DecryptedText';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { LiveSighting } from '@/lib/sightings';
@@ -134,7 +136,9 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
-    await onAddIntel(sighting.id, operatorHandle, message.trim());
+    const { error } = await onAddIntel(sighting.id, operatorHandle, message.trim());
+    if (error) toast.error('Transmission failed', { description: error.message });
+    else toast.success('Intel transmitted');
     setMessage('');
   };
 
@@ -197,7 +201,9 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
           <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-emerald-400">
             {sighting.isGovDeclassified ? '🏛️ GOV_DECLASSIFIED' : '📡 CITIZEN_FEED'}
           </span>
-          <h2 className="mt-1.5 text-sm font-bold text-zinc-200">{sighting.title}</h2>
+          <h2 className="mt-2 font-[family-name:var(--font-display)] text-lg font-medium leading-tight text-white">
+            <DecryptedText text={sighting.title} />
+          </h2>
         </div>
         <button onClick={onClose} className="p-1 text-zinc-500 hover:text-zinc-200" aria-label="Close">
           <X size={16} />

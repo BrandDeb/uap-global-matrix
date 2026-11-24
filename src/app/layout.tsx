@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Space_Grotesk, JetBrains_Mono, Unbounded } from 'next/font/google';
+import { Toaster } from 'sonner';
 import './globals.css';
+import SmoothScroll from '@/components/fx/SmoothScroll';
 
 const body = Space_Grotesk({ variable: '--font-body', subsets: ['latin'] });
 const mono = JetBrains_Mono({ variable: '--font-mono-x', subsets: ['latin'] });
@@ -15,7 +17,15 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${body.variable} ${mono.variable} ${display.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
+        <SmoothScroll />
         {children}
+        <Toaster
+          theme="dark"
+          position="bottom-right"
+          toastOptions={{
+            className: '!rounded-2xl !border-white/10 !bg-[#0a0818]/90 !font-mono !text-xs !backdrop-blur-xl',
+          }}
+        />
         <div className="xeno-scan" aria-hidden />
         <div className="xeno-grain" aria-hidden />
       </body>

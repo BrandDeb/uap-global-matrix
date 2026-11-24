@@ -8,6 +8,8 @@
 
 import { UploadCloud, Radio, Search, Activity } from 'lucide-react';
 import Link from 'next/link';
+import NumberTicker from '@/components/fx/NumberTicker';
+import { Tooltip, TooltipProvider } from '@/components/primitives/tooltip';
 
 export type FeedTab = 'all' | 'verified' | 'citizen';
 
@@ -80,25 +82,38 @@ export default function MatrixControlHUD({
         <div className="mr-2 hidden text-right font-mono sm:block">
           <span className="block text-[9px] uppercase tracking-[0.3em] text-white/40">Contacts</span>
           <span className="text-sm tabular-nums text-[var(--xeno-a)]">
-            {nodeCount.toLocaleString()}
-            <span className="text-white/30"> / {totalCount.toLocaleString()}</span>
+            <NumberTicker value={nodeCount} />
+            <span className="text-white/30">
+              {' / '}
+              <NumberTicker value={totalCount} />
+            </span>
           </span>
         </div>
-        <button onClick={onSearch} className="xeno-btn" aria-label="Search sightings">
-          <Search size={13} /> ⌘K
-        </button>
-        <button onClick={onStats} className="xeno-btn">
-          <Activity size={13} /> Intel
-        </button>
-        <Link href="/feed" className="xeno-btn">
-          <Radio size={13} /> Feed
-        </Link>
-        <button
-          onClick={onSubmit}
-          className="xeno-btn !border-[var(--xeno-a)]/60 !text-[var(--xeno-a)] hover:!text-black"
-        >
-          <UploadCloud size={13} /> Report
-        </button>
+        <TooltipProvider>
+          <Tooltip label="Search all contacts">
+            <button onClick={onSearch} className="xeno-btn" aria-label="Search sightings">
+              <Search size={13} /> ⌘K
+            </button>
+          </Tooltip>
+          <Tooltip label="Analytics & distributions">
+            <button onClick={onStats} className="xeno-btn">
+              <Activity size={13} /> Intel
+            </button>
+          </Tooltip>
+          <Tooltip label="Trending operator feed">
+            <Link href="/feed" className="xeno-btn">
+              <Radio size={13} /> Feed
+            </Link>
+          </Tooltip>
+          <Tooltip label="Submit a sighting">
+            <button
+              onClick={onSubmit}
+              className="xeno-btn !border-[var(--xeno-a)]/60 !text-[var(--xeno-a)] hover:!text-black"
+            >
+              <UploadCloud size={13} /> Report
+            </button>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </header>
   );

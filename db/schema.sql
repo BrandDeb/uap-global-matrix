@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS profiles (
   reputation_score integer NOT NULL DEFAULT 0,
   created_at       timestamptz NOT NULL DEFAULT now()
 );
+-- Synced client state: pilot name, avatar, theme, secrets, badges, arcade bests.
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS prefs jsonb NOT NULL DEFAULT '{}'::jsonb;
 
 -- --- sightings -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS uap_sightings (

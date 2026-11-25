@@ -11,6 +11,7 @@
 import { useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { xenoAudio } from './audio';
+import { awardBadge, SYNC_EVENT } from '@/lib/achievements';
 
 export const EGGS = [
   { id: 'invasion', name: 'Full invasion', hint: 'An old gamer’s code summons company. Or bully the fine print, five times.' },
@@ -39,6 +40,22 @@ function read(): string {
   return cache;
 }
 
+/** Merge eggs found on another device (account sync). */
+export function mergeEggs(ids: string[]) {
+  const all = [...new Set([...read().split(',').filter(Boolean), ...ids])].filter((x) => EGGS.some((e) => e.id === x));
+  cache = all.join(',');
+  try {
+    window.localStorage.setItem(KEY, cache);
+  } catch {
+    /* private mode */
+  }
+  listeners.forEach((l) => l());
+}
+
+export function readEggs(): string[] {
+  return read().split(',').filter(Boolean);
+}
+
 export function findEgg(id: EggId) {
   if (typeof window === 'undefined') return;
   const found = read().split(',').filter(Boolean);
@@ -51,6 +68,9 @@ export function findEgg(id: EggId) {
     /* private mode: progress lasts this visit */
   }
   listeners.forEach((l) => l());
+  window.dispatchEvent(new Event(SYNC_EVENT));
+  if (found.length === EGGS.length) awardBadge('secrets-all');
+  if (id === 'lineup') awardBadge('lineup');
   const egg = EGGS.find((e) => e.id === id)!;
   const all = found.length === EGGS.length;
   toast(all ? '🛸 ALL SECRETS FOUND' : `🥚 Secret found: ${egg.name}`, {

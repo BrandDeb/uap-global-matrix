@@ -17,6 +17,7 @@
  */
 
 import { xenoAudio } from '@/components/landing/audio';
+import { awardBadge } from '@/lib/achievements';
 import { Fx, H, Starfield, W, clamp, drawSaucer, glow, loadBest, rand, saveBest, streakWord, type Game, type HudState, type Input } from './engine';
 
 const GROUND = H - 70;
@@ -35,7 +36,7 @@ const nightFor = (n: number): Night => {
   return { ...last, name: `Overtime ${n - NIGHTS.length}`, quota: last.quota + (n - NIGHTS.length) * 4000, lights: 3 };
 };
 
-type Kind = 'calf' | 'cow' | 'bull' | 'gold' | 'farmer' | 'crate';
+type Kind = 'calf' | 'cow' | 'bull' | 'gold' | 'farmer' | 'crate' | 'friend';
 const KINDS: Record<Kind, { w: number; lift: number; pts: number }> = {
   calf: { w: 30, lift: 240, pts: 50 },
   cow: { w: 44, lift: 160, pts: 100 },
@@ -43,6 +44,7 @@ const KINDS: Record<Kind, { w: number; lift: number; pts: number }> = {
   gold: { w: 44, lift: 150, pts: 1000 },
   farmer: { w: 22, lift: 200, pts: 400 },
   crate: { w: 26, lift: 260, pts: 0 },
+  friend: { w: 48, lift: 120, pts: 2500 },
 };
 
 interface Critter {
@@ -89,7 +91,8 @@ export class MooveIt implements Game {
   private stars = new Starfield(120);
   private hills: number[] = Array.from({ length: 13 }, () => rand(20, 70));
 
-  constructor() {
+  /** Optional friend's name (from ?friend=) who appears as a VIP cow each night. */
+  constructor(private friend: string | null = null) {
     this.hud.best = loadBest(this.id);
   }
 
@@ -115,6 +118,7 @@ export class MooveIt implements Game {
     this.hud.level = n;
     this.fx.hype(`NIGHT ${n}: ${this.cfg.name.toUpperCase()}`, '#5effd8');
     for (let i = 0; i < 5; i++) this.spawn();
+    if (this.friend) this.spawn('friend');
   }
 
   /** Searchlight angle (radians from vertical) for light i at time t. */
@@ -125,10 +129,10 @@ export class MooveIt implements Game {
     return ((i + 1) / (this.cfg.lights + 1)) * W;
   }
 
-  private spawn() {
+  private spawn(force?: Kind) {
     const r = Math.random();
     const { gold, farmer, crate } = this.cfg;
-    const kind: Kind = r < crate ? 'crate' : r < crate + gold ? 'gold' : r < crate + gold + farmer ? 'farmer' : r < 0.5 ? 'calf' : r < 0.82 ? 'cow' : 'bull';
+    const kind: Kind = force ?? (r < crate ? 'crate' : r < crate + gold ? 'gold' : r < crate + gold + farmer ? 'farmer' : r < 0.5 ? 'calf' : r < 0.82 ? 'cow' : 'bull');
     const fromLeft = Math.random() < 0.5;
     this.critters.push({
       kind,
@@ -208,7 +212,7 @@ export class MooveIt implements Game {
         }
       } else {
         c.x += c.vx * dt;
-        if (c.kind === 'gold' && Math.abs(c.x - this.ship.x) < 120) c.vx = Math.sign(c.x - this.ship.x || 1) * 170; // panic
+        if ((c.kind === 'gold' || c.kind === 'friend') && Math.abs(c.x - this.ship.x) < 120) c.vx = Math.sign(c.x - this.ship.x || 1) * 170; // panic
         if (c.kind === 'farmer') {
           c.cooldown -= dt;
           if (c.cooldown <= 0) {
@@ -243,6 +247,12 @@ export class MooveIt implements Game {
         this.nightScore += pts;
         this.fx.burst(this.ship.x, this.ship.y + 10, c.kind === 'gold' ? '#ffd36b' : '#5effd8', 26, 260);
         this.fx.float(this.ship.x, this.ship.y + 50, `+${pts}${this.combo > 1 ? `  x${this.combo}` : ''}`, c.kind === 'gold' ? '#ffd36b' : '#5effd8');
+        if (c.kind === 'friend') {
+          this.fx.hype(`${this.friend?.toUpperCase()} ABDUCTED`, '#ff5ec8');
+          this.fx.flash('#ff5ec8');
+          this.fx.hitstop(0.15);
+          awardBadge('abductor');
+        }
         if (c.kind === 'farmer') xenoAudio?.boop();
         else xenoAudio?.moo();
         if (c.kind === 'gold') {
@@ -263,6 +273,7 @@ export class MooveIt implements Game {
         }
       }
     }
+    for (const c of this.critters) if (c.kind === 'friend' && c.x > -900 && (c.x < 30 || c.x > W - 30)) c.vx = Math.abs(c.vx) * (c.x < 30 ? 1 : -1);
     this.critters = this.critters.filter((c) => c.x > -60 && c.x < W + 60);
     this.comboT -= dt;
 
@@ -329,6 +340,7 @@ export class MooveIt implements Game {
         this.fx.float(W / 2, H / 2, `NIGHT CLEARED +${bonus}`, '#ffd36b');
         this.hud.lives = Math.min(5, (this.hud.lives ?? 0) + 1);
         this.cleared = false;
+        if (this.night === 5) awardBadge('night-5');
         this.beginNight(this.night + 1);
       } else {
         this.end(`Dawn broke ${(this.cfg.quota - this.nightScore).toLocaleString()} points short of the Night ${this.night} quota.`);
@@ -440,6 +452,15 @@ export class MooveIt implements Game {
     if (c.lifted) ctx.rotate(Math.sin(c.spin) * 0.6);
     const dir = c.vx >= 0 ? 1 : -1;
     ctx.scale(dir, 1);
+    if (c.kind === 'friend' && this.friend) {
+      ctx.save();
+      ctx.scale(dir, 1);
+      ctx.fillStyle = '#ff5ec8';
+      ctx.font = 'bold 13px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(this.friend.slice(0, 16), 0, -s - 6);
+      ctx.restore();
+    }
     if (c.kind === 'crate') {
       const col = c.power === 'cool' ? '#38e8ff' : '#a58bff';
       glow(ctx, col, 14, () => {
@@ -467,7 +488,7 @@ export class MooveIt implements Game {
       ctx.fillStyle = '#fffbe0';
       ctx.fillRect(7, -26, 8, 3); // flashlight
     } else {
-      const body = c.kind === 'gold' ? '#ffd36b' : c.kind === 'bull' ? '#5b4636' : '#f4f1ea';
+      const body = c.kind === 'gold' ? '#ffd36b' : c.kind === 'bull' ? '#5b4636' : c.kind === 'friend' ? '#ffc2e6' : '#f4f1ea';
       const spot = c.kind === 'gold' ? '#fff3b0' : '#17151c';
       ctx.fillStyle = body;
       ctx.beginPath();

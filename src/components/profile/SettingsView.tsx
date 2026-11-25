@@ -16,6 +16,7 @@ import { AvatarPicker, LocationPermission, NameField, ThemePicker } from './Pick
 import SignInButtons from '@/components/ui/SignInButtons';
 import { useAuth } from '@/hooks/useAuth';
 import { clearProfile, saveProfile, useLocalProfile } from '@/lib/profile';
+import { BADGES, useBadges } from '@/lib/achievements';
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -93,6 +94,11 @@ export default function SettingsView() {
             <AvatarPicker />
           </Card>
 
+          <Card title="Badges">
+            <BadgeGrid />
+            <p className="mt-4 text-xs text-white/40">{profile ? 'Synced to your account, so they follow you to any device.' : 'Sign in to keep your badges, secrets and best scores on every device.'}</p>
+          </Card>
+
           <Card title="Appearance">
             <ThemePicker />
           </Card>
@@ -154,5 +160,23 @@ export default function SettingsView() {
         </p>
       </div>
     </main>
+  );
+}
+
+function BadgeGrid() {
+  const have = useBadges();
+  return (
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {BADGES.map((b) => {
+        const got = have.includes(b.id);
+        return (
+          <li key={b.id} title={b.how} className={`rounded-2xl border p-3 text-center transition ${got ? 'border-[var(--xeno-a)]/40 bg-[var(--xeno-a)]/10' : 'border-white/10 opacity-45 grayscale'}`}>
+            <span className="block text-3xl">{b.icon}</span>
+            <span className="mt-1 block text-xs font-semibold">{b.name}</span>
+            <span className="mt-1 block text-[10px] leading-snug text-white/45">{b.how}</span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

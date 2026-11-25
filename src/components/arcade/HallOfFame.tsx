@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { PRIZES } from './Leaderboard';
+import { awardBadge } from '@/lib/achievements';
 
 interface Entry {
   handle: string;
@@ -20,7 +21,17 @@ export default function HallOfFame({ games }: { games: ReadonlyArray<{ id: strin
           .then((d) => [g.id, d.lastWeek ?? []] as const)
           .catch(() => [g.id, []] as const),
       ),
-    ).then((rows) => alive && setData(Object.fromEntries(rows)));
+    ).then((rows) => {
+      if (!alive) return;
+      setData(Object.fromEntries(rows));
+      let me = '';
+      try {
+        me = (localStorage.getItem('uap-arcade-handle') ?? '').trim().toLowerCase();
+      } catch {
+        /* ignore */
+      }
+      if (me && rows.some(([, r]) => r.some((e) => e.handle.toLowerCase() === me))) awardBadge('hall-of-fame');
+    });
     return () => {
       alive = false;
     };

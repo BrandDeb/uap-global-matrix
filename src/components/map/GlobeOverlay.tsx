@@ -46,13 +46,15 @@ interface GlobeOverlayProps {
 
 /** Ease the camera in from deep space on first mount. */
 function IntroCamera() {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
+  // Portrait screens need more distance for the globe to fit the width.
+  const restZ = size.width / size.height < 0.8 ? 13 : 8.6;
   const t = useRef(0);
   useFrame((_, d) => {
     if (t.current >= 1) return;
     t.current = Math.min(1, t.current + d * 0.35);
     const e = 1 - Math.pow(1 - t.current, 4);
-    camera.position.set(Math.sin((1 - e) * 1.2) * 3, (1 - e) * 4, 8.6 + (1 - e) * 40);
+    camera.position.set(Math.sin((1 - e) * 1.2) * 3, (1 - e) * 4, restZ + (1 - e) * 40);
     camera.lookAt(0, 0, 0);
   });
   return null;
@@ -178,7 +180,7 @@ export default function GlobeOverlay({
       </Canvas>
 
       {showFps && (
-        <div className="pointer-events-none absolute left-4 top-20 z-30 rounded-lg bg-black/70 px-3 py-1.5 font-mono text-[11px] text-[var(--xeno-a)]">
+        <div className="pointer-events-none absolute left-4 top-36 z-30 md:top-20 rounded-lg bg-black/70 px-3 py-1.5 font-mono text-[11px] text-[var(--xeno-a)]">
           {fps.fps} FPS · {q.label.toUpperCase()} · {q.craft} craft · dpr ≤{q.dpr} · {fps.calls} draws ·{' '}
           {Math.round(fps.triangles / 1000)}k tris
         </div>

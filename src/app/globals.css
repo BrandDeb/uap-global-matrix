@@ -234,3 +234,9 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .xeno-grain, .xeno-marquee, .xeno-gradient-text { animation: none; }
 }
+
+/* Custom alien cursor (landing page): hide the native one while it's active. */
+.alien-cursor-on,
+.alien-cursor-on * {
+  cursor: none !important;
+}

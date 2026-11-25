@@ -200,12 +200,27 @@ export async function insertVerifiedSighting(s: {
 
 /* --- profiles (Auth.js sign-in) ----------------------------------------- */
 
-export async function upsertProfile(p: { id: string; handle: string; avatarUrl: string | null }): Promise<void> {
-  await getDb()`
-    INSERT INTO profiles (id, operator_handle, avatar_url)
-    VALUES (${p.id}, ${p.handle}, ${p.avatarUrl})
-    ON CONFLICT (id) DO UPDATE SET avatar_url = EXCLUDED.avatar_url
-  `;
+/**
+ * Create or refresh an operator profile; returns the stored handle. If the
+ * wanted handle is taken by someone else, a numeric suffix is appended.
+ */
+export async function upsertProfile(p: { id: string; handle: string; avatarUrl: string | null }): Promise<string> {
+  const sql = getDb();
+  const existing = await sql`SELECT operator_handle FROM profiles WHERE id = ${p.id}`;
+  if (existing[0]) {
+    await sql`UPDATE profiles SET avatar_url = ${p.avatarUrl} WHERE id = ${p.id}`;
+    return String(existing[0].operator_handle);
+  }
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const handle = attempt === 0 ? p.handle : `${p.handle.slice(0, 20)}_${Math.floor(Math.random() * 9000 + 1000)}`;
+    try {
+      await sql`INSERT INTO profiles (id, operator_handle, avatar_url) VALUES (${p.id}, ${handle}, ${p.avatarUrl})`;
+      return handle;
+    } catch (err: unknown) {
+      if ((err as { code?: string }).code !== '23505') throw err;
+    }
+  }
+  throw new Error('Could not allocate a unique operator handle.');
 }
 
 export async function getProfile(id: string): Promise<Row | null> {

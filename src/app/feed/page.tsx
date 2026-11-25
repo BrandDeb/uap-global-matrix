@@ -132,7 +132,7 @@ export default function GlobalIntelFeed() {
             <p className="mt-1 text-xs text-zinc-500">Decentralized anomaly network activity chronicle</p>
           </div>
           <Link
-            href="/"
+            href="/matrix"
             className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-400 transition hover:bg-emerald-500/20"
           >
             ← STRATEGIC GLOBE

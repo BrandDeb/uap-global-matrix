@@ -54,7 +54,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex items-center justify-between">
           <Link
-            href={`/?case=${sighting.id}`}
+            href={`/matrix?case=${sighting.id}`}
             className="font-mono text-xs text-emerald-400 transition hover:underline"
           >
             ← VIEW ON GLOBE

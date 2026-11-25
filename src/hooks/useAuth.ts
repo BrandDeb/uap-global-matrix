@@ -3,18 +3,19 @@
 /**
  * src/hooks/useAuth.ts
  * ---------------------------------------------------------------------------
- * Operator identity via Auth.js: resolves the signed-in operator profile from
- * GET /api/me and exposes GitHub sign-in / sign-out.
+ * Operator identity via Auth.js: resolves the signed-in operator profile and
+ * the configured providers (GitHub / Google) from GET /api/me, and exposes
+ * social sign-in / sign-out. No email or password flow exists.
  *
- * GitHub sign-in works once AUTH_SECRET, AUTH_GITHUB_ID and AUTH_GITHUB_SECRET
- * are configured (see .env.example). Until then `signInWithGitHub` returns an
- * error the UI surfaces gracefully, and posts fall back to the anonymous
- * per-browser operator id.
+ * With no provider configured, `providers` is empty, sign-in buttons hide, and
+ * posts fall back to the anonymous per-browser operator id.
  * ---------------------------------------------------------------------------
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { signIn, signOut as authSignOut } from 'next-auth/react';
+
+export type AuthProvider = 'github' | 'google';
 
 export interface OperatorProfile {
   readonly id: string;
@@ -37,11 +38,14 @@ function toProfile(row: Record<string, unknown>): OperatorProfile {
 export function useAuth(): {
   profile: OperatorProfile | null;
   ready: boolean;
+  providers: AuthProvider[];
+  signInWith: (provider: AuthProvider, redirectTo?: string) => Promise<{ error: { message: string } | null }>;
+  /** @deprecated use signInWith('github') */
   signInWithGitHub: () => Promise<{ error: { message: string } | null }>;
   signOut: () => Promise<void>;
 } {
   const [profile, setProfile] = useState<OperatorProfile | null>(null);
-  const [authAvailable, setAuthAvailable] = useState(false);
+  const [providers, setProviders] = useState<AuthProvider[]>([]);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -49,9 +53,11 @@ export function useAuth(): {
     (async () => {
       try {
         const res = await fetch('/api/me', { cache: 'no-store' });
-        const body = (await res.json()) as { authAvailable?: boolean; profile?: Record<string, unknown> | null };
+        const body = (await res.json()) as { providers?: string[]; profile?: Record<string, unknown> | null };
         if (cancelled) return;
-        setAuthAvailable(body.authAvailable === true);
+        setProviders(
+          (body.providers ?? []).filter((p): p is AuthProvider => p === 'github' || p === 'google'),
+        );
         setProfile(body.profile ? toProfile(body.profile) : null);
       } catch {
         // offline / no database: stay anonymous
@@ -64,18 +70,22 @@ export function useAuth(): {
     };
   }, []);
 
-  const signInWithGitHub = useCallback(async (): Promise<{ error: { message: string } | null }> => {
-    if (!authAvailable) {
-      return { error: { message: 'GitHub sign-in is not configured on this deployment.' } };
-    }
-    await signIn('github', { redirectTo: window.location.href });
-    return { error: null };
-  }, [authAvailable]);
+  const signInWith = useCallback(
+    async (provider: AuthProvider, redirectTo?: string): Promise<{ error: { message: string } | null }> => {
+      if (!providers.includes(provider)) {
+        return { error: { message: `${provider} sign-in is not configured on this deployment.` } };
+      }
+      await signIn(provider, { redirectTo: redirectTo ?? window.location.href });
+      return { error: null };
+    },
+    [providers],
+  );
+  const signInWithGitHub = useCallback(() => signInWith('github'), [signInWith]);
 
   const signOut = useCallback(async (): Promise<void> => {
     await authSignOut({ redirect: false });
     setProfile(null);
   }, []);
 
-  return { profile, ready, signInWithGitHub, signOut };
+  return { profile, ready, providers, signInWith, signInWithGitHub, signOut };
 }

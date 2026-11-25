@@ -263,10 +263,10 @@ const beamVert = /* glsl */ `
   void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }
 `;
 const beamFrag = /* glsl */ `
-  uniform float uTime; uniform vec3 uColor; uniform float uPhase;
+  uniform float uTime; uniform vec3 uColor; uniform float uPhase; uniform float uAlways;
   varying vec2 vUv;
   void main(){
-    float on = smoothstep(0.0, 0.15, sin(uTime * 0.5 + uPhase));
+    float on = max(uAlways, smoothstep(0.0, 0.15, sin(uTime * 0.5 + uPhase)));
     float rings = 0.5 + 0.5 * sin(vUv.y * 40.0 + uTime * 8.0);
     float fade = pow(vUv.y, 1.5);
     float edge = 1.0 - abs(vUv.x - 0.5) * 2.0;
@@ -284,20 +284,36 @@ const HULL = [
   [0, 0.16],
 ].map(([x, y]) => new Vector2(x, y));
 
-function Saucer({ color = '#5effd8', phase = 0, pilot = true }: { color?: string; phase?: number; pilot?: boolean }) {
+export function Saucer({
+  color = '#5effd8',
+  phase = 0,
+  pilot = true,
+  beamAlwaysOn = false,
+}: {
+  color?: string;
+  phase?: number;
+  pilot?: boolean;
+  /** Keep the tractor beam lit instead of cycling. */
+  beamAlwaysOn?: boolean;
+}) {
   const hull = useMemo(() => new LatheGeometry(HULL, 64), []);
   const beam = useMemo(
     () =>
       new ShaderMaterial({
         vertexShader: beamVert,
         fragmentShader: beamFrag,
-        uniforms: { uTime: SHADER_TIME, uColor: { value: new Color(color) }, uPhase: { value: phase } },
+        uniforms: {
+          uTime: SHADER_TIME,
+          uColor: { value: new Color(color) },
+          uPhase: { value: phase },
+          uAlways: { value: beamAlwaysOn ? 1 : 0 },
+        },
         transparent: true,
         depthWrite: false,
         blending: AdditiveBlending,
         side: DoubleSide,
       }),
-    [color, phase],
+    [color, phase, beamAlwaysOn],
   );
   const rim = useRef<Group>(null);
   const rimDots = useMemo(() => circleDots(14, 0.93, 0.01, (i) => (i % 2 ? color : '#ffffff')), [color]);
@@ -348,7 +364,7 @@ function Saucer({ color = '#5effd8', phase = 0, pilot = true }: { color?: string
   );
 }
 
-function TicTac() {
+export function TicTac() {
   return (
     <group scale={0.05} rotation={[0, 0, Math.PI / 2]}>
       <mesh rotation={[Math.PI / 2, 0, 0]}>
@@ -359,7 +375,7 @@ function TicTac() {
   );
 }
 
-function Triangle() {
+export function Triangle() {
   return (
     <group scale={0.13}>
       <mesh scale={[1, 0.12, 1]} rotation={[0, Math.PI / 6, 0]}>

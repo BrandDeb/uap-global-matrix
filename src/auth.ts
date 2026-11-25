@@ -17,7 +17,6 @@ import type { Provider } from 'next-auth/providers';
 import GitHub from 'next-auth/providers/github';
 import Google from 'next-auth/providers/google';
 import { upsertProfile } from '@/lib/db/queries';
-import { getDb, hasDb } from '@/lib/db';
 
 const hasSecret = Boolean(process.env.AUTH_SECRET);
 const githubOn = hasSecret && Boolean(process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET);
@@ -51,19 +50,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: 'jwt' },
   secret: env('AUTH_SECRET'),
   trustHost: true,
-  logger: {
-    error(error) {
-      console.error('[auth][error]', error);
-      // Keep the last few auth failures readable at /api/auth-check.
-      if (!hasDb()) return;
-      const cause = (error as { cause?: { err?: Error } }).cause?.err;
-      const msg = `${error.name}: ${error.message}${cause ? ` | cause: ${cause.message}` : ''}`.slice(0, 900);
-      const db = getDb();
-      void db`create table if not exists auth_errors (at timestamptz default now(), msg text)`
-        .then(() => db`insert into auth_errors (msg) values (${msg})`)
-        .catch(() => {});
-    },
-  },
   pages: { signIn: '/signin' },
   callbacks: {
     async jwt({ token, profile, account }) {

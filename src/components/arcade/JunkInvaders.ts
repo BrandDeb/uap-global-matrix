@@ -12,12 +12,14 @@
  *   - Crop-circle shields slowly regrow between hits.
  *   - Every 3rd wave the "Station" boss drifts across shedding drones.
  *   - The formation speeds up as it thins (and as the soundtrack would).
+ *   - Power-ups drop from wrecks: SPREAD (3-way) and RAPID fire, 8s each.
+ *   - Quick kills chain into streak callouts with hit-stop.
  * Controls: ←/→ or A/D (or pointer x) to move, Space / click to fire.
  * ---------------------------------------------------------------------------
  */
 
 import { xenoAudio } from '@/components/landing/audio';
-import { Fx, H, Starfield, W, clamp, drawSaucer, glow, loadBest, rand, saveBest, type Game, type HudState, type Input } from './engine';
+import { Fx, H, Starfield, W, clamp, drawSaucer, glow, loadBest, rand, saveBest, streakWord, type Game, type HudState, type Input } from './engine';
 
 const FLOOR = H - 60;
 type EKind = 'sat' | 'drone' | 'car';
@@ -34,6 +36,8 @@ interface Shot {
   y: number;
   vy: number;
   pierce: boolean;
+  /** Horizontal drift (spread-shot side bolts). */
+  vx?: number;
 }
 interface Bomb {
   x: number;
@@ -63,6 +67,11 @@ export class JunkInvaders implements Game {
   private boss: { x: number; hp: number; dropT: number } | null = null;
   private invuln = 0;
   private beaming = false;
+  private powerups: { x: number; y: number; kind: 'spread' | 'rapid' }[] = [];
+  private spreadT = 0;
+  private rapidT = 0;
+  private streak = 0;
+  private streakT = 0;
   private t = 0;
   private fx = new Fx();
   private stars = new Starfield(160);
@@ -75,6 +84,9 @@ export class JunkInvaders implements Game {
     this.hud = { ...this.hud, phase: 'playing', score: 0, lives: 3, level: 1, meter: 0, message: undefined };
     this.shields = [0.2, 0.4, 0.6, 0.8].map((f) => ({ x: W * f, hp: 6 }));
     this.charge = 0;
+    this.spreadT = 0;
+    this.rapidT = 0;
+    this.powerups = [];
     this.wave();
   }
 
@@ -101,6 +113,7 @@ export class JunkInvaders implements Game {
       if (input.pressed.has(' ') || input.pressed.has('Enter') || input.pressed.has('pointer')) this.start();
       return;
     }
+    if (this.fx.frozen(dt)) return;
     const k = input.keys;
     // --- move
     let ax = 0;
@@ -117,7 +130,15 @@ export class JunkInvaders implements Game {
       const pierce = this.charge >= 1;
       if (pierce) this.charge = 0;
       this.shots.push({ x: this.px, y: FLOOR - 30, vy: pierce ? -900 : -620, pierce });
-      this.fireCd = 0.28;
+      if (this.spreadT > 0) {
+        this.shots.push({ x: this.px - 14, y: FLOOR - 30, vy: -600, pierce: false, vx: -150 });
+        this.shots.push({ x: this.px + 14, y: FLOOR - 30, vy: -600, pierce: false, vx: 150 });
+      }
+      this.fireCd = this.rapidT > 0 ? 0.11 : 0.28;
+      if (pierce) {
+        this.fx.flash('#ffd36b', 0.7);
+        this.fx.shake = 6;
+      }
       xenoAudio?.blip(pierce ? 1 : 0.65);
     }
     const beaming = k.has('Shift') || k.has('x') || input.pointer.down;
@@ -158,6 +179,7 @@ export class JunkInvaders implements Game {
     // --- shots
     for (const s of this.shots) {
       s.y += s.vy * dt;
+      s.x += (s.vx ?? 0) * dt;
       for (const e of alive) {
         if (!e.alive || Math.abs(s.x - e.x) > 22 || Math.abs(s.y - e.y) > 16) continue;
         e.hp -= s.pierce ? 3 : 1;
@@ -168,6 +190,14 @@ export class JunkInvaders implements Game {
           this.fx.burst(e.x, e.y, e.kind === 'car' ? '#ff5ec8' : e.kind === 'sat' ? '#38e8ff' : '#ffd36b', 18, 240);
           this.fx.shake = 3;
           xenoAudio?.blip(0.3);
+          this.streak = this.streakT > 0 ? this.streak + 1 : 1;
+          this.streakT = 0.9;
+          const w = streakWord(this.streak);
+          if (w) {
+            this.fx.hype(w, '#ff5ec8');
+            this.fx.hitstop(0.05);
+          }
+          if (Math.random() < 0.07) this.powerups.push({ x: e.x, y: e.y, kind: Math.random() < 0.5 ? 'spread' : 'rapid' });
         }
       }
       if (this.boss && Math.abs(s.x - this.boss.x) < 70 && Math.abs(s.y - 50) < 24) {
@@ -179,6 +209,9 @@ export class JunkInvaders implements Game {
           this.fx.float(this.boss.x, 80, `STATION DOWN +${1500 * lvl}`, '#ffd36b');
           this.hud.score += 1500 * lvl;
           this.fx.shake = 14;
+          this.fx.hitstop(0.2);
+          this.fx.flash('#ffffff', 1.5);
+          this.fx.hype('STATION DOWN', '#ffd36b');
           this.boss = null;
           xenoAudio?.boop();
         }
@@ -213,13 +246,29 @@ export class JunkInvaders implements Game {
     }
     this.bombs = this.bombs.filter((b) => b.y < H);
     this.invuln -= dt;
+    this.streakT -= dt;
+    this.spreadT -= dt;
+    this.rapidT -= dt;
+    // power-ups drift down; touch them to collect
+    for (const p of this.powerups) {
+      p.y += 120 * dt;
+      if (p.y > FLOOR - 40 && Math.abs(p.x - this.px) < 44) {
+        p.y = 9999;
+        if (p.kind === 'spread') this.spreadT = 8;
+        else this.rapidT = 8;
+        this.fx.hype(p.kind === 'spread' ? 'SPREAD SHOT' : 'RAPID FIRE', '#38e8ff');
+        this.fx.flash('#38e8ff', 0.5);
+        xenoAudio?.chime();
+      }
+    }
+    this.powerups = this.powerups.filter((p) => p.y < H);
     // shields regrow slowly
     for (const sh of this.shields) sh.hp = Math.min(6, sh.hp + dt * 0.12);
 
     // --- wave state
     if (alive.length === 0 && !this.boss) {
       this.hud.level = lvl + 1;
-      this.fx.float(W / 2, H / 2, `WAVE ${lvl + 1}`, '#ffd36b');
+      this.fx.hype(`WAVE ${lvl + 1}`, '#ffd36b');
       this.wave();
     }
     if (alive.some((e) => e.y > FLOOR - 60)) {
@@ -236,6 +285,9 @@ export class JunkInvaders implements Game {
     this.hud.lives = (this.hud.lives ?? 1) - 1;
     this.invuln = 1.6;
     this.fx.shake = 14;
+    this.fx.flash('#ff5ec8', 1.2);
+    this.fx.hitstop(0.12);
+    this.streak = 0;
     this.fx.burst(this.px, FLOOR - 10, '#ff5ec8', 40, 320);
     xenoAudio?.moo();
   }
@@ -340,6 +392,22 @@ export class JunkInvaders implements Game {
       ctx.fillRect(-2, -2, 4, 4);
       ctx.restore();
     }
+    // power-up capsules
+    for (const p of this.powerups) {
+      glow(ctx, '#38e8ff', 16, () => {
+        ctx.fillStyle = '#0b2a33';
+        ctx.strokeStyle = '#38e8ff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(p.x - 14, p.y - 9, 28, 18, 9);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#38e8ff';
+        ctx.font = '800 11px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(p.kind === 'spread' ? 'S' : 'R', p.x, p.y + 4);
+      });
+    }
     // shots
     for (const s of this.shots) {
       glow(ctx, s.pierce ? '#ffd36b' : '#5effd8', 14, () => {
@@ -366,5 +434,6 @@ export class JunkInvaders implements Game {
     }
     this.fx.draw(ctx);
     ctx.restore();
+    this.fx.drawOverlay(ctx);
   }
 }

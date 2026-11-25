@@ -87,6 +87,64 @@ export class Fx {
   particles: Particle[] = [];
   texts: { x: number; y: number; text: string; life: number; color: string }[] = [];
   shake = 0;
+  private stopT = 0;
+  private flashT = 0;
+  private flashColor = '#ffffff';
+  private hypeText = '';
+  private hypeColor = '#5effd8';
+  private hypeT = 0;
+
+  /** Freeze the world for a beat — sells big hits. */
+  hitstop(seconds: number) {
+    this.stopT = Math.max(this.stopT, seconds);
+  }
+  /** Full-screen color flash. */
+  flash(color = '#ffffff', strength = 1) {
+    this.flashColor = color;
+    this.flashT = 0.25 * strength;
+  }
+  /** Big centered popping word (streaks, milestones). */
+  hype(text: string, color = '#5effd8') {
+    this.hypeText = text;
+    this.hypeColor = color;
+    this.hypeT = 1;
+  }
+  /** Call at the top of a game's gameplay update: true while frozen. */
+  frozen(dt: number): boolean {
+    if (this.stopT <= 0) return false;
+    this.stopT -= dt;
+    return true;
+  }
+  /** Screen-space overlays (flash + hype word); draw last, unshaken. */
+  drawOverlay(ctx: CanvasRenderingContext2D) {
+    if (this.flashT > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(0.55, this.flashT * 2.2);
+      ctx.fillStyle = this.flashColor;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+    if (this.hypeT > 0) {
+      const p = 1 - this.hypeT; // 0 → 1
+      const scale = p < 0.15 ? 0.4 + (p / 0.15) * 0.9 : 1.3 - Math.min(0.3, (p - 0.15) * 0.6);
+      ctx.save();
+      ctx.translate(W / 2, H * 0.42);
+      ctx.rotate(-0.06);
+      ctx.scale(scale, scale);
+      ctx.globalAlpha = Math.min(1, this.hypeT * 2.5);
+      ctx.font = '900 64px "Unbounded", "Space Grotesk", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 10;
+      ctx.strokeStyle = '#05030f';
+      ctx.strokeText(this.hypeText, 0, 0);
+      ctx.shadowColor = this.hypeColor;
+      ctx.shadowBlur = 30;
+      ctx.fillStyle = this.hypeColor;
+      ctx.fillText(this.hypeText, 0, 0);
+      ctx.restore();
+    }
+  }
 
   burst(x: number, y: number, color: string, n = 16, speed = 220, size = 3) {
     for (let i = 0; i < n; i++) {
@@ -103,6 +161,8 @@ export class Fx {
 
   update(dt: number) {
     this.shake = Math.max(0, this.shake - dt * 30);
+    this.flashT = Math.max(0, this.flashT - dt);
+    this.hypeT = Math.max(0, this.hypeT - dt * 0.9);
     for (const p of this.particles) {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
@@ -219,4 +279,17 @@ export function drawSaucer(ctx: CanvasRenderingContext2D, x: number, y: number, 
     ctx.fill();
   }
   ctx.restore();
+}
+
+/** Escalating streak callouts. Returns null when the streak isn't a milestone. */
+export function streakWord(n: number): string | null {
+  const words: Record<number, string> = {
+    3: 'TRIPLE!',
+    5: 'UNHINGED',
+    8: 'COSMIC',
+    12: 'ABSOLUTE UNIT',
+    16: 'GALAXY BRAIN',
+    20: 'TOUCH GRASS?',
+  };
+  return words[n] ?? (n > 20 && n % 5 === 0 ? `x${n} NO WAY` : null);
 }

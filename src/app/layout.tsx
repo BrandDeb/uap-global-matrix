@@ -8,7 +8,14 @@ const body = Space_Grotesk({ variable: '--font-body', subsets: ['latin'] });
 const mono = JetBrains_Mono({ variable: '--font-mono-x', subsets: ['latin'] });
 const display = Unbounded({ variable: '--font-display-x', subsets: ['latin'], weight: ['300', '500', '800'] });
 
+const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : 'http://localhost:3000';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
+  openGraph: { type: 'website', siteName: 'UAP/MATRIX' },
+  twitter: { card: 'summary_large_image' },
   title: 'UAP Global Matrix — Xeno Signal Atlas',
   description: 'A living atlas of unidentified anomalous phenomena, mapped across the planet in real time.',
 };

@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:migrate": "tsx scripts/dbMigrate.ts",
-    "db:seed": "tsx scripts/dbMigrate.ts --seed"
+    "db:seed": "tsx scripts/dbMigrate.ts --seed",
+    "vercel-build": "tsx scripts/dbMigrate.ts --seed-if-empty && next build"
   },
   "dependencies": {
     "@google/genai": "^2.10.0",

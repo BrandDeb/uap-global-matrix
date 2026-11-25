@@ -19,6 +19,75 @@ export interface GameMeta {
   readonly controls: ReadonlyArray<string>;
 }
 
+/**
+ * Compose a 1080×1350 share card (portrait, social-feed friendly): the final
+ * game frame, the score, and the brand — then share it (Web Share API with a
+ * file on phones) or download it.
+ */
+async function shareScore(src: HTMLCanvasElement, meta: GameMeta, hud: HudState) {
+  const c = document.createElement('canvas');
+  c.width = 1080;
+  c.height = 1350;
+  const ctx = c.getContext('2d');
+  if (!ctx) return;
+  const g = ctx.createLinearGradient(0, 0, 0, 1350);
+  g.addColorStop(0, '#0d0726');
+  g.addColorStop(1, '#020208');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 1080, 1350);
+  // game frame
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(60, 300, 960, 600, 36);
+  ctx.clip();
+  ctx.drawImage(src, 60, 300, 960, 600);
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(94,255,216,0.6)';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.roundRect(60, 300, 960, 600, 36);
+  ctx.stroke();
+  // text
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.font = '600 30px monospace';
+  ctx.fillText('U A P / A R C A D E', 540, 120);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '900 96px sans-serif';
+  ctx.fillText(meta.title.toUpperCase(), 540, 230);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '600 32px monospace';
+  ctx.fillText('S C O R E', 540, 1010);
+  const sg = ctx.createLinearGradient(240, 0, 840, 0);
+  sg.addColorStop(0, '#5effd8');
+  sg.addColorStop(1, '#ff5ec8');
+  ctx.fillStyle = sg;
+  ctx.font = '900 150px sans-serif';
+  ctx.fillText(hud.score.toLocaleString(), 540, 1160);
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.font = '500 30px monospace';
+  ctx.fillText(`best ${hud.best.toLocaleString()} · beat me → ${location.host}/arcade`, 540, 1260);
+
+  const blob = await new Promise<Blob | null>((res) => c.toBlob(res, 'image/png'));
+  if (!blob) return;
+  const file = new File([blob], `${meta.title.replace(/\W+/g, '-').toLowerCase()}-score.png`, { type: 'image/png' });
+  const text = `I scored ${hud.score.toLocaleString()} in ${meta.title} 🛸 beat me:`;
+  const url = `${location.origin}/arcade`;
+  try {
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], text, url });
+      return;
+    }
+  } catch {
+    return; // user cancelled the share sheet
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = file.name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 const BLOCK = new Set([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 
 export default function GameCanvas({ create, meta }: { create: () => Game; meta: GameMeta }) {
@@ -149,7 +218,7 @@ export default function GameCanvas({ create, meta }: { create: () => Game; meta:
 
         {/* Title / game over */}
         {hud.phase !== 'playing' && (
-          <div className="absolute inset-2 flex flex-col items-center justify-center rounded-[20px] bg-black/55 px-6 text-center backdrop-blur-[2px] md:inset-3">
+          <div className="pointer-events-none absolute inset-2 flex flex-col items-center justify-center rounded-[20px] bg-black/55 px-6 text-center backdrop-blur-[2px] md:inset-3">
             <p className="font-mono text-[10px] uppercase tracking-[0.5em] text-white/40">
               {hud.phase === 'over' ? 'Game over' : 'Insert coin (just kidding)'}
             </p>
@@ -164,6 +233,13 @@ export default function GameCanvas({ create, meta }: { create: () => Game; meta:
                   <span className="text-[var(--xeno-d)]">{hud.best.toLocaleString()}</span>
                   {hud.score >= hud.best && hud.score > 0 && <span className="ml-2 text-[var(--xeno-a)]">★ NEW BEST</span>}
                 </p>
+                <button
+                  type="button"
+                  onClick={() => canvas.current && void shareScore(canvas.current, meta, hud)}
+                  className="xeno-btn pointer-events-auto mt-5 !border-[var(--xeno-d)]/60 !text-[var(--xeno-d)] hover:!text-black"
+                >
+                  Share score card ↗
+                </button>
               </>
             ) : (
               <>

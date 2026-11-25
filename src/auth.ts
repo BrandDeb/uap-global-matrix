@@ -57,7 +57,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             ? String((profile as { login?: string }).login ?? token.name ?? 'operator')
             : // Google has no username: display name + a short stable suffix.
               `${slugHandle(String(profile.name ?? token.name ?? 'operator'))}_${accountId.slice(-4)}`;
-        const handle = await upsertProfile({ id, handle: slugHandle(base), avatarUrl: token.picture ?? null });
+        let handle = slugHandle(base);
+        try {
+          handle = await upsertProfile({ id, handle, avatarUrl: token.picture ?? null });
+        } catch (e) {
+          // Never block sign-in on a database hiccup; fall back to the derived handle.
+          console.error('[auth] profile upsert failed', e);
+        }
         token.operatorId = id;
         token.operatorHandle = handle;
       }

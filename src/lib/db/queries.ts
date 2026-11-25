@@ -356,3 +356,104 @@ function weekStartIso(): string {
   d.setUTCDate(d.getUTCDate() - day);
   return d.toISOString();
 }
+
+/* --- daily challenge ------------------------------------------------------ */
+
+const demoDaily: { day: number; handle: string; guess: string; correct: boolean; streak: number }[] = [];
+
+export async function saveDailyGuess(g: { day: number; handle: string; guess: string; correct: boolean; streak: number }) {
+  if (!hasDb()) {
+    if (!demoDaily.some((d) => d.day === g.day && d.handle === g.handle)) demoDaily.push(g);
+    return;
+  }
+  await getDb()`
+    INSERT INTO daily_guesses (day, handle, guess, correct, streak)
+    VALUES (${g.day}, ${g.handle}, ${g.guess}, ${g.correct}, ${g.streak})
+    ON CONFLICT (day, handle) DO NOTHING`;
+}
+
+/** Today's guess split + the longest live streaks. */
+export async function dailyStats(day: number): Promise<{ split: Record<string, number>; total: number; streaks: { handle: string; streak: number }[] }> {
+  if (!hasDb()) {
+    const today = demoDaily.filter((d) => d.day === day);
+    const split: Record<string, number> = {};
+    for (const d of today) split[d.guess] = (split[d.guess] ?? 0) + 1;
+    const streaks = demoDaily.filter((d) => d.day >= day - 1).sort((a, b) => b.streak - a.streak).slice(0, 10);
+    return { split, total: today.length, streaks: streaks.map(({ handle, streak }) => ({ handle, streak })) };
+  }
+  const sql = getDb();
+  const [splitRows, streakRows] = await Promise.all([
+    sql`SELECT guess, count(*)::int AS n FROM daily_guesses WHERE day = ${day} GROUP BY guess`,
+    sql`SELECT DISTINCT ON (handle) handle, streak FROM daily_guesses WHERE day >= ${day - 1} AND correct ORDER BY handle, day DESC`,
+  ]);
+  const split: Record<string, number> = {};
+  let total = 0;
+  for (const r of splitRows) {
+    split[String(r.guess)] = Number(r.n);
+    total += Number(r.n);
+  }
+  const streaks = streakRows
+    .map((r) => ({ handle: String(r.handle), streak: Number(r.streak) }))
+    .sort((a, b) => b.streak - a.streak)
+    .slice(0, 10);
+  return { split, total, streaks };
+}
+
+/* --- crop circle gallery -------------------------------------------------- */
+
+export interface CropRow {
+  id: string;
+  handle: string;
+  field: string;
+  likes: number;
+  created_at: string;
+}
+const demoCrops: (CropRow & { image: Buffer })[] = [];
+
+export async function insertCrop(c: { id: string; handle: string; field: string; image: Buffer }) {
+  if (!hasDb()) {
+    demoCrops.unshift({ ...c, likes: 0, created_at: new Date().toISOString() });
+    return;
+  }
+  await getDb()`INSERT INTO crop_circles (id, handle, field, image) VALUES (${c.id}, ${c.handle}, ${c.field}, ${c.image})`;
+}
+
+export async function listCrops(sort: 'top' | 'new', limit = 48): Promise<CropRow[]> {
+  if (!hasDb()) {
+    const rows = [...demoCrops].sort((a, b) => (sort === 'top' ? b.likes - a.likes : 0) || b.created_at.localeCompare(a.created_at));
+    return rows.slice(0, limit).map(({ image: _i, ...r }) => r);
+  }
+  const sql = getDb();
+  return sql<CropRow[]>`
+    SELECT id, handle, field, likes, created_at FROM crop_circles
+    ORDER BY ${sort === 'top' ? sql`likes DESC, created_at DESC` : sql`created_at DESC`}
+    LIMIT ${limit}`;
+}
+
+export async function getCrop(id: string): Promise<CropRow | null> {
+  if (!hasDb()) {
+    const c = demoCrops.find((x) => x.id === id);
+    if (!c) return null;
+    const { image: _i, ...r } = c;
+    return r;
+  }
+  const rows = await getDb()<CropRow[]>`SELECT id, handle, field, likes, created_at FROM crop_circles WHERE id = ${id}`;
+  return rows[0] ?? null;
+}
+
+export async function getCropImage(id: string): Promise<Buffer | null> {
+  if (!hasDb()) return demoCrops.find((x) => x.id === id)?.image ?? null;
+  const rows = await getDb()`SELECT image FROM crop_circles WHERE id = ${id}`;
+  return (rows[0]?.image as Buffer | undefined) ?? null;
+}
+
+export async function likeCrop(id: string): Promise<number | null> {
+  if (!hasDb()) {
+    const c = demoCrops.find((x) => x.id === id);
+    if (!c) return null;
+    c.likes += 1;
+    return c.likes;
+  }
+  const rows = await getDb()`UPDATE crop_circles SET likes = likes + 1 WHERE id = ${id} RETURNING likes`;
+  return rows[0] ? Number(rows[0].likes) : null;
+}

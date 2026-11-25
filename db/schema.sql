@@ -196,3 +196,26 @@ CREATE TABLE IF NOT EXISTS arcade_scores (
 );
 CREATE INDEX IF NOT EXISTS arcade_scores_game_time_idx ON arcade_scores (game, created_at DESC);
 CREATE INDEX IF NOT EXISTS arcade_scores_game_score_idx ON arcade_scores (game, score DESC);
+
+-- --- daily challenge ---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS daily_guesses (
+  day        integer NOT NULL,
+  handle     text NOT NULL,
+  guess      text NOT NULL,
+  correct    boolean NOT NULL,
+  streak     integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (day, handle)
+);
+
+-- --- crop circle gallery -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS crop_circles (
+  id         text PRIMARY KEY,
+  handle     text NOT NULL,
+  field      text NOT NULL,
+  image      bytea NOT NULL,
+  likes      integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS crop_circles_likes_idx ON crop_circles (likes DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS crop_circles_new_idx ON crop_circles (created_at DESC);

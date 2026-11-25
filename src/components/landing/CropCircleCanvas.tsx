@@ -12,7 +12,9 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Download, Eraser, Sparkles } from 'lucide-react';
+import { Download, Eraser, Send, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
+import { awardBadge } from '@/lib/achievements';
 import { xenoAudio } from './audio';
 
 interface Pt {
@@ -194,6 +196,43 @@ export default function CropCircleCanvas() {
     a.click();
   };
 
+  const [publishing, setPublishing] = useState(false);
+  const publish = async () => {
+    const c = canvas.current;
+    if (!c || publishing) return;
+    setPublishing(true);
+    // Square 900px JPEG crop from the centre: small, and a perfect share image.
+    const out = document.createElement('canvas');
+    out.width = out.height = 900;
+    const side = Math.min(c.width, c.height);
+    out.getContext('2d')!.drawImage(c, (c.width - side) / 2, (c.height - side) / 2, side, side, 0, 0, 900, 900);
+    let handle = '';
+    try {
+      handle = localStorage.getItem('uap-arcade-handle') ?? (JSON.parse(localStorage.getItem('uap-profile') ?? '{}') as { name?: string }).name ?? '';
+    } catch {
+      /* ignore */
+    }
+    try {
+      const r = await fetch('/api/crops', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ image: out.toDataURL('image/jpeg', 0.82), field: field.id, handle }),
+      });
+      const d = (await r.json()) as { id?: string; error?: string };
+      if (!r.ok || !d.id) throw new Error(d.error ?? 'Could not publish.');
+      awardBadge('crop-artist');
+      xenoAudio?.chime();
+      toast('🌾 Published to the gallery', {
+        description: 'Share the link and collect likes.',
+        action: { label: 'Open', onClick: () => window.open(`/crop/${d.id}`, '_self') },
+      });
+    } catch (e) {
+      toast('Could not publish', { description: e instanceof Error ? e.message : undefined });
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   return (
     <div className="flex select-none flex-col gap-4">
       <canvas
@@ -264,6 +303,12 @@ export default function CropCircleCanvas() {
         <button type="button" onClick={save} className="xeno-btn" data-cursor="SAVE">
           <Download size={13} /> Save PNG
         </button>
+        <button type="button" onClick={() => void publish()} disabled={publishing} className="xeno-btn" data-cursor="POST">
+          <Send size={13} /> {publishing ? 'Publishing…' : 'Publish to gallery'}
+        </button>
+        <a href="/crop-circles" className="xeno-btn" data-cursor="VIEW">
+          Gallery ↗
+        </a>
         <label className="ml-auto flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.25em] text-white/50">
           Symmetry
           <input

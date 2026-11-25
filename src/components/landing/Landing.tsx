@@ -496,12 +496,12 @@ export default function Landing() {
               <article
                 key={c.title}
                 data-cursor="CASE"
-                className="xeno-glass group relative flex h-[56svh] max-h-[520px] w-[82vw] shrink-0 snap-center flex-col justify-between overflow-hidden p-6 transition-transform duration-500 hover:-rotate-1 hover:scale-[1.02] md:w-[34vw] md:p-8"
+                className="xeno-glass group relative @container flex h-[56svh] max-h-[520px] w-[82vw] shrink-0 snap-center flex-col justify-between overflow-hidden p-6 transition-transform duration-500 hover:-rotate-1 hover:scale-[1.02] md:w-[34vw] md:p-8"
               >
                 <span className="font-mono text-[10px] tracking-[0.3em] text-white/40">
                   CASE {String(i + 1).padStart(2, '0')} / {String(CASE_REEL.length).padStart(2, '0')}
                 </span>
-                <span className="xeno-gradient-text font-[family-name:var(--font-display)] text-[22vw] font-extrabold leading-none md:text-[9vw]">
+                <span className="xeno-gradient-text font-[family-name:var(--font-display)] whitespace-nowrap text-[24cqw] font-extrabold leading-none">
                   {c.year}
                 </span>
                 <div>

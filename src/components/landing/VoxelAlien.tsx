@@ -17,13 +17,13 @@
 
 import { useRef } from 'react';
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
-import { Color, type Group, type InstancedMesh, Object3D, Plane, Vector3 } from 'three';
+import { type Group, type InstancedMesh, Object3D, Plane, Vector3 } from 'three';
 import { easing } from 'maath';
 import { xenoAudio } from './audio';
 import { landing } from './landingStore';
 import { findEgg } from './eggs';
 
-import { SPECIES, type Voxel } from './voxelSpecies';
+import { SPECIES } from './voxelSpecies';
 
 const V = 0.11;
 const MAX = Math.max(...SPECIES.map((sp) => sp.voxels.length));

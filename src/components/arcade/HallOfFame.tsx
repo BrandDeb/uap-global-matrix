@@ -46,7 +46,7 @@ export default function HallOfFame({ games }: { games: ReadonlyArray<{ id: strin
           Every Monday the top 3 on each game earn a title: {PRIZES.map((p) => `${p.medal} ${p.title}`).join(' · ')}. These were last week’s champions.
         </p>
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {games.map((g) => {
           const rows = data[g.id];
           return (

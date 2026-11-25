@@ -17,9 +17,11 @@ export function GET(): Response {
     '## Key pages',
     `- [The Files, declassified archive](${SITE_URL}/archive): ${ARCHIVE.length} landmark cases in ${ERAS.length} eras, each with source agency, document id, craft shape and primary-source link.`,
     `- [The Matrix, 3D globe](${SITE_URL}/matrix): every contact plotted by location and year, with case dossiers and discussion.`,
-    `- [Arcade](${SITE_URL}/arcade): free original UFO browser games. Moo-ve It (beam up cows over five escalating nights with quotas, storms, searchlights and power-ups), Junk Invaders (recycle space junk), Gravity Janitor (black-hole debris cleanup). Weekly leaderboards; the top 3 earn titles in a Hall of Fame.`,
+    `- [Arcade](${SITE_URL}/arcade): free original UFO browser games. Moo-ve It (beam up cows over five escalating nights with quotas, storms, searchlights and power-ups), Junk Invaders (recycle space junk), Gravity Janitor (black-hole debris cleanup), Radar Ghost (stealth flying past military radar). Weekly leaderboards; the top 3 earn titles in a Hall of Fame.`,
     `- [Landing page](${SITE_URL}/): an interactive scroll story with a 3D saucer, a field guide to 13 craft shapes, a voxel lineup of witness-described beings (the Grey, Flatwoods Monster, Kelly-Hopkinsville goblin, Dover Demon, Reptilian), a crop circle drawing lab on six surfaces, and a hidden easter-egg hunt.`,
     `- [Feed](${SITE_URL}/feed): newest community sighting reports.`,
+    `- [Daily Challenge](${SITE_URL}/daily): one real sighting a day; guess plane, satellite/rocket, balloon or unexplained, with streaks.`,
+    `- [Crop circle gallery](${SITE_URL}/crop-circles): community-drawn crop circles with likes.`,
     `- [Privacy](${SITE_URL}/privacy) · [Terms](${SITE_URL}/terms)`,
     '',
     ...ERAS.flatMap((e) => [

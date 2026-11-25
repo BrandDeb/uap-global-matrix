@@ -6,8 +6,9 @@
  * Light / Dark / Auto theme cards, and the (only) relevant permission, * location, used for "Near me" on the globe.
  */
 
-import { useEffect, useState } from 'react';
-import { Check, MapPin } from 'lucide-react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { Check, MapPin, Bell } from 'lucide-react';
+import { loadAlerts, saveAlerts } from '@/lib/alerts';
 import AlienAvatar, { ALIENS } from './AlienAvatar';
 import { saveProfile, useLocalProfile, type ThemePref } from '@/lib/profile';
 
@@ -148,6 +149,88 @@ export function LocationPermission() {
           Allow
         </button>
       )}
+    </div>
+  );
+}
+
+/** Settings → nearby sighting alerts: asks for notification + location permission only when switched on. */
+export function AlertsToggle() {
+  const raw = useSyncExternalStore(
+    (cb) => {
+      window.addEventListener('uap-alerts-change', cb);
+      return () => window.removeEventListener('uap-alerts-change', cb);
+    },
+    () => JSON.stringify(loadAlerts()),
+    () => '{"on":false,"km":250}',
+  );
+  const p = JSON.parse(raw) as { on: boolean; km: number };
+  const [msg, setMsg] = useState<string | null>(null);
+  const supported = useSyncExternalStore(
+    () => () => {},
+    () => 'Notification' in window,
+    () => true,
+  );
+
+  const enable = async () => {
+    setMsg(null);
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      setMsg('Notifications are blocked. Allow them in your browser’s site settings to use alerts.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        // Rounded to ~1 km: precise enough for "near you", never exact.
+        const next = { ...loadAlerts(), on: true, lat: Math.round(pos.coords.latitude * 100) / 100, lon: Math.round(pos.coords.longitude * 100) / 100, since: new Date().toISOString() };
+        saveAlerts(next);
+      },
+      () => setMsg('Location is needed to know which sightings are near you.'),
+      { timeout: 10000 },
+    );
+  };
+  const disable = () => {
+    const next = { ...loadAlerts(), on: false };
+    saveAlerts(next);
+  };
+  const setKm = (km: number) => {
+    const next = { ...loadAlerts(), km };
+    saveAlerts(next);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center gap-4">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/5 text-[var(--xeno-a)]">
+          <Bell size={18} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-white">Sightings near me</p>
+          <p className="text-xs text-white/45">A notification when someone reports a sighting near you. Your rounded location stays on this device.</p>
+        </div>
+        {!supported ? (
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/35">Not supported</span>
+        ) : p.on ? (
+          <button type="button" onClick={disable} className="xeno-btn">
+            <Check size={12} /> On
+          </button>
+        ) : (
+          <button type="button" onClick={() => void enable()} className="xeno-btn">
+            Turn on
+          </button>
+        )}
+      </div>
+      {p.on && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 pl-14">
+          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/45">Radius</span>
+          {[50, 250, 1000].map((km) => (
+            <button key={km} type="button" onClick={() => setKm(km)} aria-pressed={p.km === km} className={`rounded-full border px-3 py-1 font-mono text-[10px] ${p.km === km ? 'border-[var(--xeno-a)] text-white' : 'border-white/15 text-white/55'}`}>
+              {km} km
+            </button>
+          ))}
+        </div>
+      )}
+      {msg && <p className="mt-3 pl-14 text-xs text-[var(--xeno-d)]">{msg}</p>}
+      <p className="mt-3 pl-14 text-[11px] text-white/35">Alerts arrive while a UAP/MATRIX tab is open (install the app to keep it handy).</p>
     </div>
   );
 }

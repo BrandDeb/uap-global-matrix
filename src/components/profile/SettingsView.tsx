@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ChevronRight, LogOut, MessageSquareHeart, RotateCcw, ShieldCheck, Trash2 } from 'lucide-react';
 import AlienAvatar, { ALIENS } from './AlienAvatar';
-import { AvatarPicker, LocationPermission, NameField, ThemePicker } from './Pickers';
+import { AlertsToggle, AvatarPicker, LocationPermission, NameField, ThemePicker } from './Pickers';
 import SignInButtons from '@/components/ui/SignInButtons';
 import { useAuth } from '@/hooks/useAuth';
 import { clearProfile, saveProfile, useLocalProfile } from '@/lib/profile';
@@ -105,6 +105,8 @@ export default function SettingsView() {
 
           <Card title="Permissions">
             <LocationPermission />
+            <div className="my-5 h-px bg-white/10" />
+            <AlertsToggle />
           </Card>
 
           <Card title="Account">

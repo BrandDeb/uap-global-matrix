@@ -388,6 +388,9 @@ export default function Landing() {
           <Link href="/feed" className="transition hover:text-white" data-cursor="READ">
             Feed
           </Link>
+          <Link href="/archive" className="transition hover:text-white" data-cursor="READ">
+            Files
+          </Link>
           <Link href="/arcade" className="transition hover:text-white" data-cursor="PLAY">
             Arcade
           </Link>
@@ -502,11 +505,11 @@ export default function Landing() {
               </article>
             ))}
             <Link
-              href="/matrix"
+              href="/archive"
               data-cursor="ENTER"
               className="flex h-[58vh] w-[60vw] shrink-0 items-center justify-center font-[family-name:var(--font-display)] text-3xl text-white/70 transition hover:text-[var(--xeno-a)] md:w-[24vw]"
             >
-              + 12,000 more on the globe →
+              Open all 59 case files →
             </Link>
           </div>
         </section>

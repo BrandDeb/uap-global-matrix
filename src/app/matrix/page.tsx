@@ -213,7 +213,7 @@ export default function GlobalMatrixDashboard() {
           setFeedTab('citizen');
           break;
         case '[':
-          setSelectedYear((y) => Math.max(1947, y - 5));
+          setSelectedYear((y) => Math.max(1942, y - 5));
           break;
         case ']':
           setSelectedYear((y) => Math.min(MAX_YEAR, y + 5));
@@ -440,7 +440,7 @@ export default function GlobalMatrixDashboard() {
         </div>
 
         <TimelineScrubber
-          minYear={1947}
+          minYear={1942}
           maxYear={MAX_YEAR}
           currentYear={selectedYear}
           decades={analytics.decades}

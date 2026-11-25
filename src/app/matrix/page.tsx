@@ -31,6 +31,7 @@ import { computeAnalytics } from '@/lib/analytics';
 import XenoIntro from '@/components/ui/XenoIntro';
 import { AnimatePresence, motion } from 'motion/react';
 import MatrixDock from '@/components/ui/MatrixDock';
+import Onboarding from '@/components/profile/Onboarding';
 import { xenoAudio } from '@/components/landing/audio';
 
 const MAX_YEAR = 2026;
@@ -283,6 +284,7 @@ export default function GlobalMatrixDashboard() {
   return (
     <main className="fixed inset-0 select-none overflow-hidden bg-[var(--xeno-void)] text-zinc-200">
       <XenoIntro />
+      <Onboarding />
 
       {/* Full-bleed WebGL stage */}
       <GlobeOverlay

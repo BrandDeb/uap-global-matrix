@@ -764,6 +764,10 @@ export default function Landing() {
           <div className="mt-3 px-4 text-center font-mono text-[10px] uppercase tracking-[0.35em] text-white/45 md:px-10">
             Designed &amp; built by <span className="text-[var(--xeno-a)]">Lowkee Studios</span>
           </div>
+          <div className="mt-3 flex justify-center gap-6 font-mono text-[9px] uppercase tracking-[0.3em] text-white/35">
+            <Link href="/privacy" className="hover:text-white">Privacy</Link>
+            <Link href="/terms" className="hover:text-white">Terms</Link>
+          </div>
         </footer>
       </main>
     </div>

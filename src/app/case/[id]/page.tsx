@@ -15,6 +15,7 @@ import { isUuid } from '@/lib/apiHelpers';
 import { toLiveSighting, type LiveSighting } from '@/lib/sightings';
 import CaseThread from '@/components/ui/CaseThread';
 import JsonLd from '@/components/JsonLd';
+import ShareBar from '@/components/ShareBar';
 import { SITE_URL } from '@/lib/site';
 
 export const runtime = 'nodejs';
@@ -81,6 +82,17 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
   return (
     <div className="min-h-screen w-full bg-zinc-950 p-6 text-zinc-100">
       <JsonLd data={caseLd} />
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'UAP/MATRIX', item: SITE_URL },
+            { '@type': 'ListItem', position: 2, name: 'Cases', item: `${SITE_URL}/archive` },
+            { '@type': 'ListItem', position: 3, name: sighting.title, item: `${SITE_URL}/case/${sighting.id}` },
+          ],
+        }}
+      />
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex items-center justify-between">
           <Link
@@ -96,6 +108,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
             GLOBAL FEED →
           </Link>
         </div>
+        <ShareBar url={`${SITE_URL}/case/${sighting.id}`} text={`${sighting.title} (UFO case file)`} />
 
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6">
           <span

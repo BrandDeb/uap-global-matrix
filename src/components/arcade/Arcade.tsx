@@ -19,6 +19,7 @@ import { JunkInvaders } from './JunkInvaders';
 import { MooveIt } from './MooveIt';
 import { loadBest, type Game } from './engine';
 import HallOfFame from './HallOfFame';
+import ShareBar from '@/components/ShareBar';
 
 interface Entry {
   id: string;
@@ -178,6 +179,7 @@ export default function Arcade() {
             ))}
           </div>
           <HallOfFame games={HOF_GAMES} />
+          <ShareBar className="mx-auto mt-10 max-w-6xl justify-center" url="https://uap-global-matrix.vercel.app/arcade" text="Free UFO arcade games with weekly prizes 🛸🐄" />
         </section>
       )}
     </main>

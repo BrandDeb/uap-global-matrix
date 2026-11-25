@@ -9,7 +9,10 @@
  *   - Farmers fire flashlight "photo flashes" at you, get snapped 3 times and
  *     you're on the news (game over). Beam a farmer up to stop him (big bonus).
  *   - Abducting in quick succession builds a combo multiplier.
- *   - 90-second night; score as much as you can before dawn.
+ *   - Five escalating nights, each with a points quota to hit before dawn:
+ *     Quiet Pasture, Farmers Market, Thunderstorm (wind gusts), Military
+ *     Response (sweeping searchlights), Area 51 Rodeo. Then endless overtime.
+ *   - Power-up crates: beam them up for Coolant (instant cool) or Mega Beam.
  * ---------------------------------------------------------------------------
  */
 
@@ -17,15 +20,29 @@ import { xenoAudio } from '@/components/landing/audio';
 import { Fx, H, Starfield, W, clamp, drawSaucer, glow, loadBest, rand, saveBest, streakWord, type Game, type HudState, type Input } from './engine';
 
 const GROUND = H - 70;
-const NIGHT = 90;
 
-type Kind = 'calf' | 'cow' | 'bull' | 'gold' | 'farmer';
+interface Night { name: string; quota: number; time: number; farmer: number; gold: number; crate: number; wind: number; lights: number }
+const NIGHTS: Night[] = [
+  { name: 'Quiet Pasture', quota: 1500, time: 60, farmer: 0.08, gold: 0.05, crate: 0.05, wind: 0, lights: 0 },
+  { name: 'Farmers Market', quota: 3500, time: 65, farmer: 0.24, gold: 0.06, crate: 0.06, wind: 0, lights: 0 },
+  { name: 'Thunderstorm', quota: 5500, time: 70, farmer: 0.14, gold: 0.07, crate: 0.07, wind: 1, lights: 0 },
+  { name: 'Military Response', quota: 8000, time: 75, farmer: 0.14, gold: 0.08, crate: 0.07, wind: 0, lights: 2 },
+  { name: 'Area 51 Rodeo', quota: 12000, time: 80, farmer: 0.2, gold: 0.12, crate: 0.08, wind: 1, lights: 2 },
+];
+const nightFor = (n: number): Night => {
+  if (n <= NIGHTS.length) return NIGHTS[n - 1];
+  const last = NIGHTS[NIGHTS.length - 1];
+  return { ...last, name: `Overtime ${n - NIGHTS.length}`, quota: last.quota + (n - NIGHTS.length) * 4000, lights: 3 };
+};
+
+type Kind = 'calf' | 'cow' | 'bull' | 'gold' | 'farmer' | 'crate';
 const KINDS: Record<Kind, { w: number; lift: number; pts: number }> = {
   calf: { w: 30, lift: 240, pts: 50 },
   cow: { w: 44, lift: 160, pts: 100 },
   bull: { w: 56, lift: 90, pts: 250 },
   gold: { w: 44, lift: 150, pts: 1000 },
   farmer: { w: 22, lift: 200, pts: 400 },
+  crate: { w: 26, lift: 260, pts: 0 },
 };
 
 interface Critter {
@@ -36,6 +53,7 @@ interface Critter {
   lifted: boolean;
   spin: number;
   cooldown: number; // farmers: time to next flash
+  power?: 'cool' | 'mega';
 }
 
 interface Flash {
@@ -54,7 +72,15 @@ export class MooveIt implements Game {
   private jammed = 0;
   private critters: Critter[] = [];
   private flashes: Flash[] = [];
-  private time = NIGHT;
+  private night = 1;
+  private cfg: Night = NIGHTS[0];
+  private time = NIGHTS[0].time;
+  private nightScore = 0;
+  private between = 0;
+  private mega = 0;
+  private spotted = 0;
+  private invuln = 0;
+  private lightning = 0;
   private combo = 0;
   private comboT = 0;
   private spawnT = 0;
@@ -69,19 +95,40 @@ export class MooveIt implements Game {
 
   start() {
     this.hud = { ...this.hud, phase: 'playing', score: 0, lives: 3, meter: 0, message: undefined };
+    this.ship.x = W / 2;
+    this.beginNight(1);
+  }
+
+  private beginNight(n: number) {
+    this.night = n;
+    this.cfg = nightFor(n);
+    this.time = this.cfg.time;
+    this.nightScore = 0;
     this.critters = [];
     this.flashes = [];
-    this.time = NIGHT;
     this.heat = 0;
     this.jammed = 0;
     this.combo = 0;
-    this.ship.x = W / 2;
+    this.mega = 0;
+    this.spotted = 0;
+    this.between = 2.2;
+    this.hud.level = n;
+    this.fx.hype(`NIGHT ${n}: ${this.cfg.name.toUpperCase()}`, '#5effd8');
     for (let i = 0; i < 5; i++) this.spawn();
+  }
+
+  /** Searchlight angle (radians from vertical) for light i at time t. */
+  private lightAngle(i: number) {
+    return Math.sin(this.t * (0.6 + i * 0.25) + i * 2) * 0.75;
+  }
+  private lightBase(i: number) {
+    return ((i + 1) / (this.cfg.lights + 1)) * W;
   }
 
   private spawn() {
     const r = Math.random();
-    const kind: Kind = r < 0.06 ? 'gold' : r < 0.2 ? 'farmer' : r < 0.45 ? 'calf' : r < 0.8 ? 'cow' : 'bull';
+    const { gold, farmer, crate } = this.cfg;
+    const kind: Kind = r < crate ? 'crate' : r < crate + gold ? 'gold' : r < crate + gold + farmer ? 'farmer' : r < 0.5 ? 'calf' : r < 0.82 ? 'cow' : 'bull';
     const fromLeft = Math.random() < 0.5;
     this.critters.push({
       kind,
@@ -91,6 +138,7 @@ export class MooveIt implements Game {
       lifted: false,
       spin: 0,
       cooldown: rand(1.5, 3),
+      power: kind === 'crate' ? (Math.random() < 0.5 ? 'cool' : 'mega') : undefined,
     });
   }
 
@@ -103,6 +151,12 @@ export class MooveIt implements Game {
       return;
     }
     if (this.fx.frozen(dt)) return;
+    if (this.between > 0) {
+      this.between -= dt;
+      return;
+    }
+    this.invuln = Math.max(0, this.invuln - dt);
+    this.mega = Math.max(0, this.mega - dt);
 
     // --- ship: keys or pointer steering
     const k = input.keys;
@@ -111,6 +165,7 @@ export class MooveIt implements Game {
     if (k.has('ArrowRight') || k.has('d')) ax += 1;
     if (input.pointer.active && ax === 0) ax = clamp((input.pointer.x - this.ship.x) / 80, -1, 1);
     this.ship.vx += ax * 1400 * dt;
+    if (this.cfg.wind) this.ship.vx += Math.sin(this.t * 0.55) * Math.sin(this.t * 1.7 + 1) * 900 * dt;
     this.ship.vx *= 1 - dt * 4;
     this.ship.x = clamp(this.ship.x + this.ship.vx * dt, 40, W - 40);
     this.ship.y = 120 + Math.sin(this.t * 2) * 6;
@@ -131,17 +186,18 @@ export class MooveIt implements Game {
     // --- critters
     this.spawnT -= dt;
     // the night gets busier (and the farmers angrier) as dawn approaches
-    const rush = 1 - this.time / NIGHT;
+    const rush = 1 - this.time / this.cfg.time;
     if (this.spawnT <= 0 && this.critters.length < 9 + Math.floor(rush * 5)) {
       this.spawn();
       this.spawnT = rand(0.8, 1.8) * (1 - rush * 0.55);
     }
-    const beamHalf = (y: number) => 18 + ((y - this.ship.y) / (GROUND - this.ship.y)) * 70;
+    const wide = this.mega > 0 ? 1.8 : 1;
+    const beamHalf = (y: number) => (18 + ((y - this.ship.y) / (GROUND - this.ship.y)) * 70) * wide;
     for (const c of this.critters) {
       const inBeam = this.beam && Math.abs(c.x - this.ship.x) < beamHalf(c.y);
       if (inBeam) {
         c.lifted = true;
-        c.y -= KINDS[c.kind].lift * dt;
+        c.y -= KINDS[c.kind].lift * (this.mega > 0 ? 1.6 : 1) * dt;
         c.x += (this.ship.x - c.x) * dt * 3;
         c.spin += dt * 4;
       } else if (c.y < GROUND) {
@@ -167,10 +223,24 @@ export class MooveIt implements Game {
       // abducted!
       if (c.y < this.ship.y + 26) {
         c.x = -999;
+        if (c.kind === 'crate') {
+          if (c.power === 'cool') {
+            this.heat = 0;
+            this.jammed = 0;
+            this.fx.hype('❄ COOLANT', '#38e8ff');
+          } else {
+            this.mega = 6;
+            this.fx.hype('⚡ MEGA BEAM', '#a58bff');
+          }
+          this.fx.burst(this.ship.x, this.ship.y + 10, '#38e8ff', 20, 220);
+          xenoAudio?.chime();
+          continue;
+        }
         this.combo = this.comboT > 0 ? this.combo + 1 : 1;
         this.comboT = 2.2;
         const pts = KINDS[c.kind].pts * this.combo;
         this.hud.score += pts;
+        this.nightScore += pts;
         this.fx.burst(this.ship.x, this.ship.y + 10, c.kind === 'gold' ? '#ffd36b' : '#5effd8', 26, 260);
         this.fx.float(this.ship.x, this.ship.y + 50, `+${pts}${this.combo > 1 ? `  x${this.combo}` : ''}`, c.kind === 'gold' ? '#ffd36b' : '#5effd8');
         if (c.kind === 'farmer') xenoAudio?.boop();
@@ -202,6 +272,8 @@ export class MooveIt implements Game {
       f.y += f.vy * dt;
       if (Math.abs(f.x - this.ship.x) < 40 && Math.abs(f.y - this.ship.y) < 18) {
         f.y = -999;
+        if (this.invuln > 0) continue;
+        this.invuln = 1;
         this.hud.lives = (this.hud.lives ?? 1) - 1;
         this.fx.shake = 12;
         this.fx.burst(this.ship.x, this.ship.y, '#ffffff', 30, 300);
@@ -214,20 +286,69 @@ export class MooveIt implements Game {
     }
     this.flashes = this.flashes.filter((f) => f.y > -20 && f.x > -20 && f.x < W + 20);
 
-    // --- clock
-    this.time -= dt;
-    if ((this.hud.lives ?? 0) <= 0 || this.time <= 0) {
-      this.hud.phase = 'over';
-      this.hud.message = (this.hud.lives ?? 0) <= 0 ? 'You made the evening news.' : 'Dawn broke. The herd is safe… for now.';
-      this.hud.best = saveBest(this.id, this.hud.score);
+    // --- searchlights: linger in a cone and you get spotted
+    let lit = false;
+    for (let i = 0; i < this.cfg.lights; i++) {
+      const bx = this.lightBase(i);
+      const ang = Math.atan2(this.ship.x - bx, GROUND - this.ship.y);
+      if (Math.abs(ang - this.lightAngle(i)) < 0.11) lit = true;
     }
-    this.hud.level = Math.ceil(this.time);
+    this.spotted = clamp(this.spotted + (lit ? dt * 1.4 : -dt), 0, 1);
+    if (this.spotted >= 1 && this.invuln <= 0) {
+      this.spotted = 0;
+      this.invuln = 1.5;
+      this.hud.lives = (this.hud.lives ?? 1) - 1;
+      this.fx.shake = 12;
+      this.fx.flash('#fff6c0', 1.2);
+      this.fx.hype('🔦 SPOTTED BY THE MILITARY', '#fff6c0');
+      this.combo = 0;
+    }
+
+    // --- storm lightning (purely atmospheric, briefly lights the field)
+    if (this.cfg.wind) {
+      this.lightning -= dt;
+      if (this.lightning <= 0) {
+        this.lightning = rand(4, 9);
+        this.fx.flash('#cfe2ff', 0.5);
+      }
+    }
+
+    // --- clock + quota
+    this.time -= dt;
+    if (this.nightScore >= this.cfg.quota && this.time > 0 && !this.cleared) {
+      this.cleared = true;
+      this.fx.hype('QUOTA MET · KEEP BEAMING', '#ffd36b');
+      xenoAudio?.chime();
+    }
+    if ((this.hud.lives ?? 0) <= 0) {
+      this.end('You made the evening news.');
+    } else if (this.time <= 0) {
+      if (this.nightScore >= this.cfg.quota) {
+        const bonus = (this.hud.lives ?? 0) * 500 * this.night;
+        this.hud.score += bonus;
+        this.fx.float(W / 2, H / 2, `NIGHT CLEARED +${bonus}`, '#ffd36b');
+        this.hud.lives = Math.min(5, (this.hud.lives ?? 0) + 1);
+        this.cleared = false;
+        this.beginNight(this.night + 1);
+      } else {
+        this.end(`Dawn broke ${(this.cfg.quota - this.nightScore).toLocaleString()} points short of the Night ${this.night} quota.`);
+      }
+    }
+    this.hud.goal = `${this.cfg.name} · ${Math.min(this.nightScore, this.cfg.quota).toLocaleString()}/${this.cfg.quota.toLocaleString()} · ${Math.max(0, Math.ceil(this.time))}s`;
+  }
+
+  private cleared = false;
+
+  private end(message: string) {
+    this.hud.phase = 'over';
+    this.hud.message = `${message} Reached Night ${this.night}.`;
+    this.hud.best = saveBest(this.id, this.hud.score);
   }
 
   draw(ctx: CanvasRenderingContext2D) {
     this.fx.applyShake(ctx);
     // sky fades toward dawn
-    const dawn = 1 - clamp(this.time / NIGHT, 0, 1);
+    const dawn = 1 - clamp(this.time / this.cfg.time, 0, 1);
     this.stars.draw(ctx, '#05030f', dawn > 0.8 ? '#3a1a3f' : '#0d0726');
     // moon
     glow(ctx, '#fff6d6', 40, () => {
@@ -268,6 +389,32 @@ export class MooveIt implements Game {
         ctx.stroke();
       }
     }
+    // searchlights
+    for (let i = 0; i < this.cfg.lights; i++) {
+      const bx = this.lightBase(i);
+      const a = this.lightAngle(i);
+      const len = GROUND + 40;
+      ctx.fillStyle = `rgba(255,246,192,${0.1 + this.spotted * 0.15})`;
+      ctx.beginPath();
+      ctx.moveTo(bx, GROUND);
+      ctx.lineTo(bx + Math.sin(a - 0.11) * len, GROUND - Math.cos(a - 0.11) * len);
+      ctx.lineTo(bx + Math.sin(a + 0.11) * len, GROUND - Math.cos(a + 0.11) * len);
+      ctx.fill();
+      ctx.fillStyle = '#3a4a3a';
+      ctx.fillRect(bx - 12, GROUND - 6, 24, 10);
+    }
+    // rain
+    if (this.cfg.wind) {
+      ctx.strokeStyle = 'rgba(160,190,255,0.25)';
+      ctx.beginPath();
+      for (let i = 0; i < 70; i++) {
+        const x = ((i * 137 + this.t * 300) % (W + 100)) - 50;
+        const y = (i * 53 + this.t * 700) % H;
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 8, y + 18);
+      }
+      ctx.stroke();
+    }
     // critters
     for (const c of this.critters) this.drawCritter(ctx, c);
     // flashes
@@ -279,7 +426,8 @@ export class MooveIt implements Game {
         ctx.fill();
       });
     }
-    drawSaucer(ctx, this.ship.x, this.ship.y, 96, this.t, this.jammed > 0 ? '#ff5ec8' : '#5effd8');
+    if (!(this.invuln > 0 && Math.floor(this.t * 12) % 2 === 0))
+      drawSaucer(ctx, this.ship.x, this.ship.y, 96, this.t, this.jammed > 0 ? '#ff5ec8' : this.mega > 0 ? '#a58bff' : '#5effd8');
     this.fx.draw(ctx);
     ctx.restore();
     this.fx.drawOverlay(ctx);
@@ -292,7 +440,21 @@ export class MooveIt implements Game {
     if (c.lifted) ctx.rotate(Math.sin(c.spin) * 0.6);
     const dir = c.vx >= 0 ? 1 : -1;
     ctx.scale(dir, 1);
-    if (c.kind === 'farmer') {
+    if (c.kind === 'crate') {
+      const col = c.power === 'cool' ? '#38e8ff' : '#a58bff';
+      glow(ctx, col, 14, () => {
+        ctx.fillStyle = '#2b2440';
+        ctx.fillRect(-13, -26, 26, 26);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-13, -26, 26, 26);
+      });
+      ctx.scale(dir, 1);
+      ctx.fillStyle = col;
+      ctx.font = 'bold 16px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(c.power === 'cool' ? '❄' : '⚡', 0, -7);
+    } else if (c.kind === 'farmer') {
       ctx.fillStyle = '#c98b5b';
       ctx.fillRect(-5, -38, 10, 10); // head
       ctx.fillStyle = '#d9b44a';

@@ -197,6 +197,7 @@ export default function GameCanvas({ create, meta, gameId }: { create: () => Gam
             <div>
               <span className="block text-white/40">Score</span>
               <span className="text-lg text-[var(--xeno-a)] md:text-2xl">{hud.score.toLocaleString()}</span>
+              {hud.goal && <span className="mt-1 block text-[9px] text-white/55 md:text-[10px]">{hud.goal}</span>}
             </div>
             {hud.meter !== undefined && (
               <div className="hidden w-48 sm:block">

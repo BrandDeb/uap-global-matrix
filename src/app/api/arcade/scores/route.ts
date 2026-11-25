@@ -1,13 +1,13 @@
 /**
  * /api/arcade/scores, arcade leaderboards (Neon, or in-memory in demo mode).
- *   GET  ?game=<id>            → { weekly: [{handle, score}], allTime: [...] }
+ *   GET  ?game=<id>            → { weekly, allTime, lastWeek (top 3 prize podium) }
  *   POST { game, handle, score } → 201
  * Guards: known games only, integer scores under a per-game ceiling, handle
  * sanitised (signed-in operators always post under their verified handle),
  * and a per-IP rate limit.
  */
 import { verifiedHandle } from '@/auth';
-import { insertScore, topScores } from '@/lib/db/queries';
+import { insertScore, lastWeekPodium, topScores } from '@/lib/db/queries';
 import { cleanHandle, jsonError, readJson } from '@/lib/apiHelpers';
 
 export const runtime = 'nodejs';
@@ -20,8 +20,8 @@ export async function GET(req: Request): Promise<Response> {
   const game = new URL(req.url).searchParams.get('game') ?? '';
   if (!(game in MAX_SCORE)) return jsonError(400, 'Unknown game.');
   try {
-    const [weekly, allTime] = await Promise.all([topScores(game, true), topScores(game, false)]);
-    return Response.json({ weekly, allTime });
+    const [weekly, allTime, lastWeek] = await Promise.all([topScores(game, true), topScores(game, false), lastWeekPodium(game)]);
+    return Response.json({ weekly, allTime, lastWeek });
   } catch (err: unknown) {
     return jsonError(502, err instanceof Error ? err.message : 'Database error.');
   }

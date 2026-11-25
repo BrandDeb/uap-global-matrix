@@ -1,7 +1,6 @@
 /**
  * src/app/signin/page.tsx
- * Custom Auth.js sign-in page: social providers only (GitHub / Google) —
- * there is deliberately no email or password option.
+ * Custom Auth.js sign-in page: social providers only (GitHub / Google), * there is deliberately no email or password option.
  */
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -12,7 +11,7 @@ export const metadata: Metadata = { title: 'Sign in · UAP/MATRIX' };
 
 function safeCallback(raw: string | string[] | undefined): string {
   const v = Array.isArray(raw) ? raw[0] : raw;
-  // Only same-site relative paths — never bounce to another origin.
+  // Only same-site relative paths, never bounce to another origin.
   return v && v.startsWith('/') && !v.startsWith('//') ? v : '/matrix';
 }
 
@@ -42,7 +41,7 @@ export default async function SignInPage({
           <span className="xeno-gradient-text">not an alien</span>
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-white/55">
-          Sign in to post under a verified handle. No passwords, no emails to remember — just your existing account.
+          Sign in to post under a verified handle. No passwords, no emails to remember, just your existing account.
         </p>
 
         {error && (

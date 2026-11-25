@@ -1,12 +1,12 @@
 /**
- * src/components/arcade/MooveIt.ts — "MOO-VE IT"
+ * src/components/arcade/MooveIt.ts, "MOO-VE IT"
  * ---------------------------------------------------------------------------
  * A cow-abduction game with its own rules:
  *   - Hold the beam (Space / click / touch-hold) to lift whatever is below.
  *   - The beam HEATS while on; overheat and it jams for 2s. Release to cool.
  *   - Cows have weight: calves rise fast, bulls are slow; the GOLDEN cow is
  *     worth 10× but panics and runs.
- *   - Farmers fire flashlight "photo flashes" at you — get snapped 3 times and
+ *   - Farmers fire flashlight "photo flashes" at you, get snapped 3 times and
  *     you're on the news (game over). Beam a farmer up to stop him (big bonus).
  *   - Abducting in quick succession builds a combo multiplier.
  *   - 90-second night; score as much as you can before dawn.

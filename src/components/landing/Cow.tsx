@@ -2,7 +2,7 @@
 
 /**
  * src/components/landing/Cow.tsx
- * An original low-poly cartoon cow built from primitives — the unwilling
+ * An original low-poly cartoon cow built from primitives, the unwilling
  * star of the landing-page abduction. Legs flail while it's being beamed up.
  */
 

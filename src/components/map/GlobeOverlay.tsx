@@ -4,7 +4,7 @@
  * src/components/map/GlobeOverlay.tsx
  * ---------------------------------------------------------------------------
  * Full-bleed WebGL stage: nebula + starfield, shader xeno-Earth with orbital
- * halos, sighting pillars, trajectory arcs and radar rings — finished with a
+ * halos, sighting pillars, trajectory arcs and radar rings, finished with a
  * post stack (bloom · chromatic aberration · grain · vignette) and a cinematic
  * camera fly-in on load.
  *

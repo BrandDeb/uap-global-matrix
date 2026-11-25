@@ -3,7 +3,7 @@
 /**
  * src/components/landing/VoxelAlien.tsx
  * ---------------------------------------------------------------------------
- * "Zorp" — an original voxel alien generated procedurally from implicit
+ * "Zorp", an original voxel alien generated procedurally from implicit
  * shapes (big-skull ellipsoid, almond eyes, antennae with glowing tips, a
  * little body and noodle arms) and rendered as ONE InstancedMesh.
  *

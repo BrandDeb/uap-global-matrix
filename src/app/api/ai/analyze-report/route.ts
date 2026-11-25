@@ -1,6 +1,6 @@
 /**
  * src/app/api/ai/analyze-report/route.ts
- * POST — triage a raw user encounter log into a structured report via Gemini.
+ * POST, triage a raw user encounter log into a structured report via Gemini.
  * Gated on GEMINI_API_KEY (503 if absent). The key is server-only.
  */
 

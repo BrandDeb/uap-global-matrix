@@ -1,7 +1,7 @@
 /**
  * src/app/api/verify/route.ts
  * ---------------------------------------------------------------------------
- * POST /api/verify  —  Sighting intake + automated credibility scoring.
+ * POST /api/verify, Sighting intake + automated credibility scoring.
  *
  * Pipeline (top to bottom):
  *   1. Parse the multipart/form-data payload (media file + report fields).
@@ -15,7 +15,7 @@
  *      automated `verification_logs` forensic entry in one transaction.
  *
  * Enum types are imported from `@/types` so there is a single source of truth.
- * Runtime: Node.js (required — `exifr` + `Buffer` are not Edge-compatible).
+ * Runtime: Node.js (required, `exifr` + `Buffer` are not Edge-compatible).
  * ---------------------------------------------------------------------------
  */
 
@@ -169,7 +169,7 @@ function parseVerifyInput(form: FormData): VerifyInput {
  * ======================================================================== */
 
 async function extractExif(buffer: Buffer): Promise<ExifSummary> {
-  // Videos and stripped images throw or return undefined — treat as "no EXIF".
+  // Videos and stripped images throw or return undefined, treat as "no EXIF".
   try {
     const tags = await exifr.parse(buffer, { gps: true });
     if (!tags) {

@@ -3,7 +3,7 @@
 /**
  * src/components/ui/TimelineScrubber.tsx
  * ---------------------------------------------------------------------------
- * Chrono scrubber — filters the globe to sightings up to a chosen year. A
+ * Chrono scrubber, filters the globe to sightings up to a chosen year. A
  * per-decade histogram sits above the track (decades up to the selected year
  * glow), and the selected year is set in oversized display type.
  * ---------------------------------------------------------------------------

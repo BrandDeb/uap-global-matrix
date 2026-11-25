@@ -1,10 +1,10 @@
 /**
  * src/app/api/sightings/route.ts
  * ---------------------------------------------------------------------------
- * GET /api/sightings  —  Public, filterable read feed for the globe.
+ * GET /api/sightings, Public, filterable read feed for the globe.
  *
  * Delegates to `searchSightings`, which filters on the base table so the GiST
- * spatial index (bbox `&&`) and the `event_timestamp` index are used — this
+ * spatial index (bbox `&&`) and the `event_timestamp` index are used, this
  * lets the feed scale instead of pulling the whole table and filtering in JS.
  *
  * Query params (all optional):
@@ -14,7 +14,7 @@
  *   q                            text search over title + location_name
  *   limit                        1..5000 (default 1000)
  *
- * Runtime: Node.js. Not cached — request-time data.
+ * Runtime: Node.js. Not cached, request-time data.
  * ---------------------------------------------------------------------------
  */
 

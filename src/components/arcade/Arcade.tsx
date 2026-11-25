@@ -38,7 +38,7 @@ const GAMES: ReadonlyArray<Entry> = [
     meta: {
       title: 'Moo-ve It',
       tagline:
-        'Beam cows up before dawn. Bulls are heavy, calves are quick, the golden cow is worth 10× and absolutely will not cooperate. Your beam overheats — and farmers are armed with camera flashes. Chain abductions for combos.',
+        'Beam cows up before dawn. Bulls are heavy, calves are quick, the golden cow is worth 10× and absolutely will not cooperate. Your beam overheats, and farmers are armed with camera flashes. Chain abductions for combos.',
       controls: ['← → / A D  move', 'Space  hold beam', 'Mouse/touch  steer + hold'],
     },
   },
@@ -51,7 +51,7 @@ const GAMES: ReadonlyArray<Entry> = [
     meta: {
       title: 'Junk Invaders',
       tagline:
-        'Satellites, selfie-drones and floating space-cars are descending on your moon. Blast them — and catch the junk they drop in your beam to charge a piercing super-shot. Crop-circle shields regrow. Every 3rd wave: the Station.',
+        'Satellites, selfie-drones and floating space-cars are descending on your moon. Blast them, and catch the junk they drop in your beam to charge a piercing super-shot. Crop-circle shields regrow. Every 3rd wave: the Station.',
       controls: ['← → / A D  move', 'Space / click  fire', 'Shift / X  recycle beam'],
     },
   },
@@ -60,7 +60,7 @@ const GAMES: ReadonlyArray<Entry> = [
     create: () => new GravityJanitor(),
     color: '#ffd36b',
     emoji: '🕳️',
-    blurb: 'A black hole bends everything — even your shots. Fling junk in. Don’t feed it.',
+    blurb: 'A black hole bends everything, even your shots. Fling junk in. Don’t feed it.',
     meta: {
       title: 'Gravity Janitor',
       tagline:
@@ -138,7 +138,7 @@ export default function Arcade() {
         <section className="relative z-10">
           <div className="mb-10 text-center">
             <p className="font-mono text-[10px] uppercase tracking-[0.5em] text-white/40">Three original games · zero quarters</p>
-            <h1 className="mt-3 font-[family-name:var(--font-display)] text-[13vw] font-extrabold uppercase leading-[0.85] md:text-[7vw]">
+            <h1 className="mt-3 font-[family-name:var(--font-display)] text-[13vw] font-extrabold uppercase leading-[0.96] md:text-[7vw]">
               The <span className="xeno-gradient-text">Arcade</span>
             </h1>
           </div>

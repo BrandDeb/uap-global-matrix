@@ -1,6 +1,6 @@
 /**
- * /api/sightings/:id/intel — operator discussion thread.
- *   GET  ?since=<iso>   rows (all, or only newer — for polling)
+ * /api/sightings/:id/intel, operator discussion thread.
+ *   GET  ?since=<iso>   rows (all, or only newer, for polling)
  *   POST { text, parentId?, handle? }
  * A signed-in operator always posts under their verified GitHub handle; the
  * client-supplied `handle` is only used for anonymous posts.

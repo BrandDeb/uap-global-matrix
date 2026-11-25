@@ -3,8 +3,7 @@
 /**
  * src/components/profile/Pickers.tsx
  * Shared profile controls used by /settings and onboarding: alien avatar grid,
- * Light / Dark / Auto theme cards, and the (only) relevant permission —
- * location, used for "Near me" on the globe.
+ * Light / Dark / Auto theme cards, and the (only) relevant permission, * location, used for "Near me" on the globe.
  */
 
 import { useEffect, useState } from 'react';
@@ -134,14 +133,14 @@ export function LocationPermission() {
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-white">Location</p>
-        <p className="text-xs text-white/45">Only used for “Near me” — find sightings closest to you. Never stored or shared.</p>
+        <p className="text-xs text-white/45">Only used for “Near me”, find sightings closest to you. Never stored or shared.</p>
       </div>
       {state === 'granted' ? (
         <span className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--xeno-a)]">
           <Check size={12} /> On
         </span>
       ) : state === 'denied' ? (
-        <span className="max-w-[7rem] text-right text-[10px] text-white/40">Blocked — change in your browser’s site settings</span>
+        <span className="max-w-[7rem] text-right text-[10px] text-white/40">Blocked, change in your browser’s site settings</span>
       ) : state === 'unsupported' ? (
         <span className="text-[10px] text-white/40">Not available</span>
       ) : (

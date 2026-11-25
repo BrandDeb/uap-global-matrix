@@ -3,7 +3,7 @@
 /**
  * src/components/map/SightingHeatmap.tsx
  * Density layer: every sighting stamps a soft blob into an equirectangular
- * canvas (lng → x, lat → y — the same mapping as the Earth textures), the
+ * canvas (lng → x, lat → y, the same mapping as the Earth textures), the
  * accumulated intensity is colorized violet → teal → white, and the result is
  * wrapped on a shell just above the globe with additive blending. Lives inside
  * the Earth mesh, so it rotates with it.

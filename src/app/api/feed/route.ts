@@ -1,4 +1,4 @@
-/** GET /api/feed — intel feed cards (with thread/upvote counts) + trending strip. */
+/** GET /api/feed, intel feed cards (with thread/upvote counts) + trending strip. */
 import { feedItems, trending } from '@/lib/db/queries';
 import { jsonError } from '@/lib/apiHelpers';
 

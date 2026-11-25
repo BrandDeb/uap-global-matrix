@@ -1,5 +1,5 @@
 /**
- * /api/arcade/scores — arcade leaderboards (Neon, or in-memory in demo mode).
+ * /api/arcade/scores, arcade leaderboards (Neon, or in-memory in demo mode).
  *   GET  ?game=<id>            → { weekly: [{handle, score}], allTime: [...] }
  *   POST { game, handle, score } → 201
  * Guards: known games only, integer scores under a per-game ceiling, handle
@@ -31,7 +31,7 @@ export async function POST(req: Request): Promise<Response> {
   const ip = (req.headers.get('x-forwarded-for') ?? 'local').split(',')[0].trim();
   const now = Date.now();
   const recent = (hits.get(ip) ?? []).filter((t) => now - t < 60_000);
-  if (recent.length >= 6) return jsonError(429, 'Easy, ace — try again in a minute.');
+  if (recent.length >= 6) return jsonError(429, 'Easy, ace, try again in a minute.');
   hits.set(ip, [...recent, now]);
 
   const body = await readJson(req);

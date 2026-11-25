@@ -27,7 +27,7 @@ export interface CredibilitySignals {
 
 /**
  * Weights for the Credibility Index. They MUST sum to 1 so that `C` lands in
- * [0, 100]. This weighting is the core domain judgement of the system — tune it
+ * [0, 100]. This weighting is the core domain judgement of the system, tune it
  * to reflect how much each signal should move the needle.
  */
 export const CREDIBILITY_WEIGHTS = {

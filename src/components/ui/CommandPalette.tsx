@@ -5,7 +5,7 @@
  * ---------------------------------------------------------------------------
  * ⌘K command palette: search across all loaded sightings by title / location,
  * with quick filters (gov-only + evidence type). Selecting a result opens its
- * dossier — and the globe orients to it via the existing focus path.
+ * dossier, and the globe orients to it via the existing focus path.
  *
  * Built on cmdk (keyboard nav, active row, a11y) inside a Radix dialog (focus
  * trap, Esc). Filtering/ranking stays ours, so cmdk's filter is disabled.

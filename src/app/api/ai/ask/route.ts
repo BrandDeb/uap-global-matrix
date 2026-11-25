@@ -1,10 +1,9 @@
 /**
- * POST /api/ai/ask — "Ask the Archivist".
+ * POST /api/ai/ask, "Ask the Archivist".
  * ---------------------------------------------------------------------------
  * A grounded Q&A agent over the curated archive, on Gemini's free tier
  * (GEMINI_API_KEY; model via GEMINI_MODEL). The whole archive (59 compact
- * case lines) is the context, and the system prompt forbids inventing cases —
- * answers must cite archive titles + years, and say so when the archive is
+ * case lines) is the context, and the system prompt forbids inventing cases, * answers must cite archive titles + years, and say so when the archive is
  * silent. Light per-IP rate limit (in-memory, per server instance) keeps usage
  * inside the free quota.
  *
@@ -31,14 +30,14 @@ const CONTEXT = ARCHIVE.map(
     } | source: ${c.archiveSource} (${c.documentId}) | credibility ${Math.round(c.credibilityScore)}% | ${c.description}`,
 ).join('\n');
 
-const SYSTEM = `You are "The Archivist", the resident guide of UAP/MATRIX — a site about well-documented UFO/UAP sightings.
+const SYSTEM = `You are "The Archivist", the resident guide of UAP/MATRIX, a site about well-documented UFO/UAP sightings.
 Voice: warm, curious, a little playful (the site is fun), but rigorous. Short paragraphs, under 180 words unless asked for more.
 Rules:
 1. Answer ONLY from the ARCHIVE below plus widely known, uncontroversial historical context. Never invent cases, documents, quotes or numbers.
 2. When you mention a case, use its exact title and year, e.g. "Rendlesham Forest RAF Woodbridge Multi-Night Incident (1980)".
 3. If the archive doesn't cover something, say so plainly and suggest the closest case it does have.
 4. Distinguish evidence from interpretation: "unidentified" does not mean "alien". Mention prosaic explanations where they are well established.
-5. Entries from 2026 ("PURSUE" releases) are as listed in the archive and not independently verified — say so if asked about them.
+5. Entries from 2026 ("PURSUE" releases) are as listed in the archive and not independently verified, say so if asked about them.
 Eras: ${ERAS.map((e) => `${e.name} (${e.span})`).join('; ')}.
 ARCHIVE:
 ${CONTEXT}`;
@@ -53,7 +52,7 @@ export async function POST(req: Request): Promise<Response> {
   const now = Date.now();
   const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
   if (recent.length >= MAX_PER_WINDOW) {
-    return jsonError(429, 'The Archivist needs a breather — try again in a minute.');
+    return jsonError(429, 'The Archivist needs a breather, try again in a minute.');
   }
   hits.set(ip, [...recent, now]);
 
@@ -81,6 +80,6 @@ export async function POST(req: Request): Promise<Response> {
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'AI request failed.';
     const quota = /quota|429|rate/i.test(msg);
-    return jsonError(quota ? 429 : 502, quota ? 'Free-tier quota reached for now — try again later.' : msg);
+    return jsonError(quota ? 429 : 502, quota ? 'Free-tier quota reached for now, try again later.' : msg);
   }
 }

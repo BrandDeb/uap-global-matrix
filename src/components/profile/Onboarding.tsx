@@ -3,9 +3,9 @@
 /**
  * src/components/profile/Onboarding.tsx
  * Three quick, skippable steps on first visit to the globe:
- *   1. Who are you?  — pilot name + alien
- *   2. Three ways in — Globe / Files / Arcade (one line each)
- *   3. Make it yours — theme + optional location for "Near me"
+ *   1. Who are you?, pilot name + alien
+ *   2. Three ways in, Globe / Files / Arcade (one line each)
+ *   3. Make it yours, theme + optional location for "Near me"
  */
 
 import { useEffect, useState } from 'react';

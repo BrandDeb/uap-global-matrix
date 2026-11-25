@@ -12,9 +12,9 @@
  *   TABLE verification_logs(...)    → VerificationLogRow / VerificationLog
  *
  * Two layers are modeled deliberately:
- *   1. `*Row` types  — snake_case, exactly what the Postgres driver returns,
+ *   1. `*Row` types, snake_case, exactly what the Postgres driver returns,
  *                       with raw PostGIS geography.
- *   2. Domain types  — camelCase, immutable, with geography decoded into the
+ *   2. Domain types, camelCase, immutable, with geography decoded into the
  *                       flat {@link GeoCoordinates} interface for the app.
  *
  * PostGIS note (enforced project-wide, see CLAUDE.md): `location_coordinates`
@@ -28,7 +28,7 @@
  * ======================================================================== */
 
 /**
- * RFC 7946 GeoJSON Point — the JSON shape from `ST_AsGeoJSON(geo)::json`.
+ * RFC 7946 GeoJSON Point, the JSON shape from `ST_AsGeoJSON(geo)::json`.
  * Coordinate order is GeoJSON-canonical `[longitude, latitude]` (X, Y), the
  * reverse of the human-readable {@link GeoCoordinates} order.
  */
@@ -46,7 +46,7 @@ export interface GeoJSONPoint {
 export type PostGISGeographyPoint = GeoJSONPoint | string;
 
 /**
- * Flat, application-facing coordinate pair — the ONLY coordinate shape the UI,
+ * Flat, application-facing coordinate pair, the ONLY coordinate shape the UI,
  * the globe scene, and business logic should ever see.
  */
 export interface GeoCoordinates {
@@ -63,11 +63,11 @@ export interface GeoCoordinates {
  * runtime array (for <select> options, validation, seeding).
  * ======================================================================== */
 
-/** Postgres `classification_tier` enum — credibility/disposition bucket. */
+/** Postgres `classification_tier` enum, credibility/disposition bucket. */
 export const CLASSIFICATION_TIERS = ['CLASS_A', 'CLASS_B', 'CLASS_C', 'FLAGGED'] as const;
 export type ClassificationTier = (typeof CLASSIFICATION_TIERS)[number];
 
-/** Postgres `sensor_evidence_type` enum — element type of `evidence_types[]`. */
+/** Postgres `sensor_evidence_type` enum, element type of `evidence_types[]`. */
 export const SENSOR_EVIDENCE_TYPES = [
   'RADAR_VISUAL',
   'FLIR_THERMAL',
@@ -97,7 +97,7 @@ export interface ExifMetadata {
 }
 
 /* ===========================================================================
- * Persistence layer — Postgres row types (1:1 with table columns)
+ * Persistence layer, Postgres row types (1:1 with table columns)
  *
  * Timestamps are ISO-8601 `string`s (what `timestamptz` serializes to over the
  * JSON wire). Nullability matches the DDL exactly.
@@ -186,7 +186,7 @@ export interface VerificationLog {
  * Write-side helper (insert payload for POST /api/verify → uap_sightings)
  *
  * DB-managed columns (id, created_at) are omitted. `locationCoordinates` is an
- * EWKT literal string — `SRID=4326;POINT(lng lat)` — which Postgres casts to
+ * EWKT literal string, `SRID=4326;POINT(lng lat)`, which Postgres casts to
  * geography server-side, so callers never hand-roll WKB.
  * ======================================================================== */
 
@@ -204,7 +204,7 @@ export interface UAPSightingInsert {
 }
 
 /* ===========================================================================
- * Narrowing guards — validate untrusted strings (API input, DB drift) against
+ * Narrowing guards, validate untrusted strings (API input, DB drift) against
  * the enum tuples before asserting them as the literal-union types.
  * ======================================================================== */
 

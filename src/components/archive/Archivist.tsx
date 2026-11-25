@@ -119,7 +119,7 @@ export default function Archivist() {
             {msgs.length === 0 && (
               <>
                 <p className="text-sm leading-relaxed text-white/65">
-                  Ask me anything about the files — 59 documented cases from 1942 to 2026. I only answer from the
+                  Ask me anything about the files, 59 documented cases from 1942 to 2026. I only answer from the
                   record, and I’ll tell you when the record goes quiet.
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">

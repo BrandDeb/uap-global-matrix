@@ -1,9 +1,9 @@
 /**
- * src/components/arcade/GravityJanitor.ts — "GRAVITY JANITOR"
+ * src/components/arcade/GravityJanitor.ts, "GRAVITY JANITOR"
  * ---------------------------------------------------------------------------
  * Asteroids-style inertia shooter with its own physics:
  *   - A black hole sits in the middle of the screen. Its gravity bends
- *     EVERYTHING — your ship, the junk, and your own plasma bolts (curve your
+ *     EVERYTHING, your ship, the junk, and your own plasma bolts (curve your
  *     shots around it like a pro).
  *   - Shooting junk splits it (big → medium → small).
  *   - TRACTOR: hold E / Shift (or right side tap) to grab the nearest small
@@ -279,7 +279,7 @@ export class GravityJanitor implements Game {
         this.wavePause = 0;
         this.hud.level = (this.hud.level ?? 1) + 1;
         this.holeR = Math.max(22, this.holeR - 6);
-        this.fx.float(CX, CY + 60, `SECTOR ${this.hud.level} — CLEAN IT UP`, '#5effd8');
+        this.fx.float(CX, CY + 60, `SECTOR ${this.hud.level}, CLEAN IT UP`, '#5effd8');
         this.wave();
       }
     }

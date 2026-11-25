@@ -3,7 +3,7 @@
 /**
  * src/app/feed/page.tsx
  * ---------------------------------------------------------------------------
- * Global Intel Feed — scrolling social timeline (citizen recon + FOIA drops)
+ * Global Intel Feed, scrolling social timeline (citizen recon + FOIA drops)
  * with per-card upvoting and a Trending Now strip (top-voted sightings).
  *
  * Voting is keyed on a stable per-browser operator id (see lib/operatorId); the

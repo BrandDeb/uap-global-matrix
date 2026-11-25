@@ -47,9 +47,9 @@ export function latLngToCartesian(
  * Stops are sorted by their normalized position in [0, 1].
  */
 const GRADIENT_STOPS: ReadonlyArray<{ at: number; color: Color }> = [
-  { at: 0.0, color: new Color('#ef4444') }, // red-500  — low credibility
-  { at: 0.5, color: new Color('#f59e0b') }, // amber-500 — uncertain
-  { at: 1.0, color: new Color('#22d3ee') }, // cyan-400 — high credibility
+  { at: 0.0, color: new Color('#ef4444') }, // red-500, low credibility
+  { at: 0.5, color: new Color('#f59e0b') }, // amber-500, uncertain
+  { at: 1.0, color: new Color('#22d3ee') }, // cyan-400, high credibility
 ];
 
 /**

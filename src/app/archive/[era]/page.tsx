@@ -1,5 +1,5 @@
 /**
- * /archive/[era] — one statically generated page per era chapter, so each era
+ * /archive/[era], one statically generated page per era chapter, so each era
  * is its own search entry point (title, description, canonical, ItemList).
  */
 import type { Metadata } from 'next';
@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ era: stri
   if (!e) return {};
   const n = ARCHIVE.filter((c) => c.era === e.tag).length;
   return {
-    title: `${e.name} (${e.span}) — ${n} UFO/UAP cases · UAP/MATRIX`,
+    title: `${e.name} (${e.span}), ${n} UFO/UAP cases · UAP/MATRIX`,
     description: `${e.dek} ${n} documented cases with sources and document ids.`,
     alternates: { canonical: `/archive/${e.slug}` },
     openGraph: { title: `${e.name} · ${e.span}`, url: `/archive/${e.slug}` },
@@ -39,7 +39,7 @@ export default async function EraPage({ params }: { params: Promise<{ era: strin
         data={{
           '@context': 'https://schema.org',
           '@type': 'ItemList',
-          name: `${e.name} (${e.span}) — UFO/UAP cases`,
+          name: `${e.name} (${e.span}), UFO/UAP cases`,
           description: e.dek,
           url: `${SITE_URL}/archive/${e.slug}`,
           numberOfItems: cases.length,

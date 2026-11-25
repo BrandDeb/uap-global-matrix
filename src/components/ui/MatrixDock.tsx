@@ -4,7 +4,7 @@
  * src/components/ui/MatrixDock.tsx
  * ---------------------------------------------------------------------------
  * Floating control cluster for /matrix: autopilot tour, soundtrack toggle and
- * the keyboard-shortcut help sheet. Pure presentation — state lives in the
+ * the keyboard-shortcut help sheet. Pure presentation, state lives in the
  * page (see useMatrixHotkeys there).
  * ---------------------------------------------------------------------------
  */

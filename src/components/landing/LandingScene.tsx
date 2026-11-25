@@ -4,7 +4,7 @@
  * src/components/landing/LandingScene.tsx
  * ---------------------------------------------------------------------------
  * The single fixed WebGL stage behind the landing page. Everything is driven
- * by `landing` (scroll + pointer), read every frame — no React re-renders.
+ * by `landing` (scroll + pointer), read every frame, no React re-renders.
  *
  *   Hero      a hulking saucer that lazily follows the cursor, tractor beam
  *             on, slowly abducting a very confused cow (click the saucer to

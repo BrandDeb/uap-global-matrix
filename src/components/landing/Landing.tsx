@@ -48,6 +48,7 @@ import { toast } from 'sonner';
 import EggHunt from './EggHunt';
 import { findEgg } from './eggs';
 import { SPECIES } from './voxelSpecies';
+import { SOCIALS } from '@/lib/site';
 import { xenoAudio } from './audio';
 import CropCircleCanvas from './CropCircleCanvas';
 import SubmissionModal from '@/components/ui/SubmissionModal';
@@ -836,6 +837,15 @@ export default function Landing() {
               <Link href="/privacy" className="hover:text-white">Privacy</Link>
               <Link href="/terms" className="hover:text-white">Terms</Link>
             </nav>
+            {SOCIALS.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-2">
+                {SOCIALS.map((x) => (
+                  <a key={x.id} href={x.url} target="_blank" rel="noopener noreferrer me" className="rounded-full border border-white/15 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-white/70 transition hover:border-[var(--xeno-a)] hover:text-white">
+                    {x.label}
+                  </a>
+                ))}
+              </div>
+            )}
             <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-white/25">© {new Date().getFullYear()} Lowkee Studios</p>
           </div>
           <div className="h-20 md:h-10" />

@@ -14,7 +14,7 @@
  */
 
 import { xenoAudio } from '@/components/landing/audio';
-import { Fx, H, Starfield, W, clamp, drawSaucer, glow, loadBest, rand, saveBest, type Game, type HudState, type Input } from './engine';
+import { Fx, H, Starfield, W, clamp, drawSaucer, glow, loadBest, rand, saveBest, streakWord, type Game, type HudState, type Input } from './engine';
 
 const GROUND = H - 70;
 const NIGHT = 90;
@@ -102,6 +102,7 @@ export class MooveIt implements Game {
       if (input.pressed.has(' ') || input.pressed.has('Enter') || (input.pointer.down && input.pressed.has('pointer'))) this.start();
       return;
     }
+    if (this.fx.frozen(dt)) return;
 
     // --- ship: keys or pointer steering
     const k = input.keys;
@@ -129,9 +130,11 @@ export class MooveIt implements Game {
 
     // --- critters
     this.spawnT -= dt;
-    if (this.spawnT <= 0 && this.critters.length < 9) {
+    // the night gets busier (and the farmers angrier) as dawn approaches
+    const rush = 1 - this.time / NIGHT;
+    if (this.spawnT <= 0 && this.critters.length < 9 + Math.floor(rush * 5)) {
       this.spawn();
-      this.spawnT = rand(0.8, 1.8);
+      this.spawnT = rand(0.8, 1.8) * (1 - rush * 0.55);
     }
     const beamHalf = (y: number) => 18 + ((y - this.ship.y) / (GROUND - this.ship.y)) * 70;
     for (const c of this.critters) {
@@ -172,6 +175,22 @@ export class MooveIt implements Game {
         this.fx.float(this.ship.x, this.ship.y + 50, `+${pts}${this.combo > 1 ? `  x${this.combo}` : ''}`, c.kind === 'gold' ? '#ffd36b' : '#5effd8');
         if (c.kind === 'farmer') xenoAudio?.boop();
         else xenoAudio?.moo();
+        if (c.kind === 'gold') {
+          this.fx.hitstop(0.14);
+          this.fx.flash('#ffd36b');
+          this.fx.hype('GOLDEN MOO', '#ffd36b');
+          this.fx.shake = 10;
+        } else if (c.kind === 'farmer') {
+          this.fx.hype('FARMER YOINKED', '#ff5ec8');
+          this.fx.hitstop(0.08);
+        } else {
+          const w = streakWord(this.combo);
+          if (w) {
+            this.fx.hype(w, '#5effd8');
+            this.fx.hitstop(0.06);
+            this.fx.flash('#5effd8', 0.6);
+          }
+        }
       }
     }
     this.critters = this.critters.filter((c) => c.x > -60 && c.x < W + 60);
@@ -186,7 +205,10 @@ export class MooveIt implements Game {
         this.hud.lives = (this.hud.lives ?? 1) - 1;
         this.fx.shake = 12;
         this.fx.burst(this.ship.x, this.ship.y, '#ffffff', 30, 300);
-        this.fx.float(this.ship.x, this.ship.y - 40, 'SNAPPED! 📸', '#ffffff');
+        this.fx.float(this.ship.x, this.ship.y - 40, 'SNAPPED!', '#ffffff');
+        this.fx.flash('#ffffff', 1.4);
+        this.fx.hype('📸 CAUGHT ON CAMERA', '#ffffff');
+        this.combo = 0;
         xenoAudio?.blip(0.1);
       }
     }
@@ -260,6 +282,7 @@ export class MooveIt implements Game {
     drawSaucer(ctx, this.ship.x, this.ship.y, 96, this.t, this.jammed > 0 ? '#ff5ec8' : '#5effd8');
     this.fx.draw(ctx);
     ctx.restore();
+    this.fx.drawOverlay(ctx);
   }
 
   private drawCritter(ctx: CanvasRenderingContext2D, c: Critter) {

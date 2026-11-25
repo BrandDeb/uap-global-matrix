@@ -11,13 +11,14 @@
  *     black hole is "properly disposed": ×3 points and a shockwave.
  *   - Anything the hole eats on its own grows it a little. Don't feed it.
  *   - Screen wraps at the edges.
+ *   - Rapid splits chain into a multiplier (shown as streak callouts).
  * Controls: ←/→ rotate, ↑ thrust, Space fire, E/Shift tractor.
  * Pointer: ship turns toward the pointer; hold to thrust + auto-fire.
  * ---------------------------------------------------------------------------
  */
 
 import { xenoAudio } from '@/components/landing/audio';
-import { Fx, H, Starfield, W, dist2, glow, loadBest, rand, saveBest, wrap, type Game, type HudState, type Input } from './engine';
+import { Fx, H, Starfield, W, dist2, glow, loadBest, rand, saveBest, streakWord, wrap, type Game, type HudState, type Input } from './engine';
 
 const CX = W / 2;
 const CY = H / 2;
@@ -69,6 +70,8 @@ export class GravityJanitor implements Game {
   private invuln = 0;
   private t = 0;
   private wavePause = 0;
+  private chain = 0;
+  private chainT = 0;
   private fx = new Fx();
   private stars = new Starfield(150);
 
@@ -121,6 +124,8 @@ export class GravityJanitor implements Game {
       if (input.pressed.has(' ') || input.pressed.has('Enter') || input.pressed.has('pointer')) this.start();
       return;
     }
+    if (this.fx.frozen(dt)) return;
+    this.chainT -= dt;
     const k = input.keys;
     const s = this.ship;
 
@@ -210,6 +215,10 @@ export class GravityJanitor implements Game {
         const pts = Math.round((60 - j.r) * 3) * (this.hud.level ?? 1);
         this.hud.score += pts;
         this.fx.float(CX, CY - 50, `PROPER DISPOSAL +${pts}`, '#ffd36b');
+        this.fx.hype('YEET', '#ffd36b');
+        this.fx.hitstop(0.12);
+        this.fx.flash('#ffd36b', 0.8);
+        this.fx.shake = 10;
         this.fx.burst(CX, CY, '#ffd36b', 30, 300);
         // shockwave pushes everything outward
         for (const o of this.junk) {
@@ -255,6 +264,9 @@ export class GravityJanitor implements Game {
         this.fx.burst(s.x, s.y, '#5effd8', 50, 360, 4);
         this.fx.float(s.x, s.y - 30, hitHole ? 'SPAGHETTIFIED' : 'BONK', '#ff5ec8');
         this.fx.shake = 16;
+        this.fx.flash('#ff5ec8', 1.2);
+        this.fx.hitstop(0.15);
+        this.chain = 0;
         xenoAudio?.moo();
         this.respawn();
       }
@@ -282,7 +294,15 @@ export class GravityJanitor implements Game {
     this.junk.splice(this.junk.indexOf(j), 1);
     if (this.grabbed === j) this.grabbed = null;
     const lvl = this.hud.level ?? 1;
-    this.hud.score += (j.r > 30 ? 20 : j.r > 16 ? 50 : 100) * lvl;
+    this.chain = this.chainT > 0 ? this.chain + 1 : 1;
+    this.chainT = 1.2;
+    const mult = 1 + Math.floor(this.chain / 3);
+    this.hud.score += (j.r > 30 ? 20 : j.r > 16 ? 50 : 100) * lvl * mult;
+    const w = streakWord(this.chain);
+    if (w) {
+      this.fx.hype(`${w}  x${mult}`, '#5effd8');
+      this.fx.hitstop(0.05);
+    }
     this.fx.burst(j.x, j.y, `hsl(${j.hue} 90% 65%)`, 14, 220);
     xenoAudio?.blip(0.35);
     if (j.r > 16) {
@@ -386,5 +406,6 @@ export class GravityJanitor implements Game {
     }
     this.fx.draw(ctx);
     ctx.restore();
+    this.fx.drawOverlay(ctx);
   }
 }

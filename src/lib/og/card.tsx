@@ -6,7 +6,19 @@ import type { ReactNode } from 'react';
 
 export const OG_SIZE = { width: 1200, height: 630 };
 
-export function OgCard({ kicker, title, subtitle, footer }: { kicker: string; title: ReactNode; subtitle?: string; footer?: ReactNode }) {
+export function OgCard({
+  kicker,
+  title,
+  subtitle,
+  detail,
+  footer,
+}: {
+  kicker: string;
+  title: ReactNode;
+  subtitle?: string;
+  detail?: ReactNode;
+  footer?: ReactNode;
+}) {
   return (
     <div
       style={{
@@ -31,6 +43,7 @@ export function OgCard({ kicker, title, subtitle, footer }: { kicker: string; ti
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', fontSize: 92, fontWeight: 800, lineHeight: 1, letterSpacing: -2, textTransform: 'uppercase' }}>{title}</div>
         {subtitle && <div style={{ display: 'flex', marginTop: 24, fontSize: 32, color: 'rgba(255,255,255,0.65)' }}>{subtitle}</div>}
+        {detail}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: 24, color: 'rgba(255,255,255,0.5)' }}>
         {footer ?? <span style={{ display: 'flex' }}>The sky is talking.</span>}

@@ -45,6 +45,9 @@ import { INVASION_EVENT, landing } from './landingStore';
 import LiveTransmissions from './LiveTransmissions';
 import { toLiveSighting, type LiveSighting } from '@/lib/sightings';
 import { toast } from 'sonner';
+import EggHunt from './EggHunt';
+import { findEgg } from './eggs';
+import { SPECIES } from './voxelSpecies';
 import { xenoAudio } from './audio';
 import CropCircleCanvas from './CropCircleCanvas';
 import SubmissionModal from '@/components/ui/SubmissionModal';
@@ -159,6 +162,21 @@ export default function Landing() {
   const [statsOn, setStatsOn] = useState(false);
   const { profile, providers } = useAuth();
   const [soundOn, setSoundOn] = useState(false);
+  const [species, setSpecies] = useState(0);
+  const seenSpecies = useRef(new Set([0]));
+  const logoTaps = useRef(0);
+  const pickSpecies = (i: number) => {
+    setSpecies(i);
+    seenSpecies.current.add(i);
+    if (seenSpecies.current.size === SPECIES.length) findEgg('lineup');
+  };
+  useEffect(() => {
+    landing.species = species;
+  }, [species]);
+  useEffect(() => {
+    const h = new Date().getHours();
+    if (h < 4) findEgg('night');
+  }, []);
   const toggleSound = async () => {
     if (!xenoAudio) return;
     await xenoAudio.toggle();
@@ -218,6 +236,7 @@ export default function Landing() {
 
   // Easter egg: ↑↑↓↓←→←→BA (or 5 taps on the sticker) → invasion fleet.
   const invade = () => {
+    findEgg('invasion');
     window.dispatchEvent(new Event(INVASION_EVENT));
     toast('⚠ THEY’RE HERE', { description: 'Fleet inbound. Please remain calm and keep your cows indoors.' });
     [0, 220, 440].forEach((ms) => window.setTimeout(() => xenoAudio?.boop(), ms));
@@ -225,7 +244,22 @@ export default function Landing() {
   useEffect(() => {
     const code = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
     let pos = 0;
+    let typed = '';
     const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (!el?.closest('input, textarea, [contenteditable]') && e.key.length === 1) {
+        typed = (typed + e.key.toLowerCase()).slice(-12);
+        if (typed.endsWith('moo')) {
+          typed = '';
+          xenoAudio?.moo();
+          toast('🐄 Moo received.', { description: 'Somewhere above you, a saucer changes course.' });
+          findEgg('moo');
+        } else if (typed.endsWith('roswell')) {
+          typed = '';
+          toast('📰 July 8, 1947', { description: '“RAAF captures flying saucer on ranch in Roswell region.” The next day it was a weather balloon. Sure.' });
+          findEgg('roswell');
+        }
+      }
       pos = e.key === code[pos] || e.key.toLowerCase() === code[pos] ? pos + 1 : e.key === code[0] ? 1 : 0;
       if (pos === code.length) {
         pos = 0;
@@ -378,10 +412,24 @@ export default function Landing() {
     <div ref={root} className="relative bg-[var(--xeno-void)] text-white">
       <LandingScene eventSource={root} />
       <AlienCursor />
+      <EggHunt />
 
       {/* Nav */}
       <header className="fixed inset-x-0 top-0 z-40 flex items-center justify-between bg-gradient-to-b from-[var(--xeno-void)] via-[var(--xeno-void)]/70 to-transparent px-4 pb-10 pt-4 md:px-10 md:pb-12 md:pt-6">
-        <Link href="/" className="font-[family-name:var(--font-display)] text-sm tracking-[0.3em]" data-cursor="HOME">
+        <Link
+          href="/"
+          className="font-[family-name:var(--font-display)] text-sm tracking-[0.3em]"
+          data-cursor="HOME"
+          onClick={() => {
+            logoTaps.current += 1;
+            xenoAudio?.blip(0.3 + logoTaps.current / 10);
+            if (logoTaps.current >= 7) {
+              logoTaps.current = 0;
+              toast('👁 The truth is out there.', { description: 'Specifically: in the archive. Go look.' });
+              findEgg('truth');
+            }
+          }}
+        >
           UAP<span className="text-[var(--xeno-a)]">/</span>MATRIX
         </Link>
         <nav className="hidden items-center gap-8 font-mono text-[10px] uppercase tracking-[0.3em] text-white/60 md:flex">
@@ -576,15 +624,29 @@ export default function Landing() {
         {/* 06 ZORP, voxel alien (rendered in the WebGL stage) */}
         <section className="sec-zorp relative flex min-h-[100svh] items-end px-4 pb-16 md:items-center md:px-10 md:pb-0">
           <div className="max-w-md">
-            <SectionLabel>Meet the intern</SectionLabel>
-            <h2 className="font-[family-name:var(--font-display)] text-[16vw] font-extrabold uppercase leading-[0.96] md:text-[8vw]">
-              Zorp<span className="text-[var(--xeno-d)]">.</span>
+            <SectionLabel>The lineup</SectionLabel>
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--xeno-a)]">{SPECIES[species].tag}</p>
+            <h2 className="font-[family-name:var(--font-display)] text-[13vw] font-extrabold uppercase leading-[0.96] md:text-[6vw]">
+              {SPECIES[species].name}
+              <span className="text-[var(--xeno-d)]">.</span>
             </h2>
-            <p className="mt-5 text-base leading-relaxed text-white/60 md:text-lg">
-              Made of {''}
-              <span className="text-[var(--xeno-a)]">~1,500 cubes</span> and zero concept of personal space. Hover to pet
-              him. Click to make him… briefly not exist. He grooves harder with the sound on.
-            </p>
+            <p className="mt-5 min-h-[5.5em] text-base leading-relaxed text-white/60 md:text-lg">{SPECIES[species].blurb}</p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {SPECIES.map((sp, i) => (
+                <button
+                  key={sp.id}
+                  type="button"
+                  aria-pressed={species === i}
+                  onClick={() => pickSpecies(i)}
+                  className={`rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] transition ${
+                    species === i ? 'border-[var(--xeno-a)] bg-[var(--xeno-a)] text-black' : 'border-white/15 text-white/60 hover:border-white/40 hover:text-white'
+                  }`}
+                >
+                  {sp.name}
+                </button>
+              ))}
+            </div>
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.25em] text-white/35">Hover to pet · click to explode</p>
             {!soundOn && (
               <button type="button" onClick={() => void toggleSound()} className="xeno-btn mt-6" data-cursor="PLAY">
                 ♪ Give Zorp a beat

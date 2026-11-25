@@ -21,6 +21,8 @@ export const landing = {
   craftIndex: 0,
   /** 0..1 how much the voxel-alien section is active. */
   voxel: 0,
+  /** Index into SPECIES for the voxel lineup. */
+  species: 0,
   /** 0..1 final call-to-action reached. */
   cta: 0,
   /** Bumped when the visitor clicks the saucer (extra-goofy abduction). */

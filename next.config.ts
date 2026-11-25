@@ -9,6 +9,19 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // Production only: send per-deployment URLs (uap-global-matrix-<hash>-...vercel.app)
+  // to the main address so Google/GitHub sign-in callbacks always match.
+  async redirects() {
+    if (process.env.VERCEL_ENV !== 'production') return [];
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'uap-global-matrix-.+\\.vercel\\.app' }],
+        destination: 'https://uap-global-matrix.vercel.app/:path*',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

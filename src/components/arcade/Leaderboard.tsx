@@ -16,6 +16,13 @@ interface Entry {
 
 const NAME_KEY = 'uap-arcade-handle';
 
+/** Weekly prizes for the top 3 (titles shown on the leaderboard + Hall of Fame). */
+export const PRIZES = [
+  { medal: '🥇', title: 'Supreme Overlord' },
+  { medal: '🥈', title: 'Grand Abductor' },
+  { medal: '🥉', title: 'Cow Whisperer' },
+] as const;
+
 export default function Leaderboard({ game, score }: { game: string; score: number }) {
   const [weekly, setWeekly] = useState<Entry[] | null>(null);
   const [name, setName] = useState(() => {
@@ -95,13 +102,17 @@ export default function Leaderboard({ game, score }: { game: string; score: numb
               className={`flex justify-between rounded px-2 py-0.5 ${e.handle === posted ? 'bg-[var(--xeno-a)]/15 text-[var(--xeno-a)]' : 'text-white/75'}`}
             >
               <span>
-                {i === 0 ? '👑' : `${i + 1}.`} {e.handle}
+                {i < 3 ? PRIZES[i].medal : `${i + 1}.`} {e.handle}
+                {i < 3 && <span className="ml-1.5 text-[9px] uppercase tracking-wider text-white/35">{PRIZES[i].title}</span>}
               </span>
               <span>{e.score.toLocaleString()}</span>
             </li>
           ))}
         </ol>
       )}
+      <p className="mt-2 font-mono text-[9px] uppercase leading-relaxed tracking-[0.2em] text-white/35">
+        Top 3 every Monday win a title and a spot in the Hall of Fame
+      </p>
       {score > 0 && !posted && (
         <form
           onSubmit={(e) => {

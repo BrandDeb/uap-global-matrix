@@ -299,6 +299,31 @@ export async function topScores(game: string, weekly: boolean, limit = 10): Prom
   `;
 }
 
+/** Last completed week's top 3 for a game (the prize podium). */
+export async function lastWeekPodium(game: string): Promise<Row[]> {
+  if (!hasDb()) {
+    const end = weekStartIso();
+    const start = new Date(new Date(end).getTime() - 7 * 86_400_000).toISOString();
+    const best = new Map<string, Row>();
+    for (const s of demoScores) {
+      if (s.game !== game || s.created_at < start || s.created_at >= end) continue;
+      const cur = best.get(s.handle);
+      if (!cur || Number(cur.score) < s.score) best.set(s.handle, { handle: s.handle, score: s.score });
+    }
+    return [...best.values()].sort((a, b) => Number(b.score) - Number(a.score)).slice(0, 3);
+  }
+  return getDb()`
+    SELECT handle, max(score)::int AS score
+    FROM arcade_scores
+    WHERE game = ${game}
+      AND created_at >= date_trunc('week', now()) - interval '1 week'
+      AND created_at < date_trunc('week', now())
+    GROUP BY handle
+    ORDER BY score DESC
+    LIMIT 3
+  `;
+}
+
 export async function insertScore(game: string, handle: string, score: number): Promise<void> {
   if (!hasDb()) {
     demoScores.push({ game, handle, score, created_at: new Date().toISOString() });

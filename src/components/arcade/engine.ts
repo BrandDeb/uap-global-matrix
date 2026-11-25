@@ -27,6 +27,8 @@ export interface HudState {
   meter?: number; // 0..1 generic gauge (beam heat, etc.)
   meterLabel?: string;
   message?: string;
+  /** Short objective line under the score (e.g. quota progress). */
+  goal?: string;
 }
 
 export interface Input {

@@ -18,6 +18,7 @@ import { GravityJanitor } from './GravityJanitor';
 import { JunkInvaders } from './JunkInvaders';
 import { MooveIt } from './MooveIt';
 import { loadBest, type Game } from './engine';
+import HallOfFame from './HallOfFame';
 
 interface Entry {
   id: string;
@@ -34,11 +35,11 @@ const GAMES: ReadonlyArray<Entry> = [
     create: () => new MooveIt(),
     color: '#5effd8',
     emoji: '🐄',
-    blurb: 'One night. One beam. Too many cows. Don’t let the farmers get a photo.',
+    blurb: 'Five nights. One beam. Too many cows. Storms, searchlights and very angry farmers.',
     meta: {
       title: 'Moo-ve It',
       tagline:
-        'Beam cows up before dawn. Bulls are heavy, calves are quick, the golden cow is worth 10× and absolutely will not cooperate. Your beam overheats, and farmers are armed with camera flashes. Chain abductions for combos.',
+        'Five nights, five quotas. Beam cows before dawn: bulls are heavy, calves are quick, the golden cow is worth 10× and will not cooperate. Dodge farmers’ camera flashes, ride out a thunderstorm, slip past military searchlights, and beam up crates for Coolant or Mega Beam.',
       controls: ['← → / A D  move', 'Space  hold beam', 'Mouse/touch  steer + hold'],
     },
   },
@@ -69,6 +70,8 @@ const GAMES: ReadonlyArray<Entry> = [
     },
   },
 ];
+
+const HOF_GAMES = GAMES.map((g) => ({ id: g.id, title: g.meta.title, color: g.color }));
 
 export default function Arcade() {
   const [active, setActive] = useState<string | null>(null);
@@ -174,6 +177,7 @@ export default function Arcade() {
               </button>
             ))}
           </div>
+          <HallOfFame games={HOF_GAMES} />
         </section>
       )}
     </main>

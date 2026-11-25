@@ -32,7 +32,10 @@ export default function DecryptedText({
           )
           .join(''),
       );
-      if (locked >= text.length) window.clearInterval(id);
+      if (locked >= text.length) {
+        setOut(text);
+        window.clearInterval(id);
+      }
     }, 30);
     return () => window.clearInterval(id);
   }, [text, duration]);

@@ -34,6 +34,7 @@ import {
   Vector2,
 } from 'three';
 import { SHADER_TIME } from './sharedTime';
+import LightDots, { circleDots, type Dot } from './LightDots';
 
 const ring = (n: number) => Array.from({ length: n }, (_, i) => (i / n) * Math.PI * 2);
 
@@ -52,9 +53,10 @@ const BELL = [
 
 export function BellSaucer({ color = '#ffd36b' }: { color?: string }) {
   const geo = useMemo(() => new LatheGeometry(BELL, 48), []);
+  const portholes = useMemo(() => circleDots(8, 0.44, 0.36, () => color), [color]);
   const spin = useRef<Group>(null);
   useFrame((_, d) => {
-    if (spin.current) spin.current.rotation.y += d * 0.8;
+    if (spin.current) spin.current.rotation.y += Math.min(d, 0.1) * 0.8;
   });
   return (
     <group scale={0.1}>
@@ -62,12 +64,7 @@ export function BellSaucer({ color = '#ffd36b' }: { color?: string }) {
         <mesh geometry={geo}>
           <meshStandardMaterial color="#c9ccd6" metalness={0.9} roughness={0.25} />
         </mesh>
-        {ring(8).map((a) => (
-          <mesh key={a} position={[Math.cos(a) * 0.44, 0.36, Math.sin(a) * 0.44]}>
-            <sphereGeometry args={[0.06, 10, 10]} />
-            <meshBasicMaterial color={color} toneMapped={false} />
-          </mesh>
-        ))}
+        <LightDots dots={portholes} radius={0.06} />
       </group>
       {ring(3).map((a) => (
         <mesh key={a} position={[Math.cos(a) * 0.5, -0.16, Math.sin(a) * 0.5]}>
@@ -153,6 +150,18 @@ export function PlasmaOrb({ color = '#ff8a3d' }: { color?: string }) {
 
 /* --- Chevron / boomerang ---------------------------------------------------- */
 
+const CHEVRON_DOTS: Dot[] = (
+  [
+    [0, 0.9],
+    [0.4, 0.35],
+    [0.8, -0.2],
+    [1.1, -0.6],
+    [-0.4, 0.35],
+    [-0.8, -0.2],
+    [-1.1, -0.6],
+  ] as const
+).map(([x, y]) => ({ position: [x, y, -0.04] as const, color: '#ffb347' }));
+
 export function Chevron() {
   const shape = useMemo(() => {
     const s = new Shape();
@@ -165,15 +174,6 @@ export function Chevron() {
     s.closePath();
     return s;
   }, []);
-  const lights: [number, number][] = [
-    [0, 0.9],
-    [0.4, 0.35],
-    [0.8, -0.2],
-    [1.1, -0.6],
-    [-0.4, 0.35],
-    [-0.8, -0.2],
-    [-1.1, -0.6],
-  ];
   return (
     // Shape is in XY; lay it flat (XZ) with the point facing +Z.
     <group scale={0.12} rotation={[-Math.PI / 2, 0, 0]}>
@@ -181,12 +181,7 @@ export function Chevron() {
         <extrudeGeometry args={[shape, { depth: 0.08, bevelEnabled: false }]} />
         <meshStandardMaterial color="#07070c" metalness={0.7} roughness={0.5} />
       </mesh>
-      {lights.map(([x, y]) => (
-        <mesh key={`${x},${y}`} position={[x, y, -0.04]}>
-          <sphereGeometry args={[0.07, 10, 10]} />
-          <meshBasicMaterial color="#ffb347" toneMapped={false} />
-        </mesh>
-      ))}
+      <LightDots dots={CHEVRON_DOTS} radius={0.07} />
     </group>
   );
 }
@@ -196,7 +191,7 @@ export function Chevron() {
 export function Diamond({ color = '#5effd8' }: { color?: string }) {
   const ref = useRef<Mesh>(null);
   useFrame((_, d) => {
-    if (ref.current) ref.current.rotation.y += d * 1.6;
+    if (ref.current) ref.current.rotation.y += Math.min(d, 0.1) * 1.6;
   });
   return (
     <group scale={0.07}>
@@ -210,13 +205,15 @@ export function Diamond({ color = '#5effd8' }: { color?: string }) {
 
 /* --- Ring craft ------------------------------------------------------------- */
 
+const RING_DOTS = circleDots(12, 0.8, 0.13, () => '#ffffff');
+
 export function RingCraft({ color = '#a58bff' }: { color?: string }) {
   const ref = useRef<Group>(null);
-  useFrame(({ clock }, d) => {
+  useFrame((_, d) => {
     const g = ref.current;
     if (!g) return;
-    g.rotation.y += d * 1.2;
-    g.children[1]?.position.setY(Math.sin(clock.getElapsedTime() * 2) * 0.12);
+    g.rotation.y += Math.min(d, 0.1) * 1.2;
+    g.children[1]?.position.setY(Math.sin(SHADER_TIME.value * 2) * 0.12);
   });
   return (
     <group scale={0.1}>
@@ -229,12 +226,7 @@ export function RingCraft({ color = '#a58bff' }: { color?: string }) {
           <icosahedronGeometry args={[0.22, 1]} />
           <meshBasicMaterial color={color} toneMapped={false} />
         </mesh>
-        {ring(12).map((a) => (
-          <mesh key={a} position={[Math.cos(a) * 0.8, 0.13, Math.sin(a) * 0.8]}>
-            <sphereGeometry args={[0.035, 6, 6]} />
-            <meshBasicMaterial color="#ffffff" toneMapped={false} />
-          </mesh>
-        ))}
+        <LightDots dots={RING_DOTS} radius={0.035} detail={6} />
       </group>
     </group>
   );
@@ -245,9 +237,10 @@ export function RingCraft({ color = '#a58bff' }: { color?: string }) {
 export function CubeSphere() {
   const ref = useRef<Mesh>(null);
   useFrame((_, d) => {
+    const dt = Math.min(d, 0.1);
     if (ref.current) {
-      ref.current.rotation.x += d * 0.7;
-      ref.current.rotation.y += d * 0.9;
+      ref.current.rotation.x += dt * 0.7;
+      ref.current.rotation.y += dt * 0.9;
     }
   });
   return (
@@ -258,7 +251,17 @@ export function CubeSphere() {
       </mesh>
       <mesh>
         <sphereGeometry args={[1, 32, 32]} />
-        <meshPhysicalMaterial color="#cfe9ff" transmission={0.9} roughness={0.1} transparent opacity={0.25} emissive="#9fd6ff" emissiveIntensity={0.25} />
+        <meshPhysicalMaterial
+          color="#cfe9ff"
+          roughness={0.08}
+          metalness={0.1}
+          clearcoat={1}
+          transparent
+          opacity={0.28}
+          depthWrite={false}
+          emissive="#9fd6ff"
+          emissiveIntensity={0.3}
+        />
       </mesh>
     </group>
   );
@@ -269,8 +272,8 @@ export function CubeSphere() {
 export function Jellyfish({ color = '#ff5ec8' }: { color?: string }) {
   const tendrils = useRef<Group>(null);
   const bell = useRef<Mesh>(null);
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
+  useFrame(() => {
+    const t = SHADER_TIME.value;
     if (bell.current) bell.current.scale.set(1 + Math.sin(t * 2) * 0.08, 1 - Math.sin(t * 2) * 0.08, 1 + Math.sin(t * 2) * 0.08);
     tendrils.current?.children.forEach((c, i) => {
       c.rotation.x = Math.sin(t * 1.8 + i) * 0.35;
@@ -314,8 +317,8 @@ export function EggCraft() {
 
 export function FooFighters({ count = 6, color = '#ffe08a' }: { count?: number; color?: string }) {
   const ref = useRef<Group>(null);
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
+  useFrame(() => {
+    const t = SHADER_TIME.value;
     ref.current?.children.forEach((c, i) => {
       const k = i * 1.7;
       c.position.set(Math.sin(t * 2.1 + k) * 0.12, Math.cos(t * 1.7 + k) * 0.06, Math.sin(t * 1.3 + k * 2) * 0.12);

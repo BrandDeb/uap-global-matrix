@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import { Send } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import SignInButtons from '@/components/ui/SignInButtons';
 import { getOperatorId } from '@/lib/operatorId';
 
 interface ThreadRow {
@@ -37,7 +38,7 @@ interface CaseThreadProps {
 }
 
 export default function CaseThread({ sightingId }: CaseThreadProps) {
-  const { profile, signInWithGitHub } = useAuth();
+  const { profile } = useAuth();
   const [rows, setRows] = useState<ThreadRow[]>([]);
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
@@ -98,14 +99,7 @@ export default function CaseThread({ sightingId }: CaseThreadProps) {
         </h3>
         <span className="font-mono text-[10px] text-zinc-500">
           posting as <span className="text-emerald-400">@{handle}</span>
-          {!profile && (
-            <button
-              onClick={() => void signInWithGitHub()}
-              className="ml-2 text-cyan-400 hover:underline"
-            >
-              verify via GitHub
-            </button>
-          )}
+          {!profile && <SignInButtons className="mt-2 justify-end" prefix="Verify with" />}
         </span>
       </div>
 

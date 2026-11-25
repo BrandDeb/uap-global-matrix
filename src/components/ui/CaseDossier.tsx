@@ -16,11 +16,12 @@
  */
 
 import { useEffect, useState } from 'react';
-import { X, Send, MessageSquare, BrainCircuit, ShieldAlert, Eye, Lock } from 'lucide-react';
+import { X, Send, MessageSquare, BrainCircuit, ShieldAlert, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import DecryptedText from '@/components/fx/DecryptedText';
 import { useAuth } from '@/hooks/useAuth';
+import SignInButtons from '@/components/ui/SignInButtons';
 import type { LiveSighting } from '@/lib/sightings';
 
 interface IntelThread {
@@ -51,11 +52,11 @@ interface CaseDossierProps {
     sightingId: string,
     handle: string,
     text: string,
-  ) => Promise<{ error: { message: string } | null }>;
+  ) => Promise<{ data?: Record<string, unknown>; error: { message: string } | null }>;
 }
 
 export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossierProps) {
-  const { profile, signInWithGitHub } = useAuth();
+  const { profile } = useAuth();
   const [comments, setComments] = useState<IntelThread[]>([]);
   const [handle, setHandle] = useState('');
   const [message, setMessage] = useState('');
@@ -129,17 +130,16 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
     e.preventDefault();
     if (!message.trim()) return;
     const text = message.trim();
-    const { error } = await onAddIntel(sighting.id, operatorHandle, text);
+    const { data, error } = await onAddIntel(sighting.id, operatorHandle, text);
     if (error) {
       toast.error('Transmission failed', { description: error.message });
       return;
     }
     toast.success('Intel transmitted');
-    // Show it immediately; the next poll de-duplicates by id.
-    setComments((curr) => [
-      ...curr,
-      { id: `local-${Date.now()}`, operatorHandle, intelText: text, createdAt: new Date().toISOString() },
-    ]);
+    const created = data
+      ? toIntelThread(data)
+      : { id: `local-${Date.now()}`, operatorHandle, intelText: text, createdAt: new Date().toISOString() };
+    setComments((curr) => (curr.some((c) => c.id === created.id) ? curr : [...curr, created]));
     setMessage('');
   };
 
@@ -197,10 +197,7 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
   };
 
   return (
-    <div
-      style={{ animation: 'dossier-in 0.2s ease-out' }}
-      className="xeno-glass relative z-50 flex max-h-full w-[min(430px,90vw)] flex-col overflow-hidden text-zinc-100 shadow-[0_0_80px_rgba(94,255,216,0.12)] animate-[dossier-in_0.6s_cubic-bezier(0.16,1,0.3,1)]"
-    >
+    <div className="xeno-glass relative z-50 flex max-h-full w-[min(430px,90vw)] flex-col max-md:max-h-[72svh] max-md:w-full overflow-hidden text-zinc-100 shadow-[0_0_80px_rgba(94,255,216,0.12)]">
       {/* Header */}
       <div className="flex items-start justify-between border-b border-zinc-800 bg-transparent p-4">
         <div>
@@ -355,13 +352,7 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
                   onChange={(e) => setHandle(e.target.value)}
                   className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 font-mono text-[10px] text-zinc-300 focus:outline-none"
                 />
-                <button
-                  type="button"
-                  onClick={() => void signInWithGitHub()}
-                  className="flex w-full items-center justify-center gap-1.5 rounded border border-zinc-700 bg-zinc-100/5 py-1 font-mono text-[9px] uppercase tracking-wider text-zinc-300 transition hover:bg-zinc-100/10"
-                >
-                  <Lock size={11} /> Sign in via GitHub for a verified identity
-                </button>
+                <SignInButtons prefix="Verify with" />
               </div>
             )}
             <div className="relative">

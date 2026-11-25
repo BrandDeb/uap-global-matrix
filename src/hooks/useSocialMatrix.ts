@@ -10,7 +10,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toLiveSighting, type LiveSighting } from '@/lib/sightings';
 import { getOperatorId } from '@/lib/operatorId';
 
@@ -25,6 +25,7 @@ export interface HotspotAlert {
 }
 
 export interface PostIntelResult {
+  readonly data?: Record<string, unknown>;
   readonly error: { message: string } | null;
 }
 
@@ -34,6 +35,7 @@ interface MatrixPayload {
   sightings: Record<string, unknown>[];
   hotspots: Record<string, unknown>[];
   serverTime: string;
+  demoMode?: boolean;
 }
 
 async function fetchMatrix(since: string | null): Promise<MatrixPayload | null> {
@@ -63,38 +65,42 @@ export function useSocialMatrix(): {
   sightings: LiveSighting[];
   hotspots: HotspotAlert[];
   loading: boolean;
+  demoMode: boolean;
+  refresh: () => Promise<void>;
   postIntelMessage: (sightingId: string, handle: string, text: string) => Promise<PostIntelResult>;
 } {
   const [sightings, setSightings] = useState<LiveSighting[]>([]);
   const [hotspots, setHotspots] = useState<HotspotAlert[]>([]);
   const [loading, setLoading] = useState(true);
+  const [demoMode, setDemoMode] = useState(false);
+  const cursorRef = useRef<string | null>(null);
+
+  const syncOnce = useCallback(async () => {
+    const data = await fetchMatrix(cursorRef.current);
+    if (data) {
+      const fresh = data.sightings.map(toLiveSighting).filter((x): x is LiveSighting => x !== null);
+      if (cursorRef.current === null) {
+        setSightings(fresh);
+      } else if (fresh.length > 0) {
+        setSightings((curr) => {
+          const known = new Set(curr.map((s) => s.id));
+          return [...fresh.filter((s) => !known.has(s.id)), ...curr];
+        });
+      }
+      setHotspots(data.hotspots.map(toHotspot));
+      setDemoMode(Boolean(data.demoMode));
+      cursorRef.current = data.serverTime;
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    let cursor: string | null = null;
     let timer: number | undefined;
 
-    const decode = (rows: Record<string, unknown>[]) =>
-      rows.map(toLiveSighting).filter((x): x is LiveSighting => x !== null);
-
     const poll = async () => {
-      const data = await fetchMatrix(cursor);
-      if (cancelled) return;
-      if (data) {
-        const fresh = decode(data.sightings);
-        if (cursor === null) {
-          setSightings(fresh);
-        } else if (fresh.length > 0) {
-          setSightings((curr) => {
-            const known = new Set(curr.map((s) => s.id));
-            return [...fresh.filter((s) => !known.has(s.id)), ...curr];
-          });
-        }
-        setHotspots(data.hotspots.map(toHotspot));
-        cursor = data.serverTime;
-      }
-      setLoading(false);
-      timer = window.setTimeout(poll, POLL_MS);
+      await syncOnce();
+      if (!cancelled) timer = window.setTimeout(poll, POLL_MS);
     };
     void poll();
 
@@ -102,7 +108,7 @@ export function useSocialMatrix(): {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, []);
+  }, [syncOnce]);
 
   const postIntelMessage = useCallback(
     async (sightingId: string, handle: string, text: string): Promise<PostIntelResult> => {
@@ -112,7 +118,10 @@ export function useSocialMatrix(): {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ text, handle: handle || getOperatorId() }),
         });
-        if (res.ok) return { error: null };
+        if (res.ok) {
+          const created = (await res.json()) as Record<string, unknown>;
+          return { data: created, error: null };
+        }
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         return { error: { message: body.error ?? `HTTP ${res.status}` } };
       } catch (err: unknown) {
@@ -122,5 +131,5 @@ export function useSocialMatrix(): {
     [],
   );
 
-  return { sightings, hotspots, loading, postIntelMessage };
+  return { sightings, hotspots, loading, demoMode, refresh: syncOnce, postIntelMessage };
 }

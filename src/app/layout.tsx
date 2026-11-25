@@ -27,7 +27,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           }}
         />
         <div className="xeno-scan" aria-hidden />
-        <div className="xeno-grain" aria-hidden />
       </body>
     </html>
   );

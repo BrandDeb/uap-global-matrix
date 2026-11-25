@@ -31,17 +31,17 @@ export default function TimelineScrubber({
 }: TimelineScrubberProps) {
   const pct = ((currentYear - minYear) / (maxYear - minYear)) * 100;
   return (
-    <div className="xeno-glass pointer-events-auto flex items-end gap-6 px-6 py-4">
+    <div className="xeno-glass pointer-events-auto flex items-end gap-4 px-4 py-3 md:gap-6 md:px-6 md:py-4">
       <div className="shrink-0 leading-none">
-        <span className="block font-mono text-[9px] uppercase tracking-[0.35em] text-white/40">Chrono · up to</span>
-        <span className="xeno-gradient-text font-[family-name:var(--font-display)] text-4xl font-extrabold tabular-nums">
+        <span className="hidden font-mono text-[9px] uppercase tracking-[0.35em] text-white/40 sm:block">Chrono · up to</span>
+        <span className="xeno-gradient-text font-[family-name:var(--font-display)] text-4xl font-extrabold tabular-nums max-md:text-2xl">
           {currentYear}
         </span>
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         {decades.length > 0 && (
-          <div className="flex h-10 items-end gap-[3px]">
+          <div className="flex h-6 items-end gap-[3px] md:h-10">
             {decades.map((d) => {
               const lit = d.decade <= currentYear;
               return (
@@ -73,7 +73,7 @@ export default function TimelineScrubber({
         />
         <div className="flex justify-between font-mono text-[9px] tracking-[0.3em] text-white/35">
           <span>{minYear}</span>
-          <span>ROSWELL → PRESENT</span>
+          <span className="hidden sm:inline">ROSWELL → PRESENT</span>
           <span>{maxYear}</span>
         </div>
       </div>

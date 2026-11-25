@@ -21,6 +21,7 @@ import {
   Vector3,
 } from 'three';
 import { GLOBE_RADIUS, latLngToVector3 } from '@/lib/geo';
+import { SHADER_TIME } from './sharedTime';
 
 const RING_NORMAL = new Vector3(0, 0, 1); // ringGeometry faces +Z
 
@@ -56,10 +57,10 @@ function PulseRing({
     };
   }, [latitude, longitude]);
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
     const mesh = ref.current;
     if (!mesh) return;
-    const phase = (clock.getElapsedTime() * speed + phaseOffset) % 1;
+    const phase = (SHADER_TIME.value * speed + phaseOffset) % 1;
     mesh.scale.setScalar(0.4 + phase * grow);
     (mesh.material as MeshBasicMaterial).opacity = (1 - phase) * 0.85;
   });

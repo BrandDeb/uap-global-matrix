@@ -6,7 +6,7 @@
  * lifted quadratic bezier tube with a shader comet travelling along it.
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   AdditiveBlending,
   Color,
@@ -17,7 +17,6 @@ import {
 } from 'three';
 import { GLOBE_RADIUS, latLngToVector3 } from '@/lib/geo';
 import { SHADER_TIME } from './sharedTime';
-
 
 const vert = /* glsl */ `
   varying vec2 vUv;
@@ -38,6 +37,7 @@ const frag = /* glsl */ `
 `;
 
 interface Pt {
+  readonly id?: string;
   readonly latitude: number;
   readonly longitude: number;
 }
@@ -45,6 +45,19 @@ interface Pt {
 const PALETTE = ['#5effd8', '#a58bff', '#38e8ff', '#ff5ec8'];
 
 export default function Trajectories({ points, max = 18 }: { points: readonly Pt[]; max?: number }) {
+  // Stable signature over only the candidate points used for arcs so timeline
+  // scrubbing doesn't rebuild geometries when the top contacts haven't changed.
+  const signature = useMemo(() => {
+    const parts: string[] = [];
+    for (let i = 0; i < points.length && parts.length < max * 2; i++) {
+      const p = points[i];
+      if (Number.isFinite(p.latitude) && Number.isFinite(p.longitude) && !(p.latitude === 0 && p.longitude === 0)) {
+        parts.push(p.id ?? `${p.latitude.toFixed(3)},${p.longitude.toFixed(3)}`);
+      }
+    }
+    return parts.join('|');
+  }, [points, max]);
+
   const arcs = useMemo(() => {
     const valid = points.filter(
       (p) => Number.isFinite(p.latitude) && Number.isFinite(p.longitude) && !(p.latitude === 0 && p.longitude === 0),
@@ -57,7 +70,7 @@ export default function Trajectories({ points, max = 18 }: { points: readonly Pt
       if (dist < 0.15) continue;
       const mid = a.clone().add(b).multiplyScalar(0.5).normalize().multiplyScalar(GLOBE_RADIUS + dist * 0.45);
       const curve = new QuadraticBezierCurve3(a, mid, b);
-      const geo = new TubeGeometry(curve, 64, 0.004, 6, false);
+      const geo = new TubeGeometry(curve, 48, 0.004, 6, false);
       const mat = new ShaderMaterial({
         vertexShader: vert,
         fragmentShader: frag,
@@ -73,7 +86,18 @@ export default function Trajectories({ points, max = 18 }: { points: readonly Pt
       out.push({ geo, mat });
     }
     return out;
-  }, [points, max]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature, max]);
+
+  useEffect(
+    () => () => {
+      for (const a of arcs) {
+        a.geo.dispose();
+        a.mat.dispose();
+      }
+    },
+    [arcs],
+  );
 
   return (
     <group>

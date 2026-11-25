@@ -32,7 +32,7 @@ const LIST_COLS = `id, title, event_timestamp, location_name, source_tier, evide
   credibility_score, is_gov_declassified, latitude, longitude`;
 const DETAIL_COLS = `id, title, description, event_timestamp, created_at, location_name, source_tier,
   evidence_types, credibility_score, is_gov_declassified, media_gallery, document_vault_url,
-  latitude, longitude`;
+  latitude, longitude, archive_source, document_id, craft_morphology, era_tag, primary_source_url`;
 const HOTSPOT_COLS = 'id, location_name, sighting_count, severity_level, last_detected_at, latitude, longitude';
 
 type Row = Record<string, unknown>;

@@ -50,6 +50,12 @@ CREATE TABLE IF NOT EXISTS uap_sightings (
   document_vault_url   text,
   source               text NOT NULL DEFAULT 'citizen'   -- provenance: citizen | seed | nuforc | ...
 );
+-- Archival metadata (declassified archive, 1942–2026).
+ALTER TABLE uap_sightings ADD COLUMN IF NOT EXISTS archive_source text;
+ALTER TABLE uap_sightings ADD COLUMN IF NOT EXISTS document_id text;
+ALTER TABLE uap_sightings ADD COLUMN IF NOT EXISTS craft_morphology text;
+ALTER TABLE uap_sightings ADD COLUMN IF NOT EXISTS era_tag text;
+ALTER TABLE uap_sightings ADD COLUMN IF NOT EXISTS primary_source_url text;
 CREATE INDEX IF NOT EXISTS uap_sightings_geo_idx  ON uap_sightings USING gist (location_coordinates);
 CREATE INDEX IF NOT EXISTS uap_sightings_time_idx ON uap_sightings (event_timestamp DESC);
 CREATE INDEX IF NOT EXISTS uap_sightings_created_idx ON uap_sightings (created_at DESC);
@@ -156,7 +162,8 @@ SELECT s.id, s.title, s.description, s.event_timestamp, s.created_at, s.location
        s.source_tier, s.evidence_types, s.credibility_score, s.is_gov_declassified,
        s.media_gallery, s.document_vault_url, s.source,
        ST_Y(s.location_coordinates::geometry) AS latitude,
-       ST_X(s.location_coordinates::geometry) AS longitude
+       ST_X(s.location_coordinates::geometry) AS longitude,
+       s.archive_source, s.document_id, s.craft_morphology, s.era_tag, s.primary_source_url
 FROM uap_sightings s;
 
 CREATE OR REPLACE VIEW v_hotspot_alerts AS

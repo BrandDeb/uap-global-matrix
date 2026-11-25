@@ -36,6 +36,12 @@ export interface LiveSighting {
   readonly isGovDeclassified: boolean;
   readonly mediaGallery: MediaItem[];
   readonly documentVaultUrl: string | null;
+  /** Declassified-archive metadata (absent for citizen reports). */
+  readonly archiveSource?: string;
+  readonly documentId?: string;
+  readonly morphology?: string;
+  readonly era?: string;
+  readonly primarySourceUrl?: string | null;
 }
 
 /** Lean columns for the bulk feed — no `description` (fetched lazily per case). */
@@ -75,5 +81,10 @@ export function toLiveSighting(row: Record<string, unknown>): LiveSighting | nul
       : [],
     documentVaultUrl:
       typeof row.document_vault_url === 'string' ? row.document_vault_url : null,
+    archiveSource: typeof row.archive_source === 'string' ? row.archive_source : undefined,
+    documentId: typeof row.document_id === 'string' ? row.document_id : undefined,
+    morphology: typeof row.craft_morphology === 'string' ? row.craft_morphology : undefined,
+    era: typeof row.era_tag === 'string' ? row.era_tag : undefined,
+    primarySourceUrl: typeof row.primary_source_url === 'string' ? row.primary_source_url : null,
   };
 }

@@ -1,15 +1,16 @@
 /**
  * src/lib/db/demoStore.ts
  * ---------------------------------------------------------------------------
- * Server-only in-memory seed store mirroring `db/seed.sql` + `db/schema.sql`.
- * Used automatically when `DATABASE_URL` is not configured so a fresh local
- * `npm run dev` boots with all 28 documented UAP cases, active hotspot flaps,
+ * Server-only in-memory store mirroring `db/schema.sql`. Used automatically
+ * when `DATABASE_URL` is not configured so a fresh local `npm run dev` boots
+ * with the curated declassified archive (`@/lib/archive`), hotspot flaps,
  * operator threads, upvotes, and live sighting submissions working out of the
  * box without 502 errors.
  * ---------------------------------------------------------------------------
  */
 import 'server-only';
 import { randomUUID } from 'node:crypto';
+import { ARCHIVE } from '@/lib/archive';
 
 type Row = Record<string, unknown>;
 
@@ -28,6 +29,11 @@ interface SightingRecord {
   document_vault_url: string | null;
   latitude: number;
   longitude: number;
+  archive_source?: string;
+  document_id?: string;
+  craft_morphology?: string;
+  era_tag?: string;
+  primary_source_url?: string | null;
 }
 
 interface HotspotRecord {
@@ -60,375 +66,28 @@ interface DemoState {
 
 const seedUuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
-const SEED_CASES: ReadonlyArray<
-  [
-    title: string,
-    description: string,
-    eventTimestamp: string,
-    lng: number,
-    lat: number,
-    locationName: string,
-    tier: string,
-    evidence: string[],
-    credibility: number,
-    gov: boolean,
-  ]
-> = [
-  [
-    'Roswell Debris Recovery',
-    'Rancher reports unusual debris field; USAAF press release announces a recovered "flying disc", retracted within a day as a weather balloon.',
-    '1947-07-08T14:00:00Z',
-    -104.523,
-    33.3943,
-    'Roswell, New Mexico, USA',
-    'CLASS_B',
-    [],
-    71,
-    true,
-  ],
-  [
-    'Kenneth Arnold Sighting',
-    'Private pilot reports nine bright objects moving "like a saucer skipped across water" near Mount Rainier at an estimated 1,200 mph.',
-    '1947-06-24T21:00:00Z',
-    -121.7603,
-    46.8523,
-    'Mount Rainier, Washington, USA',
-    'CLASS_B',
-    [],
-    68,
-    false,
-  ],
-  [
-    'Washington D.C. Flyover',
-    'Multiple radar returns over restricted airspace near the Capitol on consecutive weekends; jets scrambled, visual contact reported.',
-    '1952-07-19T23:40:00Z',
-    -77.0365,
-    38.8977,
-    'Washington, D.C., USA',
-    'CLASS_A',
-    ['RADAR_VISUAL'],
-    86,
-    true,
-  ],
-  [
-    'Levelland Engine Failures',
-    'Several motorists report a glowing egg-shaped object; vehicle engines and headlights fail as it approaches.',
-    '1957-11-02T23:00:00Z',
-    -102.3488,
-    33.5873,
-    'Levelland, Texas, USA',
-    'CLASS_C',
-    [],
-    58,
-    true,
-  ],
-  [
-    'Socorro Landing Trace',
-    'Police officer witnesses an oval craft with two small figures; landing impressions and scorched vegetation documented.',
-    '1964-04-24T17:45:00Z',
-    -106.8908,
-    34.0584,
-    'Socorro, New Mexico, USA',
-    'CLASS_B',
-    ['OPTICAL_PHOTO'],
-    74,
-    true,
-  ],
-  [
-    'Westall School Encounter',
-    'Over 200 students and staff observe a disc descend into a nearby paddock before departing at speed.',
-    '1966-04-06T11:00:00Z',
-    145.13,
-    -37.94,
-    'Westall, Victoria, Australia',
-    'CLASS_B',
-    [],
-    70,
-    false,
-  ],
-  [
-    'Malmstrom Missile Shutdown',
-    'Security personnel report a glowing red object over the launch facility as ICBMs go offline.',
-    '1967-03-16T08:00:00Z',
-    -111.183,
-    47.505,
-    'Malmstrom AFB, Montana, USA',
-    'CLASS_B',
-    ['RADAR_VISUAL'],
-    69,
-    true,
-  ],
-  [
-    'Tehran F-4 Intercept',
-    'Imperial Iranian Air Force F-4s lose instruments and weapons systems when approaching a brilliant object.',
-    '1976-09-19T00:30:00Z',
-    51.389,
-    35.6892,
-    'Tehran, Iran',
-    'CLASS_A',
-    ['RADAR_VISUAL'],
-    84,
-    true,
-  ],
-  [
-    'Rendlesham Forest Incident',
-    'USAF personnel investigate lights in the forest near RAF Woodbridge; a triangular craft and ground impressions are reported.',
-    '1980-12-26T03:00:00Z',
-    1.433,
-    52.087,
-    'Rendlesham Forest, Suffolk, UK',
-    'CLASS_A',
-    [],
-    81,
-    true,
-  ],
-  [
-    'Trans-en-Provence Trace',
-    'Farmer reports a craft landing; French GEPAN analysis finds altered soil and plant chlorophyll at the site.',
-    '1981-01-08T17:00:00Z',
-    6.35,
-    43.504,
-    'Trans-en-Provence, France',
-    'CLASS_B',
-    [],
-    73,
-    true,
-  ],
-  [
-    'Hudson Valley Boomerang',
-    'Thousands of residents report a huge silent boomerang of lights drifting over the valley over several years.',
-    '1984-03-24T21:00:00Z',
-    -73.9,
-    41.5,
-    'Hudson Valley, New York, USA',
-    'CLASS_C',
-    ['OPTICAL_PHOTO'],
-    55,
-    false,
-  ],
-  [
-    'JAL Flight 1628',
-    'Cargo 747 crew tracks enormous lights pacing the aircraft over Alaska; FAA radar shows intermittent returns.',
-    '1986-11-17T02:00:00Z',
-    -146.0,
-    64.0,
-    'Fort Yukon, Alaska, USA',
-    'CLASS_A',
-    ['RADAR_VISUAL'],
-    80,
-    true,
-  ],
-  [
-    'Belgian Triangle Wave',
-    'Belgian Air Force F-16s lock onto fast-maneuvering targets after hundreds of reports of silent black triangles.',
-    '1990-03-30T23:00:00Z',
-    4.3517,
-    50.8503,
-    'Brussels region, Belgium',
-    'CLASS_A',
-    ['RADAR_VISUAL', 'OPTICAL_PHOTO'],
-    83,
-    true,
-  ],
-  [
-    'Ariel School Landing',
-    'Sixty-two schoolchildren describe a craft landing near the playground and small beings approaching.',
-    '1994-09-16T10:00:00Z',
-    31.04,
-    -17.73,
-    'Ruwa, Zimbabwe',
-    'CLASS_C',
-    [],
-    62,
-    false,
-  ],
-  [
-    'Varginha Incident',
-    'Witnesses report a crashed craft and a strange creature; heavy military movement reported in the town.',
-    '1996-01-20T15:30:00Z',
-    -45.43,
-    -21.55,
-    'Varginha, Minas Gerais, Brazil',
-    'CLASS_C',
-    [],
-    52,
-    false,
-  ],
-  [
-    'Phoenix Lights',
-    'A mile-wide V of lights passes silently over Arizona, seen by thousands including the state governor.',
-    '1997-03-13T19:30:00Z',
-    -112.074,
-    33.4484,
-    'Phoenix, Arizona, USA',
-    'CLASS_B',
-    ['OPTICAL_VIDEO'],
-    76,
-    false,
-  ],
-  [
-    "O'Hare Airport Disc",
-    'United Airlines staff report a dark metallic disc hovering over gate C17 before punching a hole through clouds.',
-    '2006-11-07T16:15:00Z',
-    -87.9073,
-    41.9742,
-    "Chicago O'Hare, Illinois, USA",
-    'CLASS_B',
-    [],
-    66,
-    false,
-  ],
-  [
-    'Stephenville Lights',
-    'Dozens of residents including a pilot report a mile-long object pursued by jets; FAA radar data later released.',
-    '2008-01-08T18:15:00Z',
-    -98.2023,
-    32.2207,
-    'Stephenville, Texas, USA',
-    'CLASS_B',
-    ['RADAR_VISUAL'],
-    72,
-    true,
-  ],
-  [
-    'Nimitz "Tic Tac" Encounter',
-    'USS Princeton radar tracks objects dropping 80,000 ft in seconds; F/A-18 pilots observe a white tic-tac shaped craft. FLIR1 video later released by the DoD.',
-    '2004-11-14T14:00:00Z',
-    -117.6,
-    31.5,
-    'Pacific Ocean, off Baja California',
-    'CLASS_A',
-    ['RADAR_VISUAL', 'FLIR_THERMAL', 'OPTICAL_VIDEO'],
-    94,
-    true,
-  ],
-  [
-    'USS Roosevelt "Gimbal"',
-    'F/A-18 ATFLIR captures a rotating object flying against the wind, part of a fleet reported by the aircrew.',
-    '2015-01-21T09:00:00Z',
-    -79.5,
-    31.0,
-    'Atlantic Ocean, off Jacksonville, Florida',
-    'CLASS_A',
-    ['FLIR_THERMAL', 'OPTICAL_VIDEO'],
-    89,
-    true,
-  ],
-  [
-    'USS Roosevelt "GoFast"',
-    'ATFLIR tracks a small object skimming low over the ocean at high apparent speed.',
-    '2015-01-22T09:30:00Z',
-    -79.2,
-    31.3,
-    'Atlantic Ocean, off Jacksonville, Florida',
-    'CLASS_A',
-    ['FLIR_THERMAL', 'OPTICAL_VIDEO'],
-    82,
-    true,
-  ],
-  [
-    'USS Omaha Sphere',
-    'Ship combat information center films a spherical object that descends into the sea; no debris recovered.',
-    '2019-07-15T23:00:00Z',
-    -117.8,
-    32.6,
-    'Pacific Ocean, off San Diego, California',
-    'CLASS_A',
-    ['RADAR_VISUAL', 'OPTICAL_VIDEO'],
-    85,
-    true,
-  ],
-  [
-    'Lake Huron Octagon Shootdown',
-    'NORAD tracks an octagonal object at 20,000 ft; it is shot down over the lake after a series of high-altitude intercepts.',
-    '2023-02-12T19:42:00Z',
-    -82.4,
-    44.8,
-    'Lake Huron, Michigan, USA',
-    'CLASS_A',
-    ['RADAR_VISUAL'],
-    79,
-    true,
-  ],
-  [
-    'Hessdalen Valley Lights',
-    'Recurring luminous phenomena photographed and instrumented by a long-running research station.',
-    '1984-02-12T22:00:00Z',
-    11.19,
-    62.8,
-    'Hessdalen, Norway',
-    'CLASS_B',
-    ['OPTICAL_PHOTO', 'RADAR_VISUAL'],
-    77,
-    false,
-  ],
-  [
-    'Kaikoura Lights',
-    'Argosy freight crew and a TV team film lights tracked on Wellington radar along the coast.',
-    '1978-12-31T02:00:00Z',
-    173.68,
-    -42.4,
-    'Kaikoura, New Zealand',
-    'CLASS_B',
-    ['RADAR_VISUAL', 'OPTICAL_VIDEO'],
-    75,
-    false,
-  ],
-  [
-    'Shag Harbour Splashdown',
-    'Witnesses see a lit object crash into the harbour; RCMP and navy divers search but recover nothing.',
-    '1967-10-04T23:20:00Z',
-    -65.72,
-    43.5,
-    'Shag Harbour, Nova Scotia, Canada',
-    'CLASS_B',
-    [],
-    72,
-    true,
-  ],
-  [
-    'Colares Light Beams',
-    'Brazilian Air Force "Operação Prato" documents lights firing beams at residents of the island.',
-    '1977-10-20T21:00:00Z',
-    -48.28,
-    -0.93,
-    'Colares, Pará, Brazil',
-    'CLASS_B',
-    ['OPTICAL_PHOTO'],
-    67,
-    true,
-  ],
-  [
-    'Mexico City Eclipse Sightings',
-    'During the total eclipse, many independent videos capture a stationary bright object near the sun.',
-    '1991-07-11T20:00:00Z',
-    -99.1332,
-    19.4326,
-    'Mexico City, Mexico',
-    'CLASS_C',
-    ['OPTICAL_VIDEO'],
-    54,
-    false,
-  ],
-];
-
 function createInitialState(): DemoState {
-  const bootTime = '2026-01-01T00:00:00.000Z';
-  const sightings: SightingRecord[] = SEED_CASES.map((c, idx) => ({
-    id: seedUuid(idx + 1),
-    title: c[0],
-    description: c[1],
-    event_timestamp: c[2],
-    created_at: bootTime,
-    longitude: c[3],
-    latitude: c[4],
-    location_name: c[5],
-    source_tier: c[6],
-    evidence_types: [...c[7]],
-    credibility_score: c[8],
-    is_gov_declassified: c[9],
+  // Demo mode serves the curated declassified archive (same ids as the DB seed).
+  const sightings: SightingRecord[] = ARCHIVE.map((c) => ({
+    id: c.id,
+    title: c.title,
+    description: c.description,
+    event_timestamp: c.eventTimestamp,
+    created_at: c.eventTimestamp,
+    location_name: c.locationName,
+    source_tier: c.sourceTier,
+    evidence_types: c.evidenceTypes,
+    credibility_score: c.credibilityScore,
+    is_gov_declassified: c.isGovDeclassified,
     media_gallery: [],
-    document_vault_url: null,
+    document_vault_url: c.primarySourceUrl,
+    latitude: c.latitude,
+    longitude: c.longitude,
+    archive_source: c.archiveSource,
+    document_id: c.documentId,
+    craft_morphology: c.morphology,
+    era_tag: c.era,
+    primary_source_url: c.primarySourceUrl,
   }));
 
   const now = Date.now();
@@ -462,10 +121,10 @@ function createInitialState(): DemoState {
     },
   ];
 
-  const nimitzId = seedUuid(19);
-  const belgianId = seedUuid(13);
-  const phoenixId = seedUuid(16);
-  const gimbalId = seedUuid(20);
+  const nimitzId = (sightings.find((x) => x.title.includes('Nimitz'))?.id ?? sightings[0].id);
+  const belgianId = (sightings.find((x) => x.title.includes('Belgian'))?.id ?? sightings[0].id);
+  const phoenixId = (sightings.find((x) => x.title.includes('Phoenix'))?.id ?? sightings[0].id);
+  const gimbalId = (sightings.find((x) => x.title.includes('Gimbal'))?.id ?? sightings[0].id);
 
   const threads: ThreadRecord[] = [
     {

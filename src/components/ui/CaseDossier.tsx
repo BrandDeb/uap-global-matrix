@@ -234,6 +234,38 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
           <p className="font-sans text-xs leading-relaxed text-zinc-300">{sighting.description}</p>
         </div>
 
+        {/* Archival provenance (declassified archive cases) */}
+        {sighting.archiveSource && (
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg border border-white/10 bg-white/[0.03] p-2.5 text-[10px]">
+            <div className="col-span-2">
+              <span className="block text-[9px] text-zinc-500">SOURCE AGENCY</span>
+              <span className="text-zinc-200">{sighting.archiveSource}</span>
+            </div>
+            {sighting.documentId && (
+              <div>
+                <span className="block text-[9px] text-zinc-500">DOCUMENT ID</span>
+                <span className="text-[var(--xeno-a)]">{sighting.documentId}</span>
+              </div>
+            )}
+            {sighting.morphology && (
+              <div>
+                <span className="block text-[9px] text-zinc-500">CRAFT SHAPE</span>
+                <span className="text-zinc-200">{sighting.morphology.replace(/_/g, '-').toLowerCase()}</span>
+              </div>
+            )}
+            {sighting.primarySourceUrl && (
+              <a
+                href={sighting.primarySourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="col-span-2 text-[var(--xeno-b)] underline-offset-2 hover:underline"
+              >
+                Read the primary source ↗
+              </a>
+            )}
+          </div>
+        )}
+
         <Link
           href={`/case/${sighting.id}`}
           className="block rounded border border-cyan-500/30 bg-cyan-500/5 py-1.5 text-center font-mono text-[10px] uppercase tracking-wider text-cyan-300 transition hover:bg-cyan-500/10"

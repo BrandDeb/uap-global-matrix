@@ -7,6 +7,9 @@
  * trigger re-renders.
  * ---------------------------------------------------------------------------
  */
+/** Window event that triggers the easter-egg invasion fleet in the 3D scene. */
+export const INVASION_EVENT = 'xeno:invasion';
+
 export const landing = {
   /** Pointer in normalized device coords (-1..1). */
   mouse: { x: 0, y: 0 },

@@ -15,7 +15,8 @@
  * ---------------------------------------------------------------------------
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { ShieldAlert, Radio } from 'lucide-react';
 import { useSocialMatrix } from '@/hooks/useSocialMatrix';
 import { useLazyCaseFile } from '@/hooks/useLazyCaseFile';
@@ -29,6 +30,8 @@ import IntelAnalytics from '@/components/ui/IntelAnalytics';
 import { computeAnalytics } from '@/lib/analytics';
 import XenoIntro from '@/components/ui/XenoIntro';
 import { AnimatePresence, motion } from 'motion/react';
+import MatrixDock from '@/components/ui/MatrixDock';
+import { xenoAudio } from '@/components/landing/audio';
 
 const MAX_YEAR = 2026;
 
@@ -41,6 +44,17 @@ export default function GlobalMatrixDashboard() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [mobileListOpen, setMobileListOpen] = useState(false);
+  const [touring, setTouring] = useState(false);
+  const [soundOn, setSoundOn] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const tourIdx = useRef(0);
+  const prevTopId = useRef<string | null>(null);
+
+  const toggleSound = async () => {
+    if (!xenoAudio) return;
+    await xenoAudio.toggle();
+    setSoundOn(xenoAudio.playing);
+  };
   // Keep the rail on the left until CaseDossier finishes its exit animation so
   // the two panels never overlap on the right edge during close.
   const [dossierOccupyingRight, setDossierOccupyingRight] = useState(false);
@@ -65,9 +79,15 @@ export default function GlobalMatrixDashboard() {
     }
   }, [fetchCaseFile]);
 
-  const openCase = (id: string) => {
+  /** Open a dossier (fly the globe there). Manual opens stop the autopilot. */
+  const showCase = (id: string) => {
     setDossierOccupyingRight(true);
     void fetchCaseFile(id);
+    xenoAudio?.blip(0.8);
+  };
+  const openCase = (id: string) => {
+    setTouring(false);
+    showCase(id);
   };
 
   const filtered = useMemo(
@@ -82,6 +102,105 @@ export default function GlobalMatrixDashboard() {
   );
 
   const analytics = useMemo(() => computeAnalytics(sightings), [sightings]);
+
+  // Autopilot: cycle through the most credible visible contacts every 7s.
+  const tourList = useMemo(
+    () => [...filtered].sort((a, b) => b.credibilityScore - a.credibilityScore).slice(0, 24),
+    [filtered],
+  );
+  useEffect(() => {
+    if (!touring || tourList.length === 0) return;
+    const step = () => {
+      const s = tourList[tourIdx.current % tourList.length];
+      tourIdx.current++;
+      setDossierOccupyingRight(true);
+      void fetchCaseFile(s.id);
+      xenoAudio?.whoosh();
+    };
+    step();
+    const id = window.setInterval(step, 7000);
+    return () => window.clearInterval(id);
+  }, [touring, tourList, fetchCaseFile]);
+
+  // New contact arrived via live polling → toast + chime.
+  useEffect(() => {
+    const top = sightings.reduce<(typeof sightings)[number] | null>(
+      (best, s) => (!best || s.createdAt > best.createdAt ? s : best),
+      null,
+    );
+    if (!top || loading) return;
+    if (prevTopId.current && prevTopId.current !== top.id) {
+      toast('New contact detected', { description: `${top.title} — ${top.locationName}` });
+      if (xenoAudio?.playing) xenoAudio.chime();
+    }
+    prevTopId.current = top.id;
+  }, [sightings, loading]);
+
+  // Keyboard flight controls (ignored while typing in a field).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // Dialogs (search, help, report) own the keyboard while open.
+      if (document.querySelector('[role="dialog"]')) return;
+      const step = (dir: 1 | -1) => {
+        if (filtered.length === 0) return;
+        const i = caseData ? filtered.findIndex((s) => s.id === caseData.id) : -1;
+        const next = filtered[(i + dir + filtered.length) % filtered.length];
+        openCase(next.id);
+      };
+      switch (e.key) {
+        case 'j':
+        case 'ArrowRight':
+          step(1);
+          break;
+        case 'k':
+        case 'ArrowLeft':
+          step(-1);
+          break;
+        case 'Escape':
+          setTouring(false);
+          clearCaseFile();
+          break;
+        case '/':
+          e.preventDefault();
+          setPaletteOpen(true);
+          break;
+        case '1':
+          setFeedTab('all');
+          break;
+        case '2':
+          setFeedTab('verified');
+          break;
+        case '3':
+          setFeedTab('citizen');
+          break;
+        case '[':
+          setSelectedYear((y) => Math.max(1947, y - 5));
+          break;
+        case ']':
+          setSelectedYear((y) => Math.min(MAX_YEAR, y + 5));
+          break;
+        case 't':
+          setTouring((v) => !v);
+          break;
+        case 'm':
+          void toggleSound();
+          break;
+        case 'r':
+          setModalOpen(true);
+          break;
+        case '?':
+          setHelpOpen(true);
+          break;
+        default:
+          return;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
   const railOnLeft = Boolean(caseData) || dossierOccupyingRight;
 
   const transmissionList = (
@@ -240,8 +359,9 @@ export default function GlobalMatrixDashboard() {
           </div>
         </div>
 
+        <div className="mb-2 flex items-end justify-end gap-2">
         {/* Phone: transmissions as a pull-up sheet (the side rail is desktop-only). */}
-        <div className="pointer-events-auto mb-2 md:hidden">
+        <div className="pointer-events-auto min-w-0 flex-1 md:hidden">
           {mobileListOpen ? (
             <section className="xeno-glass flex max-h-[42svh] flex-col p-3">
               <button
@@ -267,6 +387,16 @@ export default function GlobalMatrixDashboard() {
               </button>
             )
           )}
+        </div>
+
+          <MatrixDock
+            touring={touring}
+            onTour={() => setTouring((v) => !v)}
+            soundOn={soundOn}
+            onSound={() => void toggleSound()}
+            helpOpen={helpOpen}
+            onHelp={setHelpOpen}
+          />
         </div>
 
         <TimelineScrubber

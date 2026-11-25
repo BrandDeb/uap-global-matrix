@@ -74,7 +74,7 @@ export default function IntelAnalytics({ data, onClose }: IntelAnalyticsProps) {
   const maxCred = Math.max(1, ...data.credibility.map((c) => c.count));
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+    <div role="dialog" aria-modal="true" aria-label="Intel analytics" className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div
         className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}

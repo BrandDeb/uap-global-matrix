@@ -16,7 +16,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { Suspense, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import { AdditiveBlending, Color, DoubleSide, type Group, MathUtils, ShaderMaterial } from 'three';
@@ -40,7 +40,7 @@ import { QUALITY, initialQualityTier } from '@/components/map/quality';
 import Cow from './Cow';
 import VoxelAlien from './VoxelAlien';
 import { xenoAudio } from './audio';
-import { landing } from './landingStore';
+import { INVASION_EVENT, landing } from './landingStore';
 
 /** Field-guide craft, in the same order as FIELD_GUIDE in Landing.tsx. */
 export const SHOWCASE: ReadonlyArray<{ node: ReactNode; scale: number }> = [
@@ -226,6 +226,65 @@ function Flyby({ children, y, z, speed, delay }: { children: ReactNode; y: numbe
   return <group ref={ref}>{children}</group>;
 }
 
+/* --- Easter egg: invasion fleet ----------------------------------------- */
+
+const INVASION_MS = 14000;
+
+function InvasionFleet() {
+  const [wave, setWave] = useState(0); // 0 = no invasion; bumps per trigger
+  const group = useRef<Group>(null);
+  const started = useRef(0);
+
+  useEffect(() => {
+    let timer = 0;
+    const onInvade = () => {
+      setWave((w) => w + 1);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setWave(0), INVASION_MS);
+    };
+    window.addEventListener(INVASION_EVENT, onInvade);
+    return () => {
+      window.removeEventListener(INVASION_EVENT, onInvade);
+      window.clearTimeout(timer);
+    };
+  }, []);
+
+  useFrame(({ clock }) => {
+    const g = group.current;
+    if (!g) return;
+    if (!started.current) started.current = clock.getElapsedTime();
+    const t = clock.getElapsedTime() - started.current;
+    g.children.forEach((c, i) => {
+      // Spiral in from deep space, orbit the camera's view, then bail upward.
+      const ring = 1 + (i % 4);
+      const a = t * (0.5 + (i % 3) * 0.15) + (i / g.children.length) * Math.PI * 2;
+      const arrive = Math.min(1, t / 2.5);
+      const leave = Math.max(0, (t - 11) / 2.5);
+      const r = (2 + ring * 0.9) * arrive;
+      c.position.set(Math.cos(a) * r, Math.sin(a * 1.3) * 1.2 * ring * 0.4 + leave * 12, -2 - ring * 1.5 + (1 - arrive) * -40);
+      c.rotation.set(0.3 + Math.sin(t * 3 + i) * 0.15, t * 2 + i, Math.sin(t * 2 + i) * 0.2);
+    });
+  });
+
+  if (wave === 0) return null;
+  const colors = ['#5effd8', '#a58bff', '#ff5ec8', '#ffd36b', '#38e8ff'];
+  return (
+    <group
+      ref={(g) => {
+        group.current = g;
+        started.current = 0;
+      }}
+      key={wave}
+    >
+      {Array.from({ length: 18 }, (_, i) => (
+        <group key={i} scale={4 + (i % 3)}>
+          <Saucer color={colors[i % colors.length]} phase={i} pilot={i % 4 === 0} beamAlwaysOn={i % 3 === 0} />
+        </group>
+      ))}
+    </group>
+  );
+}
+
 /* --- Camera parallax ------------------------------------------------------ */
 
 function CameraRig() {
@@ -268,6 +327,7 @@ export default function LandingScene({ eventSource }: { eventSource?: RefObject<
           <HeroRig narrow={narrow} />
           <Showcase narrow={narrow} />
           <VoxelAlien narrow={narrow} />
+          <InvasionFleet />
           <Flyby y={2.8} z={-6} speed={0.09} delay={0.2}>
             <group scale={8}>
               <TicTac />

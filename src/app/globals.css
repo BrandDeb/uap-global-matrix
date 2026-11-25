@@ -222,3 +222,8 @@ body {
   0%, 100% { height: 3px; }
   50% { height: 12px; }
 }
+
+@keyframes meter {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}

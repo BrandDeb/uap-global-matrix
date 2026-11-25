@@ -14,6 +14,10 @@
  *   05 Numbers     live counters
  *   06 Zorp        a voxel alien you can pet / explode (3D, audio-reactive)
  *   07 Crop lab    2D canvas: carve symmetric crop circles that play notes
+ *   07b Live       spotlight of the most credible real contacts (/api/matrix)
+ *
+ * Easter egg: the Konami code (or 5 taps on the "*mostly" sticker) summons an
+ * invasion fleet in the WebGL scene.
  *   08 How it works
  *   09 CTA         magnetic "Enter the Matrix" + GitHub / Google sign-in
  *
@@ -36,7 +40,10 @@ import SignInButtons from '@/components/ui/SignInButtons';
 import { useAuth } from '@/hooks/useAuth';
 import AlienCursor from './AlienCursor';
 import { CASE_REEL, FIELD_GUIDE, STEPS } from './content';
-import { landing } from './landingStore';
+import { INVASION_EVENT, landing } from './landingStore';
+import LiveTransmissions from './LiveTransmissions';
+import { toLiveSighting, type LiveSighting } from '@/lib/sightings';
+import { toast } from 'sonner';
 import { xenoAudio } from './audio';
 import CropCircleCanvas from './CropCircleCanvas';
 
@@ -143,6 +150,8 @@ export default function Landing() {
   const root = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const [contacts, setContacts] = useState(0);
+  const [live, setLive] = useState<LiveSighting[]>([]);
+  const stickerTaps = useRef(0);
   const [statsOn, setStatsOn] = useState(false);
   const { profile, providers } = useAuth();
   const [soundOn, setSoundOn] = useState(false);
@@ -188,13 +197,40 @@ export default function Landing() {
     fetch('/api/matrix', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { sightings?: unknown[] } | null) => {
-        if (!cancelled && d?.sightings) setContacts(d.sightings.length);
+        if (!cancelled && d?.sightings) {
+          setContacts(d.sightings.length);
+          setLive(
+            (d.sightings as Record<string, unknown>[])
+              .map(toLiveSighting)
+              .filter((x): x is LiveSighting => x !== null),
+          );
+        }
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // Easter egg: ↑↑↓↓←→←→BA (or 5 taps on the sticker) → invasion fleet.
+  const invade = () => {
+    window.dispatchEvent(new Event(INVASION_EVENT));
+    toast('⚠ THEY’RE HERE', { description: 'Fleet inbound. Please remain calm and keep your cows indoors.' });
+    [0, 220, 440].forEach((ms) => window.setTimeout(() => xenoAudio?.boop(), ms));
+  };
+  useEffect(() => {
+    const code = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+    let pos = 0;
+    const onKey = (e: KeyboardEvent) => {
+      pos = e.key === code[pos] || e.key.toLowerCase() === code[pos] ? pos + 1 : e.key === code[0] ? 1 : 0;
+      if (pos === code.length) {
+        pos = 0;
+        invade();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   useGSAP(
     () => {
@@ -372,9 +408,20 @@ export default function Landing() {
                 in peace<span className="text-[var(--xeno-d)]">*</span>
               </span>
             </h1>
-            <span className="hero-sticker absolute right-6 top-[24vh] rotate-12 rounded-full bg-[var(--xeno-d)] px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-black shadow-[0_0_40px_rgba(255,94,200,0.6)] md:right-[12vw] md:top-[30vh] md:text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                stickerTaps.current += 1;
+                xenoAudio?.blip(stickerTaps.current / 5);
+                if (stickerTaps.current >= 5) {
+                  stickerTaps.current = 0;
+                  invade();
+                }
+              }}
+              aria-label="Mostly. (tap me)"
+              className="hero-sticker pointer-events-auto absolute right-6 top-[24vh] rotate-12 rounded-full bg-[var(--xeno-d)] px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-black shadow-[0_0_40px_rgba(255,94,200,0.6)] md:right-[12vw] md:top-[30vh] md:text-xs">
               *mostly
-            </span>
+            </button>
           </div>
           <div className="mt-8 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="hero-fade pointer-events-auto max-w-md">
@@ -549,9 +596,30 @@ export default function Landing() {
           <CropCircleCanvas />
         </section>
 
+        {/* 07b LIVE TRANSMISSIONS — real data */}
+        {live.length > 0 && (
+          <section className="sec-live relative px-4 py-[12vh] md:px-10">
+            <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+              <div>
+                <SectionLabel n="07">Live from the archive</SectionLabel>
+                <h2 className="font-[family-name:var(--font-display)] text-[11vw] font-extrabold uppercase leading-[0.88] md:text-[5vw]">
+                  Top-rated
+                  <br />
+                  <span className="xeno-gradient-text">weirdness</span>
+                </h2>
+              </div>
+              <p className="max-w-sm text-sm leading-relaxed text-white/55">
+                The most credible contacts on the globe right now, ranked by our forensic index. Tap one to open its full
+                case file and argue with strangers about it.
+              </p>
+            </div>
+            <LiveTransmissions sightings={live} />
+          </section>
+        )}
+
         {/* 08 HOW IT WORKS */}
         <section className="sec-steps relative px-4 py-[12vh] md:px-10">
-          <SectionLabel n="07">How it works (roughly)</SectionLabel>
+          <SectionLabel n="08">How it works (roughly)</SectionLabel>
           <div className="grid gap-4 md:grid-cols-4">
             {STEPS.map((s) => (
               <div key={s.n} data-cursor={s.n} className="step-card xeno-glass flex min-h-[260px] flex-col justify-between p-6">

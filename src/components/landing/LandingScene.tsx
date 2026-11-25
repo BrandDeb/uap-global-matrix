@@ -38,6 +38,8 @@ import {
 import { SHADER_TIME, TimeDriver } from '@/components/map/sharedTime';
 import { QUALITY, initialQualityTier } from '@/components/map/quality';
 import Cow from './Cow';
+import VoxelAlien from './VoxelAlien';
+import { xenoAudio } from './audio';
 import { landing } from './landingStore';
 
 /** Field-guide craft, in the same order as FIELD_GUIDE in Landing.tsx. */
@@ -78,7 +80,7 @@ function HeroRig({ narrow }: { narrow: boolean }) {
     const baseX = narrow ? 0 : landing.mouse.x * 1.4;
     const target: [number, number, number] = [
       baseX + away * (narrow ? 0 : 3.2),
-      (narrow ? 1.6 : 1.2) + away * 11 + Math.sin(t * 1.1) * 0.12,
+      (narrow ? 1.6 : 1.2) + away * 11 + Math.sin(t * 1.1) * 0.12 + (xenoAudio?.level() ?? 0) * 0.3,
       away * -3,
     ];
     easing.damp3(g.position, target, 0.6, d);
@@ -93,7 +95,10 @@ function HeroRig({ narrow }: { narrow: boolean }) {
       cowT.current = Math.max(cowT.current, 0.55);
     }
     const speed = hover ? 0.2 : 0.075;
+    const prevCow = cowT.current;
     cowT.current = (cowT.current + d * speed) % 1;
+    // The cow just vanished into the hull: it has opinions about this.
+    if (cowT.current < prevCow && landing.heroOut < 0.3) xenoAudio?.moo();
     const c = cow.current;
     if (c) {
       const k = cowT.current;
@@ -127,6 +132,7 @@ function HeroRig({ narrow }: { narrow: boolean }) {
         }}
         onClick={() => {
           landing.boops++;
+          xenoAudio?.boop();
         }}
       >
         <Saucer phase={0} beamAlwaysOn />
@@ -261,6 +267,7 @@ export default function LandingScene({ eventSource }: { eventSource?: RefObject<
         <Suspense fallback={null}>
           <HeroRig narrow={narrow} />
           <Showcase narrow={narrow} />
+          <VoxelAlien narrow={narrow} />
           <Flyby y={2.8} z={-6} speed={0.09} delay={0.2}>
             <group scale={8}>
               <TicTac />

@@ -12,8 +12,13 @@
  *   03 Case reel   pinned horizontal scroll through famous cases
  *   04 Field guide pinned; each scroll step swaps the 3D craft on the plinth
  *   05 Numbers     live counters
- *   06 How it works
- *   07 CTA         magnetic "Enter the Matrix" + GitHub / Google sign-in
+ *   06 Zorp        a voxel alien you can pet / explode (3D, audio-reactive)
+ *   07 Crop lab    2D canvas: carve symmetric crop circles that play notes
+ *   08 How it works
+ *   09 CTA         magnetic "Enter the Matrix" + GitHub / Google sign-in
+ *
+ * Sound: an original generative soundtrack (./audio) — off until the visitor
+ * opts in (browser autoplay rules); scroll depth drives its intensity.
  * ---------------------------------------------------------------------------
  */
 
@@ -25,13 +30,15 @@ import { useGSAP } from '@gsap/react';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText } from 'gsap/SplitText';
 import { motion, useMotionValue, useSpring } from 'motion/react';
-import { ArrowDown, ArrowUpRight } from 'lucide-react';
+import { ArrowDown, ArrowUpRight, LogIn, X } from 'lucide-react';
 import NumberTicker from '@/components/fx/NumberTicker';
 import SignInButtons from '@/components/ui/SignInButtons';
 import { useAuth } from '@/hooks/useAuth';
 import AlienCursor from './AlienCursor';
 import { CASE_REEL, FIELD_GUIDE, STEPS } from './content';
 import { landing } from './landingStore';
+import { xenoAudio } from './audio';
+import CropCircleCanvas from './CropCircleCanvas';
 
 gsap.registerPlugin(useGSAP, ScrollTrigger, SplitText);
 
@@ -67,6 +74,61 @@ function Magnetic({ children, strength = 0.35 }: { children: ReactNode; strength
   );
 }
 
+/** Nav sound toggle with live equalizer bars. */
+function SoundToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" onClick={onToggle} className="xeno-btn" data-cursor={on ? 'MUTE' : 'SOUND'} aria-pressed={on} aria-label={on ? 'Mute soundtrack' : 'Play soundtrack'}>
+      <span className="flex h-3 items-end gap-[2px]" aria-hidden>
+        {[0, 1, 2, 3].map((i) => (
+          <span
+            key={i}
+            className={`w-[2px] rounded-full bg-current ${on ? 'animate-[eq_0.9s_ease-in-out_infinite]' : ''}`}
+            style={{ height: on ? undefined : '3px', animationDelay: `${i * 0.15}s` }}
+          />
+        ))}
+      </span>
+      <span className="hidden sm:inline">{on ? 'Sound on' : 'Sound off'}</span>
+    </button>
+  );
+}
+
+/** "Sign in" button that opens a little popover with GitHub / Google. */
+function SignInPopover() {
+  const { profile, providers, signOut } = useAuth();
+  const [open, setOpen] = useState(false);
+  if (profile) {
+    return (
+      <button type="button" onClick={() => void signOut()} className="xeno-btn normal-case" data-cursor="SIGN OUT" title="Sign out">
+        {profile.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- tiny remote avatar
+          <img src={profile.avatarUrl} alt="" className="h-4 w-4 rounded-full" />
+        ) : null}
+        <span className="max-w-[7rem] truncate">@{profile.operatorHandle}</span>
+      </button>
+    );
+  }
+  if (providers.length === 0) return null;
+  return (
+    <div className="relative">
+      <button type="button" onClick={() => setOpen((o) => !o)} className="xeno-btn" data-cursor="SIGN IN" aria-expanded={open}>
+        <LogIn size={12} /> <span className="hidden sm:inline">Sign in</span>
+      </button>
+      {open && (
+        <div className="xeno-glass absolute right-0 top-full z-50 mt-3 w-64 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-white/50">Verify you’re human-ish</span>
+            <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="text-white/40 hover:text-white">
+              <X size={12} />
+            </button>
+          </div>
+          <SignInButtons prefix="Continue with" className="flex-col [&>button]:justify-center" />
+          <p className="mt-3 text-[10px] leading-relaxed text-white/35">No passwords. We only read your public name and avatar.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SectionLabel({ n, children }: { n: string; children: ReactNode }) {
   return (
     <p className="mb-6 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.4em] text-white/40">
@@ -82,7 +144,33 @@ export default function Landing() {
   const [active, setActive] = useState(0);
   const [contacts, setContacts] = useState(0);
   const [statsOn, setStatsOn] = useState(false);
-  const { profile } = useAuth();
+  const { profile, providers } = useAuth();
+  const [soundOn, setSoundOn] = useState(false);
+  const toggleSound = async () => {
+    if (!xenoAudio) return;
+    await xenoAudio.toggle();
+    setSoundOn(xenoAudio.playing);
+  };
+
+  // Hover blips on anything interactive + scroll depth → music intensity.
+  useEffect(() => {
+    let lastEl: Element | null = null;
+    const onOver = (e: PointerEvent) => {
+      const el = (e.target as HTMLElement | null)?.closest('a,button,[data-cursor]') ?? null;
+      if (el && el !== lastEl) xenoAudio?.blip(Math.random());
+      lastEl = el;
+    };
+    const onScroll = () => {
+      const max = document.documentElement.scrollHeight - innerHeight;
+      xenoAudio?.setIntensity(max > 0 ? scrollY / max : 0);
+    };
+    window.addEventListener('pointerover', onOver);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('pointerover', onOver);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, []);
 
   // Pointer → store (for the 3D scene).
   useEffect(() => {
@@ -183,6 +271,7 @@ export default function Landing() {
           if (i !== landing.craftIndex) {
             landing.craftIndex = i;
             setActive(i);
+            xenoAudio?.whoosh();
           }
         },
         onToggle: (st) => {
@@ -193,7 +282,18 @@ export default function Landing() {
       // --- 05 numbers ------------------------------------------------------
       ScrollTrigger.create({ trigger: '.sec-stats', start: 'top 70%', once: true, onEnter: () => setStatsOn(true) });
 
-      // --- 06 steps: cards rise in -----------------------------------------
+      // --- 06 Zorp: voxel alien visible while this section is on screen ----
+      ScrollTrigger.create({
+        trigger: '.sec-zorp',
+        start: 'top 60%',
+        end: 'bottom 40%',
+        onToggle: (st) => {
+          landing.voxel = st.isActive ? 1 : 0;
+          if (st.isActive) xenoAudio?.whoosh();
+        },
+      });
+
+      // --- 08 steps: cards rise in -----------------------------------------
       gsap.from('.step-card', {
         y: 80,
         opacity: 0,
@@ -253,9 +353,13 @@ export default function Landing() {
             Feed
           </Link>
         </nav>
-        <Link href="/matrix" className="xeno-btn" data-cursor="ENTER">
-          Enter <ArrowUpRight size={12} />
-        </Link>
+        <div className="flex items-center gap-2">
+          <SoundToggle on={soundOn} onToggle={() => void toggleSound()} />
+          <SignInPopover />
+          <Link href="/matrix" className="xeno-btn" data-cursor="ENTER">
+            Enter <ArrowUpRight size={12} />
+          </Link>
+        </div>
       </header>
 
       <main className="relative z-10">
@@ -263,8 +367,8 @@ export default function Landing() {
         <section className="sec-hero pointer-events-none relative flex min-h-[100svh] flex-col justify-end px-4 pb-10 md:px-10 md:pb-14">
           <div className="hero-title">
             <h1 className="font-[family-name:var(--font-display)] font-extrabold uppercase leading-[0.82] tracking-tight">
-              <span className="hero-line block text-[17vw] md:text-[12.5vw]">We come</span>
-              <span className="hero-line block text-[17vw] text-[var(--xeno-a)] md:text-[12.5vw]">
+              <span className="hero-line block text-[13.5vw] md:text-[12.5vw]">We come</span>
+              <span className="hero-line block text-[13.5vw] text-[var(--xeno-a)] md:text-[12.5vw]">
                 in peace<span className="text-[var(--xeno-d)]">*</span>
               </span>
             </h1>
@@ -273,17 +377,36 @@ export default function Landing() {
             </span>
           </div>
           <div className="mt-8 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <p className="hero-fade max-w-md text-sm leading-relaxed text-white/60 md:text-base">
-              The world’s live atlas of unidentified anomalous phenomena — 1947 to tonight. Geotagged, forensically scored,
-              and very slightly unhinged.
-            </p>
+            <div className="hero-fade pointer-events-auto max-w-md">
+              <p className="text-sm leading-relaxed text-white/60 md:text-base">
+                The world’s live atlas of unidentified anomalous phenomena — 1947 to tonight. Geotagged, forensically
+                scored, and very slightly unhinged.
+              </p>
+              {!profile && providers.length > 0 && (
+                <SignInButtons prefix="Join with" redirectTo="/matrix" className="mt-5" />
+              )}
+            </div>
             <div className="hero-fade pointer-events-auto flex items-center gap-4">
               <Magnetic>
                 <Link href="/matrix" className="xeno-btn !px-6 !py-3" data-cursor="ENTER">
                   Open the atlas <ArrowUpRight size={14} />
                 </Link>
               </Magnetic>
-              <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-white/40">
+              {!soundOn && (
+                <button
+                  type="button"
+                  onClick={() => void toggleSound()}
+                  data-cursor="PLAY"
+                  className="group flex items-center gap-2 rounded-full border border-[var(--xeno-d)]/50 bg-[var(--xeno-d)]/10 px-4 py-3 font-mono text-[10px] uppercase tracking-[0.25em] text-[var(--xeno-d)] transition hover:bg-[var(--xeno-d)] hover:text-black"
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-current" />
+                  </span>
+                  Tune in (sound)
+                </button>
+              )}
+              <span className="hidden items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-white/40 lg:flex">
                 <ArrowDown size={12} className="animate-bounce" /> Scroll to get abducted
               </span>
             </div>
@@ -388,9 +511,47 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* 06 HOW IT WORKS */}
+        {/* 06 ZORP — voxel alien (rendered in the WebGL stage) */}
+        <section className="sec-zorp relative flex min-h-[100svh] items-end px-4 pb-16 md:items-center md:px-10 md:pb-0">
+          <div className="max-w-md">
+            <SectionLabel n="05">Meet the intern</SectionLabel>
+            <h2 className="font-[family-name:var(--font-display)] text-[16vw] font-extrabold uppercase leading-[0.85] md:text-[8vw]">
+              Zorp<span className="text-[var(--xeno-d)]">.</span>
+            </h2>
+            <p className="mt-5 text-base leading-relaxed text-white/60 md:text-lg">
+              Made of {''}
+              <span className="text-[var(--xeno-a)]">~1,500 cubes</span> and zero concept of personal space. Hover to pet
+              him. Click to make him… briefly not exist. He grooves harder with the sound on.
+            </p>
+            {!soundOn && (
+              <button type="button" onClick={() => void toggleSound()} className="xeno-btn mt-6" data-cursor="PLAY">
+                ♪ Give Zorp a beat
+              </button>
+            )}
+          </div>
+        </section>
+
+        {/* 07 CROP CIRCLE LAB — 2D canvas */}
+        <section className="sec-crop relative px-4 py-[14vh] md:px-10">
+          <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div>
+              <SectionLabel n="06">Crop circle lab</SectionLabel>
+              <h2 className="font-[family-name:var(--font-display)] text-[11vw] font-extrabold uppercase leading-[0.88] md:text-[5vw]">
+                Leave a<br />
+                <span className="xeno-gradient-text">calling card</span>
+              </h2>
+            </div>
+            <p className="max-w-sm text-sm leading-relaxed text-white/55">
+              Drag across the field. Every stroke is mirrored like a real landing site and sings a note. Can’t draw? Let
+              them land and take the credit.
+            </p>
+          </div>
+          <CropCircleCanvas />
+        </section>
+
+        {/* 08 HOW IT WORKS */}
         <section className="sec-steps relative px-4 py-[12vh] md:px-10">
-          <SectionLabel n="05">How it works (roughly)</SectionLabel>
+          <SectionLabel n="07">How it works (roughly)</SectionLabel>
           <div className="grid gap-4 md:grid-cols-4">
             {STEPS.map((s) => (
               <div key={s.n} data-cursor={s.n} className="step-card xeno-glass flex min-h-[260px] flex-col justify-between p-6">

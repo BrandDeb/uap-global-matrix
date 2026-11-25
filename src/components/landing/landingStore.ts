@@ -16,6 +16,8 @@ export const landing = {
   showcase: 0,
   /** Index of the craft featured in the field guide. */
   craftIndex: 0,
+  /** 0..1 how much the voxel-alien section is active. */
+  voxel: 0,
   /** 0..1 final call-to-action reached. */
   cta: 0,
   /** Bumped when the visitor clicks the saucer (extra-goofy abduction). */

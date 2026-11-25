@@ -4,8 +4,9 @@
  * src/components/landing/AlienCursor.tsx
  * A custom cursor: a lagging ring with a little alien eye inside that looks
  * where you're going. It swells over anything interactive ([data-cursor] or
- * links/buttons) and shows the element's data-cursor label; over the 3D
- * saucer it says "BOOP". Hidden on touch devices and for reduced motion.
+ * links/buttons) and shows the element's data-cursor label; over the
+ * 3D scene (body[data-cursor], set by the canvas) it shows that label, e.g.
+ * "BOOP" on the saucer or "PET" on Zorp. Hidden on touch / reduced motion.
  */
 
 import { useEffect, useRef } from 'react';
@@ -28,9 +29,9 @@ export default function AlienCursor() {
       pos.x = e.clientX;
       pos.y = e.clientY;
       const el = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-cursor],a,button');
-      const boop = document.body.dataset.cursor === 'boop';
-      hot = Boolean(el) || boop;
-      if (label.current) label.current.textContent = boop ? 'BOOP' : (el?.dataset.cursor ?? '');
+      const scene = document.body.dataset.cursor;
+      hot = Boolean(el) || Boolean(scene);
+      if (label.current) label.current.textContent = scene ? scene.toUpperCase() : (el?.dataset.cursor ?? '');
     };
     const loop = () => {
       const dx = pos.x - cur.x;

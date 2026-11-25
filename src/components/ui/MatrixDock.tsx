@@ -9,7 +9,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { Keyboard, Pause, Play, Volume2, VolumeX } from 'lucide-react';
+import { Keyboard, LocateFixed, Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { Dialog } from '@/components/primitives/dialog';
 import { Tooltip, TooltipProvider } from '@/components/primitives/tooltip';
 
@@ -22,6 +22,7 @@ export const SHORTCUTS: ReadonlyArray<[keys: string, action: string]> = [
   ['[  /  ]', 'Timeline −/+ 5 years'],
   ['T', 'Autopilot tour on/off'],
   ['M', 'Soundtrack on/off'],
+  ['N', 'Closest sighting to you'],
   ['R', 'Report a sighting'],
   ['?', 'This help'],
 ];
@@ -33,9 +34,10 @@ interface MatrixDockProps {
   readonly onSound: () => void;
   readonly helpOpen: boolean;
   readonly onHelp: (open: boolean) => void;
+  readonly onNearMe: () => void;
 }
 
-export default function MatrixDock({ touring, onTour, soundOn, onSound, helpOpen, onHelp }: MatrixDockProps) {
+export default function MatrixDock({ touring, onTour, soundOn, onSound, helpOpen, onHelp, onNearMe }: MatrixDockProps) {
   return (
     <>
       <TooltipProvider>
@@ -51,6 +53,16 @@ export default function MatrixDock({ touring, onTour, soundOn, onSound, helpOpen
             >
               {touring ? <Pause size={12} /> : <Play size={12} />}
               <span className="hidden sm:inline">{touring ? 'Touring' : 'Tour'}</span>
+            </button>
+          </Tooltip>
+          <Tooltip label="Closest sighting to you (N)">
+            <button
+              type="button"
+              onClick={onNearMe}
+              aria-label="Find the sighting closest to me"
+              className="flex items-center gap-1.5 rounded-[14px] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-white/60 transition hover:text-white"
+            >
+              <LocateFixed size={13} /> <span className="hidden sm:inline">Near me</span>
             </button>
           </Tooltip>
           <Tooltip label={soundOn ? 'Mute (M)' : 'Soundtrack (M)'}>

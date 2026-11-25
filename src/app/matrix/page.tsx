@@ -50,6 +50,42 @@ export default function GlobalMatrixDashboard() {
   const tourIdx = useRef(0);
   const prevTopId = useRef<string | null>(null);
 
+  /** Geolocate, then open the nearest sighting (haversine great-circle distance). */
+  const nearMe = () => {
+    if (!('geolocation' in navigator)) {
+      toast.error('Location isn’t available in this browser.');
+      return;
+    }
+    toast('Triangulating your position…');
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const rad = Math.PI / 180;
+        const km = (lat: number, lng: number) => {
+          const dLat = (lat - coords.latitude) * rad;
+          const dLng = (lng - coords.longitude) * rad;
+          const a = Math.sin(dLat / 2) ** 2 + Math.cos(coords.latitude * rad) * Math.cos(lat * rad) * Math.sin(dLng / 2) ** 2;
+          return 6371 * 2 * Math.asin(Math.sqrt(a));
+        };
+        let best: (typeof sightings)[number] | null = null;
+        let bestKm = Infinity;
+        for (const s of sightings) {
+          const d = km(s.latitude, s.longitude);
+          if (d < bestKm) {
+            bestKm = d;
+            best = s;
+          }
+        }
+        if (!best) return;
+        openCase(best.id);
+        toast.success(`Closest contact: ${best.title}`, {
+          description: `${Math.round(bestKm).toLocaleString()} km from you · ${best.locationName}`,
+        });
+      },
+      () => toast.error('Location permission denied — the aliens will have to guess.'),
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 },
+    );
+  };
+
   const toggleSound = async () => {
     if (!xenoAudio) return;
     await xenoAudio.toggle();
@@ -187,6 +223,9 @@ export default function GlobalMatrixDashboard() {
           break;
         case 'm':
           void toggleSound();
+          break;
+        case 'n':
+          nearMe();
           break;
         case 'r':
           setModalOpen(true);
@@ -396,6 +435,7 @@ export default function GlobalMatrixDashboard() {
             onSound={() => void toggleSound()}
             helpOpen={helpOpen}
             onHelp={setHelpOpen}
+            onNearMe={nearMe}
           />
         </div>
 

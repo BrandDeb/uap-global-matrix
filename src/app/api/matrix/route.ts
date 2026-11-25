@@ -3,6 +3,7 @@
  * `?since=<iso>` returns only sightings created after that instant (live
  * polling). `serverTime` is the cursor to send next time.
  */
+import { hasDb } from '@/lib/db';
 import { listHotspots, listSightings } from '@/lib/db/queries';
 import { isoOrNull, jsonError } from '@/lib/apiHelpers';
 
@@ -20,7 +21,7 @@ export async function GET(req: Request): Promise<Response> {
       listSightings({ limit: since ? 500 : MAX_SIGHTINGS, since }),
       listHotspots(HOTSPOT_LIMIT),
     ]);
-    return Response.json({ sightings, hotspots, serverTime });
+    return Response.json({ sightings, hotspots, serverTime, demoMode: !hasDb() });
   } catch (err: unknown) {
     return jsonError(502, err instanceof Error ? err.message : 'Database error.');
   }

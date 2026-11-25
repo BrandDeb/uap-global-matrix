@@ -12,7 +12,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { useMemo, useRef, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import {
@@ -30,7 +30,6 @@ import {
 import { GLOBE_RADIUS, latLngToVector3 } from '@/lib/geo';
 import { SHADER_TIME } from './sharedTime';
 import { easing } from 'maath';
-
 
 const surfaceVert = /* glsl */ `
   varying vec2 vUv;
@@ -112,7 +111,7 @@ const atmoFrag = /* glsl */ `
   uniform float uTime;
   varying vec3 vNormalV;
   void main() {
-    float i = pow(0.62 - dot(vNormalV, vec3(0.0, 0.0, 1.0)), 5.0);
+    float i = pow(max(0.0, 0.62 - dot(vNormalV, vec3(0.0, 0.0, 1.0))), 5.0);
     float pulse = 0.85 + 0.15 * sin(uTime * 0.8);
     gl_FragColor = vec4(uColor * i * 2.2 * pulse, i);
   }
@@ -166,9 +165,12 @@ function HaloRing({
       }),
     [color, speed],
   );
+  useEffect(() => () => mat.dispose(), [mat]);
+
   const ref = useRef<Mesh>(null);
   useFrame((_, d) => {
-    if (ref.current) ref.current.rotation.z += d * speed * 0.05;
+    const dt = Math.min(d, 0.1);
+    if (ref.current) ref.current.rotation.z += dt * speed * 0.05;
   });
   return (
     <group rotation={tilt}>
@@ -185,9 +187,13 @@ interface GeoPoint {
 }
 
 const Y_AXIS = new Vector3(0, 1, 0);
-const CAMERA_DIR = new Vector3(0, 0, 1);
 const tmpDir = new Vector3();
+const tmpCamDir = new Vector3();
+const tmpNorth = new Vector3();
+const tmpUp = new Vector3();
 const tmpQuat = new Quaternion();
+const tmpRoll = new Quaternion();
+const spinStep = new Quaternion();
 
 export default function AlienEarth({
   focusPoint,
@@ -238,25 +244,60 @@ export default function AlienEarth({
     [],
   );
 
+  useEffect(
+    () => () => {
+      surface.dispose();
+      atmo.dispose();
+    },
+    [surface, atmo],
+  );
+
   const earthRef = useRef<Mesh>(null);
   const tiltRef = useRef<Group>(null);
-  const spin = useRef(0);
+  const idleQuat = useRef(new Quaternion());
+  const wasFocused = useRef(false);
 
-  useFrame(({ pointer }, delta) => {
+  useFrame(({ pointer, camera }, delta) => {
+    const dt = Math.min(delta, 0.1);
     const mesh = earthRef.current;
-    if (!mesh) return;
-    spin.current += delta * 0.08;
-    if (focusPoint) {
-      latLngToVector3(focusPoint.latitude, focusPoint.longitude, 1, tmpDir).normalize();
-      tmpQuat.setFromUnitVectors(tmpDir, CAMERA_DIR);
-      easing.dampQ(mesh.quaternion, tmpQuat, 0.35, delta);
-    } else {
-      tmpQuat.setFromAxisAngle(Y_AXIS, spin.current);
-      easing.dampQ(mesh.quaternion, tmpQuat, 0.5, delta);
-    }
-    // Subtle parallax lean toward the pointer.
     const g = tiltRef.current;
-    if (g) easing.dampE(g.rotation, [pointer.y * -0.12, pointer.x * 0.18, 0], 0.6, delta);
+    if (!mesh) return;
+
+    if (focusPoint) {
+      wasFocused.current = true;
+      latLngToVector3(focusPoint.latitude, focusPoint.longitude, 1, tmpDir).normalize();
+      // Face the focused coordinate toward the actual orbiting camera (in tiltRef local space)
+      // while keeping North (+Y) upright relative to camera.up.
+      tmpCamDir.copy(camera.position);
+      if (g) g.worldToLocal(tmpCamDir);
+      tmpCamDir.normalize();
+
+      tmpQuat.setFromUnitVectors(tmpDir, tmpCamDir);
+      tmpNorth.copy(Y_AXIS).applyQuaternion(tmpQuat);
+      tmpNorth.addScaledVector(tmpCamDir, -tmpNorth.dot(tmpCamDir));
+
+      tmpUp.copy(camera.up);
+      if (g) tmpUp.applyQuaternion(g.quaternion.clone().invert());
+      tmpUp.addScaledVector(tmpCamDir, -tmpUp.dot(tmpCamDir));
+
+      if (tmpNorth.lengthSq() > 1e-4 && tmpUp.lengthSq() > 1e-4) {
+        tmpRoll.setFromUnitVectors(tmpNorth.normalize(), tmpUp.normalize());
+        tmpQuat.premultiply(tmpRoll);
+      }
+      easing.dampQ(mesh.quaternion, tmpQuat, 0.35, dt);
+    } else {
+      if (wasFocused.current) {
+        // Resume spinning seamlessly from the current orientation instead of snapping.
+        idleQuat.current.copy(mesh.quaternion);
+        wasFocused.current = false;
+      }
+      spinStep.setFromAxisAngle(Y_AXIS, dt * 0.08);
+      idleQuat.current.premultiply(spinStep).normalize();
+      easing.dampQ(mesh.quaternion, idleQuat.current, 0.45, dt);
+    }
+
+    // Subtle parallax lean toward the pointer.
+    if (g) easing.dampE(g.rotation, [pointer.y * -0.1, pointer.x * 0.14, 0], 0.6, dt);
   });
 
   return (

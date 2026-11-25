@@ -20,6 +20,7 @@ import { OrbitControls, PerformanceMonitor } from '@react-three/drei';
 import { Bloom, ChromaticAberration, EffectComposer, Noise, Vignette } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
 import { Vector2 } from 'three';
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { Leva, useControls } from 'leva';
 import AlienEarth from './AlienEarth';
 import CosmicBackdrop from './CosmicBackdrop';
@@ -44,23 +45,46 @@ interface GlobeOverlayProps {
   readonly onSelect?: (id: string) => void;
 }
 
-/** Ease the camera in from deep space on first mount. */
-function IntroCamera() {
+/**
+ * Ease the camera in from deep space on first mount, then hand control cleanly
+ * to OrbitControls so the two never fight over `camera.position` mid-flight.
+ */
+function IntroCamera({
+  onComplete,
+  controlsRef,
+}: {
+  onComplete: () => void;
+  controlsRef: React.RefObject<OrbitControlsImpl | null>;
+}) {
   const { camera, size } = useThree();
   // Portrait screens need more distance for the globe to fit the width.
   const restZ = size.width / size.height < 0.8 ? 13 : 8.6;
   const t = useRef(0);
+  const done = useRef(false);
+
   useFrame((_, d) => {
-    if (t.current >= 1) return;
-    t.current = Math.min(1, t.current + d * 0.35);
-    const e = 1 - Math.pow(1 - t.current, 4);
-    camera.position.set(Math.sin((1 - e) * 1.2) * 3, (1 - e) * 4, restZ + (1 - e) * 40);
+    if (done.current) return;
+    const dt = Math.min(d, 0.05);
+    t.current = Math.min(1, t.current + dt * 0.42);
+    const e = 1 - Math.pow(1 - t.current, 3);
+    camera.position.set(Math.sin((1 - e) * 0.9) * 2.4, (1 - e) * 2.8, restZ + (1 - e) * 18);
     camera.lookAt(0, 0, 0);
+    if (t.current >= 1) {
+      done.current = true;
+      controlsRef.current?.target.set(0, 0, 0);
+      controlsRef.current?.update();
+      onComplete();
+    }
   });
   return null;
 }
 
-const CA_OFFSET = new Vector2(0.0009, 0.0006);
+const CA_OFFSET = new Vector2(0.0007, 0.0005);
+const emptySubscribe = () => () => {};
+const getShowFxSnapshot = () => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('fx') === '1' || params.get('debug') === '1';
+};
 
 const noopSubscribe = () => () => {};
 
@@ -110,23 +134,33 @@ export default function GlobeOverlay({
     () => false,
   );
   const [fps, setFps] = useState<FpsSample>({ fps: 0, calls: 0, triangles: 0 });
-  // Live-tunable post FX (panel only shown in development).
+  const [introDone, setIntroDone] = useState(false);
+  const showFxPanel = useSyncExternalStore(emptySubscribe, getShowFxSnapshot, () => false);
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
+
+  // Live-tunable post FX (panel hidden unless ?fx=1 so it never covers HUD tabs).
   const fx = useControls('Post FX', {
-    bloom: { value: 1.1, min: 0, max: 4, step: 0.05 },
-    threshold: { value: 0.32, min: 0, max: 1, step: 0.01 },
-    radius: { value: 0.75, min: 0, max: 1, step: 0.01 },
-    grain: { value: 0.35, min: 0, max: 1, step: 0.01 },
-    vignette: { value: 0.85, min: 0, max: 1.5, step: 0.01 },
+    bloom: { value: 1.05, min: 0, max: 4, step: 0.05 },
+    threshold: { value: 0.34, min: 0, max: 1, step: 0.01 },
+    radius: { value: 0.72, min: 0, max: 1, step: 0.01 },
+    grain: { value: 0.22, min: 0, max: 1, step: 0.01 },
+    vignette: { value: 0.8, min: 0, max: 1.5, step: 0.01 },
   });
   const hovered = hoveredId ? (points.find((p) => p.id === hoveredId) ?? null) : null;
 
   return (
-    <div className="absolute inset-0">
-      <Leva hidden={process.env.NODE_ENV === 'production'} collapsed />
+    <div className="absolute inset-0 z-0 h-full w-full overflow-hidden">
+      <Leva hidden={!showFxPanel} collapsed />
       <Canvas
-        camera={{ position: [0, 4, 46], fov: 42, near: 0.1, far: 500 }}
+        className="h-full w-full"
+        camera={{ position: [2.1, 2.8, 26.6], fov: 42, near: 0.1, far: 500 }}
         dpr={[1, q.dpr]}
-        gl={{ antialias: false, powerPreference: 'high-performance' }}
+        gl={{
+          antialias: false,
+          stencil: false,
+          depth: true,
+          powerPreference: 'high-performance',
+        }}
       >
         <color attach="background" args={['#020208']} />
         {!locked && (
@@ -141,7 +175,7 @@ export default function GlobeOverlay({
         )}
         {showFps && <FpsProbe onSample={setFps} />}
         <TimeDriver />
-        <IntroCamera />
+        <IntroCamera controlsRef={controlsRef} onComplete={() => setIntroDone(true)} />
         <CosmicBackdrop key={`bg-${tier}`} stars={q.stars} dust={q.dust} />
 
         <Suspense fallback={null}>
@@ -156,26 +190,34 @@ export default function GlobeOverlay({
         </Suspense>
 
         <OrbitControls
+          ref={controlsRef}
+          enabled={introDone}
           enablePan={false}
-          minDistance={2.8}
+          minDistance={3.1}
           maxDistance={14}
           zoomSpeed={0.6}
           rotateSpeed={0.45}
           enableDamping
-          dampingFactor={0.06}
+          dampingFactor={0.07}
         />
 
         <EffectComposer multisampling={0}>
-          <Bloom intensity={fx.bloom} luminanceThreshold={fx.threshold} luminanceSmoothing={0.4} mipmapBlur radius={fx.radius} />
+          <Bloom
+            intensity={fx.bloom}
+            luminanceThreshold={fx.threshold}
+            luminanceSmoothing={0.4}
+            mipmapBlur
+            radius={fx.radius}
+          />
           <>
             {q.fullPost && (
               <>
-                <ChromaticAberration offset={CA_OFFSET} radialModulation modulationOffset={0.3} />
+                <ChromaticAberration offset={CA_OFFSET} radialModulation modulationOffset={0.35} />
                 <Noise premultiply blendFunction={BlendFunction.SCREEN} opacity={fx.grain} />
               </>
             )}
           </>
-          <Vignette eskil={false} offset={0.2} darkness={fx.vignette} />
+          <Vignette eskil={false} offset={0.22} darkness={fx.vignette} />
         </EffectComposer>
       </Canvas>
 
@@ -187,7 +229,7 @@ export default function GlobeOverlay({
       )}
 
       {hovered && (
-        <div className="xeno-glass pointer-events-none absolute bottom-40 left-1/2 -translate-x-1/2 px-4 py-2 font-mono text-[11px] tracking-wider text-[var(--xeno-a)]">
+        <div className="xeno-glass pointer-events-none absolute bottom-32 left-1/2 z-20 -translate-x-1/2 px-4 py-2 font-mono text-[11px] tracking-wider text-[var(--xeno-a)]">
           <span className="mr-2 inline-block h-1.5 w-1.5 animate-ping rounded-full bg-[var(--xeno-a)]" />
           {hovered.title}
           <span className="ml-3 text-white/40">CRED {hovered.credibilityScore}%</span>

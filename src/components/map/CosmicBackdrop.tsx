@@ -6,7 +6,7 @@
  * GPU point starfield and drifting "dust" motes near the camera.
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   AdditiveBlending,
   BackSide,
@@ -120,6 +120,16 @@ export default function CosmicBackdrop({ stars = 6000, dust: dustCount = 500 }: 
       dust: makeStars(dustCount, 8, 30, 1.2),
     };
   }, [stars, dustCount]);
+
+  useEffect(
+    () => () => {
+      nebula.dispose();
+      starMat.dispose();
+      far.dispose();
+      dust.dispose();
+    },
+    [nebula, starMat, far, dust],
+  );
 
   return (
     <group>

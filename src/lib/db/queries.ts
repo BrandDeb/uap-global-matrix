@@ -4,10 +4,29 @@
  * Every SQL statement the app runs, in one place. Route handlers and server
  * components call these; client code calls the routes. Rows come back in the
  * same snake_case shape the decoders in `@/lib/sightings` already accept.
+ *
+ * When `DATABASE_URL` is not configured, falls back seamlessly to the in-memory
+ * seed archive (`./demoStore`) so local development works immediately.
  * ---------------------------------------------------------------------------
  */
 import 'server-only';
-import { getDb } from './index';
+import { getDb, hasDb } from './index';
+import {
+  demoCountCoWitnesses,
+  demoFeedItems,
+  demoGetBrief,
+  demoGetSighting,
+  demoInsertCoWitness,
+  demoInsertThread,
+  demoInsertUpvote,
+  demoInsertVerifiedSighting,
+  demoListHotspots,
+  demoListSightings,
+  demoListThreads,
+  demoSearchSightings,
+  demoTrending,
+  demoUpsertBrief,
+} from './demoStore';
 
 const LIST_COLS = `id, title, event_timestamp, location_name, source_tier, evidence_types,
   credibility_score, is_gov_declassified, latitude, longitude`;
@@ -20,6 +39,7 @@ type Row = Record<string, unknown>;
 
 /** Bulk feed for the globe, newest first. `since` returns only newer inserts (polling). */
 export async function listSightings(opts: { limit: number; since?: string | null }): Promise<Row[]> {
+  if (!hasDb()) return demoListSightings(opts);
   const sql = getDb();
   if (opts.since) {
     return sql.unsafe(
@@ -34,11 +54,13 @@ export async function listSightings(opts: { limit: number; since?: string | null
 }
 
 export async function getSighting(id: string): Promise<Row | null> {
+  if (!hasDb()) return demoGetSighting(id);
   const rows = await getDb().unsafe(`SELECT ${DETAIL_COLS} FROM v_uap_sightings WHERE id = $1`, [id]);
   return rows[0] ?? null;
 }
 
 export async function listHotspots(limit: number): Promise<Row[]> {
+  if (!hasDb()) return demoListHotspots(limit);
   return getDb().unsafe(
     `SELECT ${HOTSPOT_COLS} FROM v_hotspot_alerts ORDER BY last_detected_at DESC LIMIT $1`,
     [limit],
@@ -57,6 +79,7 @@ export async function searchSightings(f: {
   q: string | null;
   limit: number;
 }): Promise<Row[]> {
+  if (!hasDb()) return demoSearchSightings(f);
   const sql = getDb();
   const bbox = f.minLat !== null && f.minLng !== null && f.maxLat !== null && f.maxLng !== null;
   return sql`
@@ -78,6 +101,7 @@ export async function searchSightings(f: {
 /* --- community ----------------------------------------------------------- */
 
 export async function listThreads(sightingId: string, since?: string | null): Promise<Row[]> {
+  if (!hasDb()) return demoListThreads(sightingId, since);
   const sql = getDb();
   return sql`
     SELECT id, sighting_id, parent_id, operator_handle, intel_text, created_at
@@ -94,6 +118,7 @@ export async function insertThread(t: {
   handle: string;
   text: string;
 }): Promise<Row> {
+  if (!hasDb()) return demoInsertThread(t);
   const [row] = await getDb()`
     INSERT INTO uap_intel_threads (sighting_id, parent_id, operator_handle, intel_text)
     VALUES (${t.sightingId}, ${t.parentId}, ${t.handle}, ${t.text})
@@ -103,6 +128,7 @@ export async function insertThread(t: {
 }
 
 export async function getBrief(sightingId: string): Promise<Row | null> {
+  if (!hasDb()) return demoGetBrief(sightingId);
   const rows = await getDb()`
     SELECT summary_text, threat_assessment FROM uap_ai_briefs WHERE sighting_id = ${sightingId}
   `;
@@ -110,6 +136,10 @@ export async function getBrief(sightingId: string): Promise<Row | null> {
 }
 
 export async function upsertBrief(sightingId: string, summary: string, threat: string): Promise<void> {
+  if (!hasDb()) {
+    demoUpsertBrief(sightingId, summary, threat);
+    return;
+  }
   await getDb()`
     INSERT INTO uap_ai_briefs (sighting_id, summary_text, threat_assessment, updated_at)
     VALUES (${sightingId}, ${summary}, ${threat}, now())
@@ -121,24 +151,35 @@ export async function upsertBrief(sightingId: string, summary: string, threat: s
 }
 
 export async function countCoWitnesses(sightingId: string): Promise<number> {
+  if (!hasDb()) return demoCountCoWitnesses(sightingId);
   const [r] = await getDb()`SELECT count(*)::int AS n FROM sighting_co_witnesses WHERE sighting_id = ${sightingId}`;
   return Number(r?.n ?? 0);
 }
 
 export async function insertCoWitness(sightingId: string, handle: string): Promise<void> {
+  if (!hasDb()) {
+    demoInsertCoWitness(sightingId, handle);
+    return;
+  }
   await getDb()`INSERT INTO sighting_co_witnesses (sighting_id, operator_handle) VALUES (${sightingId}, ${handle})`;
 }
 
 export async function insertUpvote(sightingId: string, handle: string): Promise<void> {
+  if (!hasDb()) {
+    demoInsertUpvote(sightingId, handle);
+    return;
+  }
   await getDb()`INSERT INTO uap_intel_upvotes (sighting_id, operator_handle) VALUES (${sightingId}, ${handle})`;
 }
 
 export async function trending(maxRows: number): Promise<Row[]> {
+  if (!hasDb()) return demoTrending(maxRows);
   return getDb()`SELECT id, title, upvote_count::int AS upvote_count FROM trending_sightings(${maxRows})`;
 }
 
 /** Intel feed: recent sightings with thread + upvote counts. */
 export async function feedItems(limit: number): Promise<Row[]> {
+  if (!hasDb()) return demoFeedItems(limit);
   return getDb()`
     SELECT s.id, s.title, s.description, s.event_timestamp, s.location_name,
            s.is_gov_declassified, s.credibility_score,
@@ -172,6 +213,7 @@ export async function insertVerifiedSighting(s: {
     weatherSummary: string | null;
   };
 }): Promise<string> {
+  if (!hasDb()) return demoInsertVerifiedSighting(s);
   const sql = getDb();
   // One transaction: the sighting and its forensic audit row land together.
   return sql.begin(async (tx) => {
@@ -205,6 +247,7 @@ export async function insertVerifiedSighting(s: {
  * wanted handle is taken by someone else, a numeric suffix is appended.
  */
 export async function upsertProfile(p: { id: string; handle: string; avatarUrl: string | null }): Promise<string> {
+  if (!hasDb()) return p.handle; // demo mode: no persistence
   const sql = getDb();
   const existing = await sql`SELECT operator_handle FROM profiles WHERE id = ${p.id}`;
   if (existing[0]) {
@@ -224,6 +267,7 @@ export async function upsertProfile(p: { id: string; handle: string; avatarUrl: 
 }
 
 export async function getProfile(id: string): Promise<Row | null> {
+  if (!hasDb()) return null;
   const rows = await getDb()`SELECT * FROM profiles WHERE id = ${id}`;
   return rows[0] ?? null;
 }

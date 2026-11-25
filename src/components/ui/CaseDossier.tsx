@@ -52,7 +52,7 @@ interface CaseDossierProps {
     sightingId: string,
     handle: string,
     text: string,
-  ) => Promise<{ error: { message: string } | null }>;
+  ) => Promise<{ data?: Record<string, unknown>; error: { message: string } | null }>;
 }
 
 export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossierProps) {
@@ -130,17 +130,16 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
     e.preventDefault();
     if (!message.trim()) return;
     const text = message.trim();
-    const { error } = await onAddIntel(sighting.id, operatorHandle, text);
+    const { data, error } = await onAddIntel(sighting.id, operatorHandle, text);
     if (error) {
       toast.error('Transmission failed', { description: error.message });
       return;
     }
     toast.success('Intel transmitted');
-    // Show it immediately; the next poll de-duplicates by id.
-    setComments((curr) => [
-      ...curr,
-      { id: `local-${Date.now()}`, operatorHandle, intelText: text, createdAt: new Date().toISOString() },
-    ]);
+    const created = data
+      ? toIntelThread(data)
+      : { id: `local-${Date.now()}`, operatorHandle, intelText: text, createdAt: new Date().toISOString() };
+    setComments((curr) => (curr.some((c) => c.id === created.id) ? curr : [...curr, created]));
     setMessage('');
   };
 
@@ -198,10 +197,7 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
   };
 
   return (
-    <div
-      style={{ animation: 'dossier-in 0.2s ease-out' }}
-      className="xeno-glass relative z-50 flex max-h-full w-[min(430px,90vw)] max-md:max-h-[72svh] max-md:w-full flex-col overflow-hidden text-zinc-100 shadow-[0_0_80px_rgba(94,255,216,0.12)] animate-[dossier-in_0.6s_cubic-bezier(0.16,1,0.3,1)]"
-    >
+    <div className="xeno-glass relative z-50 flex max-h-full w-[min(430px,90vw)] flex-col max-md:max-h-[72svh] max-md:w-full overflow-hidden text-zinc-100 shadow-[0_0_80px_rgba(94,255,216,0.12)]">
       {/* Header */}
       <div className="flex items-start justify-between border-b border-zinc-800 bg-transparent p-4">
         <div>

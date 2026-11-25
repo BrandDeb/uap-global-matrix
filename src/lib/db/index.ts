@@ -7,6 +7,8 @@
  *
  * DATABASE_URL — use Neon's *pooled* connection string in production
  * (host contains `-pooler`); `prepare: false` keeps it pgbouncer-compatible.
+ * When DATABASE_URL is absent (local dev before provisioning Neon), `hasDb()`
+ * returns false and `queries.ts` serves the in-memory seed archive cleanly.
  * ---------------------------------------------------------------------------
  */
 import 'server-only';
@@ -16,10 +18,16 @@ type Sql = ReturnType<typeof postgres>;
 
 const globalForDb = globalThis as unknown as { __uapSql?: Sql };
 
+/** True when a real Postgres connection string is configured. */
+export function hasDb(): boolean {
+  const url = process.env.DATABASE_URL?.trim();
+  return Boolean(url && !url.includes('<user>') && !url.includes('<endpoint>'));
+}
+
 export function getDb(): Sql {
   if (globalForDb.__uapSql) return globalForDb.__uapSql;
   const url = process.env.DATABASE_URL;
-  if (!url) {
+  if (!url || !hasDb()) {
     throw new Error('[db] DATABASE_URL is not configured. See .env.example.');
   }
   const sql = postgres(url, {

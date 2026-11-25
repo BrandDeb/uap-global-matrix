@@ -56,7 +56,7 @@ export function BellSaucer({ color = '#ffd36b' }: { color?: string }) {
   const portholes = useMemo(() => circleDots(8, 0.44, 0.36, () => color), [color]);
   const spin = useRef<Group>(null);
   useFrame((_, d) => {
-    if (spin.current) spin.current.rotation.y += d * 0.8;
+    if (spin.current) spin.current.rotation.y += Math.min(d, 0.1) * 0.8;
   });
   return (
     <group scale={0.1}>
@@ -191,7 +191,7 @@ export function Chevron() {
 export function Diamond({ color = '#5effd8' }: { color?: string }) {
   const ref = useRef<Mesh>(null);
   useFrame((_, d) => {
-    if (ref.current) ref.current.rotation.y += d * 1.6;
+    if (ref.current) ref.current.rotation.y += Math.min(d, 0.1) * 1.6;
   });
   return (
     <group scale={0.07}>
@@ -209,11 +209,11 @@ const RING_DOTS = circleDots(12, 0.8, 0.13, () => '#ffffff');
 
 export function RingCraft({ color = '#a58bff' }: { color?: string }) {
   const ref = useRef<Group>(null);
-  useFrame(({ clock }, d) => {
+  useFrame((_, d) => {
     const g = ref.current;
     if (!g) return;
-    g.rotation.y += d * 1.2;
-    g.children[1]?.position.setY(Math.sin(clock.getElapsedTime() * 2) * 0.12);
+    g.rotation.y += Math.min(d, 0.1) * 1.2;
+    g.children[1]?.position.setY(Math.sin(SHADER_TIME.value * 2) * 0.12);
   });
   return (
     <group scale={0.1}>
@@ -237,9 +237,10 @@ export function RingCraft({ color = '#a58bff' }: { color?: string }) {
 export function CubeSphere() {
   const ref = useRef<Mesh>(null);
   useFrame((_, d) => {
+    const dt = Math.min(d, 0.1);
     if (ref.current) {
-      ref.current.rotation.x += d * 0.7;
-      ref.current.rotation.y += d * 0.9;
+      ref.current.rotation.x += dt * 0.7;
+      ref.current.rotation.y += dt * 0.9;
     }
   });
   return (
@@ -250,7 +251,17 @@ export function CubeSphere() {
       </mesh>
       <mesh>
         <sphereGeometry args={[1, 32, 32]} />
-        <meshPhysicalMaterial color="#cfe9ff" transmission={0.9} roughness={0.1} transparent opacity={0.25} emissive="#9fd6ff" emissiveIntensity={0.25} />
+        <meshPhysicalMaterial
+          color="#cfe9ff"
+          roughness={0.08}
+          metalness={0.1}
+          clearcoat={1}
+          transparent
+          opacity={0.28}
+          depthWrite={false}
+          emissive="#9fd6ff"
+          emissiveIntensity={0.3}
+        />
       </mesh>
     </group>
   );
@@ -261,8 +272,8 @@ export function CubeSphere() {
 export function Jellyfish({ color = '#ff5ec8' }: { color?: string }) {
   const tendrils = useRef<Group>(null);
   const bell = useRef<Mesh>(null);
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
+  useFrame(() => {
+    const t = SHADER_TIME.value;
     if (bell.current) bell.current.scale.set(1 + Math.sin(t * 2) * 0.08, 1 - Math.sin(t * 2) * 0.08, 1 + Math.sin(t * 2) * 0.08);
     tendrils.current?.children.forEach((c, i) => {
       c.rotation.x = Math.sin(t * 1.8 + i) * 0.35;
@@ -306,8 +317,8 @@ export function EggCraft() {
 
 export function FooFighters({ count = 6, color = '#ffe08a' }: { count?: number; color?: string }) {
   const ref = useRef<Group>(null);
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
+  useFrame(() => {
+    const t = SHADER_TIME.value;
     ref.current?.children.forEach((c, i) => {
       const k = i * 1.7;
       c.position.set(Math.sin(t * 2.1 + k) * 0.12, Math.cos(t * 1.7 + k) * 0.06, Math.sin(t * 1.3 + k * 2) * 0.12);

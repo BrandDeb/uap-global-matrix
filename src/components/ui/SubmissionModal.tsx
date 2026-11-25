@@ -3,25 +3,33 @@
 /**
  * src/components/ui/SubmissionModal.tsx
  * ---------------------------------------------------------------------------
- * Drag-and-drop sighting intake. POSTs multipart to /api/verify; the new
- * sighting then arrives on the globe via the realtime stream (no manual
- * refresh / callback needed).
+ * Drag-and-drop sighting intake. POSTs multipart to /api/verify and triggers an
+ * immediate matrix refresh + focus on the newly logged sighting.
  * ---------------------------------------------------------------------------
  */
 
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { UploadCloud, X } from 'lucide-react';
 
 interface SubmissionModalProps {
   readonly onClose: () => void;
+  readonly onSubmitted?: (newId?: string) => void;
 }
 
-export default function SubmissionModal({ onClose }: SubmissionModalProps) {
+export default function SubmissionModal({ onClose, onSubmitted }: SubmissionModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,21 +48,19 @@ export default function SubmissionModal({ onClose }: SubmissionModalProps) {
       const res = await fetch('/api/verify', { method: 'POST', body: form });
       const body = (await res.json()) as {
         success: boolean;
-        data?: { credibilityScore: number; sourceTier: string };
+        data?: { id?: string; credibilityScore: number; sourceTier: string };
         error?: string;
       };
       if (body.success && body.data) {
         toast.success('Contact logged', {
-          description: `Credibility ${body.data.credibilityScore} · ${body.data.sourceTier}`,
+          description: `Credibility ${body.data.credibilityScore}% · ${body.data.sourceTier}`,
         });
+        setMessage(`Logged. C=${body.data.credibilityScore} → ${body.data.sourceTier}.`);
+        onSubmitted?.(body.data.id);
       } else {
         toast.error('Report rejected', { description: body.error ?? 'unknown error' });
+        setMessage(`Rejected: ${body.error ?? 'unknown error'}`);
       }
-      setMessage(
-        body.success && body.data
-          ? `Logged. C=${body.data.credibilityScore} → ${body.data.sourceTier}. It will appear on the globe live.`
-          : `Rejected: ${body.error ?? 'unknown error'}`,
-      );
     } catch (err: unknown) {
       setMessage(err instanceof Error ? err.message : 'Network error.');
     } finally {
@@ -66,8 +72,14 @@ export default function SubmissionModal({ onClose }: SubmissionModalProps) {
     'w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-cyan-500 focus:outline-none';
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-900 p-5 shadow-2xl">
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-900 p-5 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-sm font-semibold tracking-widest text-cyan-400">
             <UploadCloud size={16} /> SUBMIT SIGHTING

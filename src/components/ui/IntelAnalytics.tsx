@@ -9,6 +9,7 @@
  * ---------------------------------------------------------------------------
  */
 
+import { useEffect } from 'react';
 import { X, Activity } from 'lucide-react';
 import type { AnalyticsSummary } from '@/lib/analytics';
 
@@ -61,6 +62,14 @@ function Bar({
 }
 
 export default function IntelAnalytics({ data, onClose }: IntelAnalyticsProps) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   const maxEvidence = Math.max(1, ...data.evidence.map((e) => e.count));
   const maxCred = Math.max(1, ...data.credibility.map((c) => c.count));
 

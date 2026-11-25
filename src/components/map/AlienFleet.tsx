@@ -133,8 +133,9 @@ export function Alien({
   const eyes = useRef<Group>(null);
   const arm = useRef<Group>(null);
 
-  useFrame(({ clock }, d) => {
-    const t = clock.getElapsedTime() + seed;
+  useFrame((_, d) => {
+    const dt = Math.min(d, 0.1);
+    const t = SHADER_TIME.value + seed;
     // Blink: a quick eyelid squash every ~4s.
     const blink = (t % 4) < 0.12 ? 0.1 : 1;
     if (eyes.current) eyes.current.scale.y = blink;
@@ -144,7 +145,7 @@ export function Alien({
         headRef.current.rotation,
         [Math.sin(t * 0.7) * 0.15, Math.sin(t * 0.45) * 0.6, Math.sin(t * 0.9) * 0.08],
         0.4,
-        d,
+        dt,
       );
     }
     if (arm.current) arm.current.rotation.z = wave ? 2.3 + Math.sin(t * 6) * 0.35 : 0.25;
@@ -223,16 +224,17 @@ function Orbit({ radius, speed, incline, phase = 0, bob = 0.08, jumpy = false, c
   const craft = useRef<Group>(null);
   const angle = useRef(phase);
 
-  useFrame(({ clock }, d) => {
+  useFrame((_, d) => {
     const g = craft.current;
     if (!g) return;
-    const t = clock.getElapsedTime();
+    const dt = Math.min(d, 0.1);
+    const t = SHADER_TIME.value;
     if (jumpy) {
       // 2.6s cycle: drift slowly, then a near-instant jump.
       const c = (t + phase * 3) % 2.6;
-      angle.current += d * speed * (c > 2.45 ? 22 : 0.25);
+      angle.current += dt * speed * (c > 2.45 ? 22 : 0.25);
     } else {
-      angle.current += d * speed;
+      angle.current += dt * speed;
     }
     const a = angle.current;
     const y = Math.sin(t * 1.3 + phase) * bob;
@@ -318,7 +320,7 @@ export function Saucer({
   const rim = useRef<Group>(null);
   const rimDots = useMemo(() => circleDots(14, 0.93, 0.01, (i) => (i % 2 ? color : '#ffffff')), [color]);
   useFrame((_, d) => {
-    if (rim.current) rim.current.rotation.y += d * 2.2;
+    if (rim.current) rim.current.rotation.y += Math.min(d, 0.1) * 2.2;
   });
 
   return (
@@ -337,18 +339,19 @@ export function Saucer({
       <group ref={rim}>
         <LightDots dots={rimDots} radius={0.035} />
       </group>
-      {/* canopy + pilot */}
+      {/* canopy + pilot — avoid transmission pass inside EffectComposer */}
       <mesh position={[0, 0.14, 0]}>
         <sphereGeometry args={[0.36, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
         <meshPhysicalMaterial
           color={color}
-          transmission={0.9}
-          thickness={0.2}
-          roughness={0.05}
+          roughness={0.08}
+          metalness={0.1}
+          clearcoat={1}
           transparent
           opacity={0.35}
+          depthWrite={false}
           emissive={color}
-          emissiveIntensity={0.15}
+          emissiveIntensity={0.22}
         />
       </mesh>
       {pilot && (
@@ -404,13 +407,13 @@ const MOTHERSHIP_DOTS = circleDots(36, 0.95, -0.03, (i) => (i % 3 ? '#a58bff' : 
 function Mothership() {
   const ref = useRef<Group>(null);
   const hull = useMemo(() => new LatheGeometry(HULL, 96), []);
-  useFrame(({ clock }) => {
+  useFrame((_, d) => {
     const g = ref.current;
     if (!g) return;
     // 90s pass across the far background, right to left.
-    const t = (clock.getElapsedTime() % 90) / 90;
+    const t = (SHADER_TIME.value % 90) / 90;
     g.position.set(60 - t * 120, 14 + Math.sin(t * Math.PI) * 4, -70);
-    g.rotation.y += 0.002;
+    g.rotation.y += Math.min(d, 0.1) * 0.12;
   });
   return (
     <group ref={ref} scale={9} rotation={[0.18, 0, 0]}>
@@ -430,8 +433,8 @@ function Mothership() {
 function HeroAlien() {
   const ref = useRef<Group>(null);
   const halo = useRef<Mesh>(null);
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
+  useFrame(() => {
+    const t = SHADER_TIME.value;
     if (ref.current) {
       ref.current.position.y = 1.1 + Math.sin(t * 0.9) * 0.12;
       ref.current.rotation.y = 0.5 + Math.sin(t * 0.3) * 0.15;

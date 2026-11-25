@@ -20,8 +20,12 @@ export const dynamic = 'force-dynamic';
 
 async function loadCase(id: string): Promise<LiveSighting | null> {
   if (!isUuid(id)) return null;
-  const row = await getSighting(id);
-  return row ? toLiveSighting(row) : null;
+  try {
+    const row = await getSighting(id);
+    return row ? toLiveSighting(row) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function generateMetadata({

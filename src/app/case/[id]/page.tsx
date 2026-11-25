@@ -14,6 +14,8 @@ import { getSighting } from '@/lib/db/queries';
 import { isUuid } from '@/lib/apiHelpers';
 import { toLiveSighting, type LiveSighting } from '@/lib/sightings';
 import CaseThread from '@/components/ui/CaseThread';
+import JsonLd from '@/components/JsonLd';
+import { SITE_URL } from '@/lib/site';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,9 +37,15 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const c = await loadCase(id);
+  if (!c) return { title: 'Case file · UAP/MATRIX', description: 'Declassified anomaly case file.' };
+  const year = new Date(c.eventTimestamp).getUTCFullYear();
+  const desc = `${year}, ${c.locationName}. ${c.description}`.slice(0, 300);
   return {
-    title: c ? `${c.title} · UAP Global Matrix` : 'Case · UAP Global Matrix',
-    description: c?.locationName ?? 'Declassified anomaly case file.',
+    title: `${c.title} (${year}) · UAP/MATRIX`,
+    description: desc,
+    alternates: { canonical: `/case/${c.id}` },
+    openGraph: { type: 'article', title: `${c.title} (${year})`, description: desc, url: `/case/${c.id}` },
+    twitter: { card: 'summary_large_image', title: `${c.title} (${year})`, description: desc },
   };
 }
 
@@ -53,8 +61,26 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
     timeZone: 'UTC',
   });
 
+  const caseLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: sighting.title,
+    description: sighting.description,
+    startDate: sighting.eventTimestamp,
+    eventStatus: 'https://schema.org/EventScheduled',
+    location: {
+      '@type': 'Place',
+      name: sighting.locationName,
+      geo: { '@type': 'GeoCoordinates', latitude: sighting.latitude, longitude: sighting.longitude },
+    },
+    url: `${SITE_URL}/case/${sighting.id}`,
+    ...(sighting.archiveSource ? { organizer: { '@type': 'Organization', name: sighting.archiveSource } } : {}),
+    ...(sighting.primarySourceUrl ? { sameAs: sighting.primarySourceUrl } : {}),
+  };
+
   return (
     <div className="min-h-screen w-full bg-zinc-950 p-6 text-zinc-100">
+      <JsonLd data={caseLd} />
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex items-center justify-between">
           <Link

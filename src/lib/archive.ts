@@ -76,7 +76,7 @@ export const ARCHIVE: ReadonlyArray<ArchiveCase> = (raw as RawCase[]).map((r) =>
   primarySourceUrl: r.primary_source_url || null,
 }));
 
-/** Era chapters — editorial copy for the archive page. */
+/** Era chapters, editorial copy for the archive page. */
 export const ERAS: ReadonlyArray<{
   tag: EraTag;
   /** URL slug for /archive/[era]. */
@@ -94,7 +94,7 @@ export const ERAS: ReadonlyArray<{
     name: 'Foo Fighters',
     span: '1942 – 1946',
     color: '#ffb347',
-    dek: 'The war that taught the sky to stare back. Bomber crews on both sides reported glowing balls pacing their wingtips — each side assumed it was the other’s secret weapon. Nobody’s was.',
+    dek: 'The war that taught the sky to stare back. Bomber crews on both sides reported glowing balls pacing their wingtips, each side assumed it was the other’s secret weapon. Nobody’s was.',
   },
   {
     tag: 'BLUE_BOOK_ERA',
@@ -130,7 +130,7 @@ export const ERAS: ReadonlyArray<{
     name: 'The 2026 Disclosure Drops',
     span: '2026',
     color: '#ff5ec8',
-    dek: 'Eight release tranches, logged here exactly as listed in the supplied archive. Read the primary sources yourself — that’s the whole point of disclosure.',
+    dek: 'Eight release tranches, logged here exactly as listed in the supplied archive. Read the primary sources yourself, that’s the whole point of disclosure.',
   },
 ];
 

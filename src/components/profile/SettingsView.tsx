@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * src/components/profile/SettingsView.tsx — /settings
+ * src/components/profile/SettingsView.tsx, /settings
  * Profile (alien avatar + pilot name), Appearance (Light / Dark / Auto),
  * Permissions (location only), Account (sign-in, your data, privacy,
  * intro again, feedback, sign out).
@@ -104,11 +104,11 @@ export default function SettingsView() {
           <Card title="Account">
             {profile ? (
               <p className="mb-2 text-sm text-white/60">
-                Signed in as <span className="text-[var(--xeno-a)]">@{profile.operatorHandle}</span> — your posts carry a verified badge.
+                Signed in as <span className="text-[var(--xeno-a)]">@{profile.operatorHandle}</span>, your posts carry a verified badge.
               </p>
             ) : providers.length > 0 ? (
               <div className="mb-3">
-                <p className="mb-3 text-sm text-white/60">Sign in to get a verified handle. No passwords — ever.</p>
+                <p className="mb-3 text-sm text-white/60">Sign in to get a verified handle. No passwords, ever.</p>
                 <SignInButtons prefix="Continue with" redirectTo="/settings" />
               </div>
             ) : null}
@@ -121,8 +121,8 @@ export default function SettingsView() {
                     storage). Erase them any time below.
                   </p>
                   <p>
-                    <b className="text-white/80">On our server:</b> things you post — comments, co-witness logs, upvotes, leaderboard
-                    scores and sighting reports — under your pilot name. Signing in stores your public GitHub/Google name and avatar.
+                    <b className="text-white/80">On our server:</b> things you post, comments, co-witness logs, upvotes, leaderboard
+                    scores and sighting reports, under your pilot name. Signing in stores your public GitHub/Google name and avatar.
                   </p>
                   <p>
                     <b className="text-white/80">Never:</b> your location (Near me runs in your browser), passwords, or selling data.

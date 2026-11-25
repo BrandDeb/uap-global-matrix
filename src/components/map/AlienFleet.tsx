@@ -3,7 +3,7 @@
 /**
  * src/components/map/AlienFleet.tsx
  * ---------------------------------------------------------------------------
- * Procedural craft traffic around the planet — all geometry is built from
+ * Procedural craft traffic around the planet, all geometry is built from
  * primitives (no external models):
  *
  *   - Saucer: lathed metallic hull, spinning rim lights, glass canopy with a
@@ -339,7 +339,7 @@ export function Saucer({
       <group ref={rim}>
         <LightDots dots={rimDots} radius={0.035} />
       </group>
-      {/* canopy + pilot — avoid transmission pass inside EffectComposer */}
+      {/* canopy + pilot, avoid transmission pass inside EffectComposer */}
       <mesh position={[0, 0.14, 0]}>
         <sphereGeometry args={[0.36, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
         <meshPhysicalMaterial

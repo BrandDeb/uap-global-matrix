@@ -3,7 +3,7 @@
 /**
  * src/components/map/LightDots.tsx
  * Many small glowing bulbs (rim lights, portholes, wing lights) as ONE
- * InstancedMesh — one draw call per craft instead of one per bulb.
+ * InstancedMesh, one draw call per craft instead of one per bulb.
  */
 
 import { useLayoutEffect, useRef } from 'react';

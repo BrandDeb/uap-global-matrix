@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { SITE_URL } from '@/lib/site';
 
-/** Open to search engines AND AI answer engines (GEO) — the archive is meant to be cited. */
+/** Open to search engines AND AI answer engines (GEO), the archive is meant to be cited. */
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [

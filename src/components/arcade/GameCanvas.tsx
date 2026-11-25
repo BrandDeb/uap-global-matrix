@@ -22,7 +22,7 @@ export interface GameMeta {
 
 /**
  * Compose a 1080×1350 share card (portrait, social-feed friendly): the final
- * game frame, the score, and the brand — then share it (Web Share API with a
+ * game frame, the score, and the brand, then share it (Web Share API with a
  * file on phones) or download it.
  */
 async function shareScore(src: HTMLCanvasElement, meta: GameMeta, hud: HudState) {

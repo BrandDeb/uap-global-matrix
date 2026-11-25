@@ -1,5 +1,5 @@
 /**
- * src/lib/og/card.tsx — shared layout for social preview images (1200×630),
+ * src/lib/og/card.tsx, shared layout for social preview images (1200×630),
  * rendered by next/og's ImageResponse (flexbox-only CSS subset).
  */
 import type { ReactNode } from 'react';

@@ -1,5 +1,5 @@
 /**
- * src/components/landing/content.ts — copy + data for the landing page.
+ * src/components/landing/content.ts, copy + data for the landing page.
  * FIELD_GUIDE order must match SHOWCASE in LandingScene.tsx.
  */
 
@@ -8,7 +8,7 @@ export const FIELD_GUIDE: ReadonlyArray<{ name: string; since: string; blurb: st
   { name: 'Tic-Tac', since: '2004', blurb: 'Off Baja California, Navy radar tracked one dropping 80,000 ft in under a second. No wings, no exhaust, no apology.' },
   { name: 'Black Triangle', since: '1990', blurb: 'Belgium’s wave: silent, enormous, three corner lights and a red heart. Extremely relaxed about airspace rules.' },
   { name: 'Bell Saucer', since: '1952', blurb: 'Retro scout with portholes and three landing pods. Vintage. Probably has a cassette deck.' },
-  { name: 'Cigar Carrier', since: '1896', blurb: 'Long, metallic, a strip of lit windows. The minivan of the cosmos — room for the whole crew.' },
+  { name: 'Cigar Carrier', since: '1896', blurb: 'Long, metallic, a strip of lit windows. The minivan of the cosmos, room for the whole crew.' },
   { name: 'Plasma Orb', since: '1944', blurb: 'Hovers. Pulses. Swirls. Refuses to elaborate.' },
   { name: 'Chevron', since: '1997', blurb: 'A mile-wide V of lights over Phoenix, seen by thousands. Flies in formation with itself.' },
   { name: 'Ring Craft', since: '1965', blurb: 'A spinning torus with a floating core. Runs on vibes and possibly donuts.' },
@@ -32,7 +32,7 @@ export const CASE_REEL: ReadonlyArray<{ year: string; title: string; place: stri
 ];
 
 export const STEPS: ReadonlyArray<{ n: string; title: string; body: string }> = [
-  { n: '01', title: 'Look up.', body: 'Spot something weird. Lights, shapes, a cow levitating. Note when and where — we geotag it to the meter.' },
+  { n: '01', title: 'Look up.', body: 'Spot something weird. Lights, shapes, a cow levitating. Note when and where, we geotag it to the meter.' },
   { n: '02', title: 'Drop the evidence.', body: 'Upload the photo or clip. Blurry is fine. Blurry is, frankly, the genre.' },
   { n: '03', title: 'We squint at it.', body: 'EXIF forensics, a deep-fake check and aircraft / satellite proximity combine into a 0–100 Credibility Index.' },
   { n: '04', title: 'The planet weighs in.', body: 'Your contact lands on the live globe. Others co-witness, upvote and argue in the thread. Science!' },

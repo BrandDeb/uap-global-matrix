@@ -1,4 +1,4 @@
-/** GET /api/me — the signed-in operator profile (or null) + which sign-in providers exist. */
+/** GET /api/me, the signed-in operator profile (or null) + which sign-in providers exist. */
 import { enabledProviders, verifiedOperatorId } from '@/auth';
 import { getProfile } from '@/lib/db/queries';
 

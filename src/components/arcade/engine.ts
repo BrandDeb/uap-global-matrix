@@ -94,7 +94,7 @@ export class Fx {
   private hypeColor = '#5effd8';
   private hypeT = 0;
 
-  /** Freeze the world for a beat — sells big hits. */
+  /** Freeze the world for a beat, sells big hits. */
   hitstop(seconds: number) {
     this.stopT = Math.max(this.stopT, seconds);
   }

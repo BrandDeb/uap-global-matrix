@@ -1,6 +1,6 @@
 /**
  * src/app/api/ai/summarize-thread/route.ts
- * POST — summarize a case's operator thread into a tactical brief via Gemini,
+ * POST, summarize a case's operator thread into a tactical brief via Gemini,
  * and cache it in `uap_ai_briefs`. Briefs are only ever written server-side
  * here, so clients cannot forge "official" briefs. Gated on the key.
  */

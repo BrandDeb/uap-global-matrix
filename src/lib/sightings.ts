@@ -44,7 +44,7 @@ export interface LiveSighting {
   readonly primarySourceUrl?: string | null;
 }
 
-/** Lean columns for the bulk feed — no `description` (fetched lazily per case). */
+/** Lean columns for the bulk feed, no `description` (fetched lazily per case). */
 export const SIGHTING_LIST_COLUMNS =
   'id,title,event_timestamp,location_name,source_tier,evidence_types,credibility_score,is_gov_declassified,latitude,longitude';
 

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
- * XENO design system — deep-void palette, bioluminescent accents.
+ * XENO design system - deep-void palette, bioluminescent accents.
  * Tailwind's zinc / emerald / cyan / amber scales are re-pointed at the xeno
  * palette so every surface (feed, case pages, modals) inherits the look.
  * ------------------------------------------------------------------------- */
@@ -237,4 +237,11 @@ html[data-theme='light'] {
 }
 html[data-theme='light'] :is(canvas, img, video, svg[role='img'], [data-keep-colors]) {
   filter: invert(1) hue-rotate(180deg);
+}
+
+/* Light theme: deepen the accents so pink/teal keep contrast on light surfaces
+   (values are pre-inversion: lighter here renders deeper after the invert). */
+html[data-theme='light'] {
+  --xeno-d: #ffa3dc;
+  --xeno-a: #a8fff0;
 }

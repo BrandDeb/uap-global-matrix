@@ -5,7 +5,7 @@
  * from the device (screen size, CPU cores, touch/mobile UA), then
  * <PerformanceMonitor> in GlobeOverlay steps it down when the frame rate falls
  * under ~50 fps and back up (never above the starting tier) when there is
- * headroom — keeping weak devices above 30 fps and capable ones at 60.
+ * headroom, keeping weak devices above 30 fps and capable ones at 60.
  * ---------------------------------------------------------------------------
  */
 
@@ -54,7 +54,7 @@ export function initialQualityTier(): QualityTier {
   return 2;
 }
 
-/** True when the tier was forced via `?quality=` — adaptive stepping is then off. */
+/** True when the tier was forced via `?quality=`, adaptive stepping is then off. */
 export function qualityLocked(): boolean {
   if (typeof window === 'undefined') return false;
   return new URLSearchParams(window.location.search).has('quality');

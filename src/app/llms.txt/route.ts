@@ -1,5 +1,5 @@
 /**
- * GET /llms.txt — a plain-markdown map of the site for AI answer engines
+ * GET /llms.txt, a plain-markdown map of the site for AI answer engines
  * (llmstxt.org convention): what the site is, key pages, and every archive
  * case with a one-line summary and a citable URL.
  */
@@ -15,8 +15,8 @@ export function GET(): Response {
     '> A live, interactive atlas of well-documented UFO / UAP sightings from 1942 to 2026: a 3D globe of contacts, a curated declassified archive with source agencies and document ids, and an arcade.',
     '',
     '## Key pages',
-    `- [The Files — declassified archive](${SITE_URL}/archive): ${ARCHIVE.length} landmark cases in ${ERAS.length} eras, each with source agency, document id, craft shape and primary-source link.`,
-    `- [The Matrix — 3D globe](${SITE_URL}/matrix): every contact plotted by location and year, with case dossiers and discussion.`,
+    `- [The Files, declassified archive](${SITE_URL}/archive): ${ARCHIVE.length} landmark cases in ${ERAS.length} eras, each with source agency, document id, craft shape and primary-source link.`,
+    `- [The Matrix, 3D globe](${SITE_URL}/matrix): every contact plotted by location and year, with case dossiers and discussion.`,
     `- [Arcade](${SITE_URL}/arcade): three original UFO games.`,
     '',
     ...ERAS.flatMap((e) => [

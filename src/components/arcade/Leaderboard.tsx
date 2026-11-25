@@ -86,7 +86,7 @@ export default function Leaderboard({ game, score }: { game: string; score: numb
       {weekly === null ? (
         <p className="font-mono text-[10px] text-white/40">Loading…</p>
       ) : weekly.length === 0 ? (
-        <p className="font-mono text-[10px] text-white/40">No scores yet this week — claim the throne.</p>
+        <p className="font-mono text-[10px] text-white/40">No scores yet this week, claim the throne.</p>
       ) : (
         <ol className="space-y-0.5 font-mono text-xs">
           {weekly.map((e, i) => (

@@ -1,7 +1,7 @@
 /**
  * src/auth.ts
  * ---------------------------------------------------------------------------
- * Auth.js (NextAuth v5) — social sign-in only (GitHub and Google; no email or
+ * Auth.js (NextAuth v5), social sign-in only (GitHub and Google; no email or
  * password), stateless JWT sessions. On first sign-in the operator profile is
  * upserted into `profiles` with id "<provider>:<account id>".
  *

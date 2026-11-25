@@ -3,7 +3,7 @@
 /**
  * src/components/archive/ArchiveFiles.tsx
  * ---------------------------------------------------------------------------
- * "THE FILES" — the declassified archive (1942–2026) as an editorial,
+ * "THE FILES", the declassified archive (1942–2026) as an editorial,
  * interactive experience:
  *   - era chapters with written intros and their own accent color
  *   - dossier cards: document-id tab, stamp, craft-shape glyph, evidence,
@@ -265,13 +265,13 @@ export default function ArchiveFiles({ only }: { only?: EraTag } = {}) {
       {/* hero */}
       <section className="px-4 pb-16 pt-[12vh] md:px-10">
         <p className="font-mono text-[10px] uppercase tracking-[0.5em] text-white/40">The declassified archive</p>
-        <h1 className="mt-4 font-[family-name:var(--font-display)] text-[20vw] font-extrabold uppercase leading-[0.8] tracking-tight md:text-[14vw]">
+        <h1 className="mt-4 font-[family-name:var(--font-display)] text-[20vw] font-extrabold uppercase leading-[0.92] tracking-tight md:text-[14vw]">
           The <span className="xeno-gradient-text">Files</span>
         </h1>
         <div className="mt-10 grid gap-8 md:grid-cols-[1.2fr_1fr] md:items-end">
           <p className="max-w-xl text-lg leading-relaxed text-white/65 md:text-xl">
             {ARCHIVE.length} landmark cases. {lastYear - firstYear} years. Pilots, radar operators, schoolchildren and
-            a few very confused generals — pulled from military logs, intelligence memos and government vaults, and
+            a few very confused generals, pulled from military logs, intelligence memos and government vaults, and
             filed in the order the sky filed them.
           </p>
           <dl className="grid grid-cols-3 gap-4 border-t border-white/10 pt-5">
@@ -282,7 +282,7 @@ export default function ArchiveFiles({ only }: { only?: EraTag } = {}) {
             <div>
               <dt className="font-mono text-[9px] uppercase tracking-[0.25em] text-white/40">Most-seen shape</dt>
               <dd className="font-[family-name:var(--font-display)] text-3xl font-extrabold text-[var(--xeno-b)]">
-                {topShape ? MORPHOLOGY[topShape[0]].label : '—'}
+                {topShape ? MORPHOLOGY[topShape[0]].label : ' - '}
               </dd>
             </div>
             <div>
@@ -355,7 +355,7 @@ export default function ArchiveFiles({ only }: { only?: EraTag } = {}) {
 
       <p className="mx-auto mt-10 max-w-2xl px-4 text-center font-mono text-[10px] leading-relaxed tracking-[0.15em] text-white/30">
         Credibility scores are this archive’s own index, not an official rating. Source links point to the holding
-        archive or reading room — dig in, and make up your own mind.
+        archive or reading room, dig in, and make up your own mind.
         <br />
         Curated, designed &amp; built by <span className="text-[var(--xeno-a)]">Lowkee Studios</span>.
       </p>

@@ -4,7 +4,7 @@ import JsonLd from '@/components/JsonLd';
 import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'UAP/MATRIX — We come in peace (mostly)',
+  title: 'UAP/MATRIX, We come in peace (mostly)',
   alternates: { canonical: '/' },
   description:
     'A live, planet-scale atlas of unidentified anomalous phenomena: every sighting since 1947, geotagged, forensically scored and argued about in public.',

@@ -1,4 +1,4 @@
-/** GET /api/sightings/:id/dossier — cached AI brief + co-witness count. */
+/** GET /api/sightings/:id/dossier, cached AI brief + co-witness count. */
 import { countCoWitnesses, getBrief } from '@/lib/db/queries';
 import { isUuid, jsonError } from '@/lib/apiHelpers';
 

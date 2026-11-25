@@ -1,7 +1,7 @@
 /**
  * src/components/landing/audio.ts
  * ---------------------------------------------------------------------------
- * "Xeno Lounge" — an original, fully generative soundtrack synthesized in the
+ * "Xeno Lounge", an original, fully generative soundtrack synthesized in the
  * browser with the Web Audio API (no audio files, nothing licensed).
  *
  *   pad       detuned saw chord through a breathing low-pass filter
@@ -149,7 +149,7 @@ class XenoAudio {
     return this.playing ? this.stop() : this.start();
   }
 
-  /** 0..1 — scroll depth: opens the pad filter and fades the arp in. */
+  /** 0..1, scroll depth: opens the pad filter and fades the arp in. */
   setIntensity(v: number): void {
     this.intensity = Math.max(0, Math.min(1, v));
     if (!this.ctx) return;

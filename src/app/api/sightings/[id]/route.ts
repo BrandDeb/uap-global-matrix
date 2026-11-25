@@ -1,4 +1,4 @@
-/** GET /api/sightings/:id — full case file. */
+/** GET /api/sightings/:id, full case file. */
 import { getSighting } from '@/lib/db/queries';
 import { isUuid, jsonError } from '@/lib/apiHelpers';
 

@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   creator: 'Lowkee Studios',
   publisher: 'Lowkee Studios',
   twitter: { card: 'summary_large_image' },
-  title: 'UAP Global Matrix — Xeno Signal Atlas',
+  title: 'UAP Global Matrix, Xeno Signal Atlas',
   description: 'A living atlas of unidentified anomalous phenomena, mapped across the planet in real time.',
 };
 

@@ -59,7 +59,7 @@ export function DataPoints({ points, markerSize = 0.022, onSelect, onHover }: Da
     }
   };
 
-  // Reusable scratch objects — never recreated across renders/instances.
+  // Reusable scratch objects, never recreated across renders/instances.
   const scratch = useMemo(() => ({ dummy: new Object3D(), color: new Color() }), []);
 
   useLayoutEffect(() => {

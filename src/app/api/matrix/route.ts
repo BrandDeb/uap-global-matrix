@@ -1,5 +1,5 @@
 /**
- * GET /api/matrix — globe payload: sightings (lean columns) + hotspot alerts.
+ * GET /api/matrix, globe payload: sightings (lean columns) + hotspot alerts.
  * `?since=<iso>` returns only sightings created after that instant (live
  * polling). `serverTime` is the cursor to send next time.
  */

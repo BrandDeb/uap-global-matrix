@@ -3,8 +3,8 @@
 /**
  * src/lib/profile.ts
  * ---------------------------------------------------------------------------
- * The visitor's local profile — pilot name, alien avatar, theme preference,
- * onboarding state — persisted in localStorage and exposed as a reactive store
+ * The visitor's local profile, pilot name, alien avatar, theme preference,
+ * onboarding state, persisted in localStorage and exposed as a reactive store
  * (useSyncExternalStore), so every component updates the moment it changes.
  * Signed-in operators still post under their verified handle server-side.
  * ---------------------------------------------------------------------------

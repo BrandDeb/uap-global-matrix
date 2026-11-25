@@ -1,5 +1,5 @@
 /**
- * src/components/arcade/JunkInvaders.ts — "JUNK INVADERS"
+ * src/components/arcade/JunkInvaders.ts, "JUNK INVADERS"
  * ---------------------------------------------------------------------------
  * Fixed-shooter with the roles flipped: humanity's orbital junk (satellites,
  * selfie-drones, floating space-cars) is invading YOUR moon. You fly the
@@ -220,7 +220,7 @@ export class JunkInvaders implements Game {
     }
     this.shots = this.shots.filter((s) => s.y > -20);
 
-    // --- bombs (junk) — catch with the beam, or they chip shields / hit you
+    // --- bombs (junk), catch with the beam, or they chip shields / hit you
     for (const b of this.bombs) {
       b.y += b.vy * dt;
       b.spin += dt * 6;

@@ -117,14 +117,14 @@ export default function XenoIntro() {
     >
       <div className="flex justify-between font-mono text-[10px] uppercase tracking-[0.35em] text-white/40">
         <span>UAP/MATRIX</span>
-        <span>Est. 1947 — Click or ESC to skip</span>
+        <span>Est. 1947, Click or ESC to skip</span>
       </div>
 
       <div className="overflow-hidden">
-        <h1 className="xeno-intro-h font-[family-name:var(--font-display)] text-[12vw] font-extrabold leading-[0.85] tracking-tight text-white">
+        <h1 className="xeno-intro-h font-[family-name:var(--font-display)] text-[12vw] font-extrabold leading-[0.96] tracking-tight text-white">
           WE ARE
         </h1>
-        <h1 className="xeno-intro-h font-[family-name:var(--font-display)] text-[12vw] font-extrabold leading-[0.85] tracking-tight text-[var(--xeno-a)]">
+        <h1 className="xeno-intro-h font-[family-name:var(--font-display)] text-[12vw] font-extrabold leading-[0.96] tracking-tight text-[var(--xeno-a)]">
           NOT ALONE
         </h1>
       </div>

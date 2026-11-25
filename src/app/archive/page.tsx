@@ -5,11 +5,11 @@ import { ARCHIVE } from '@/lib/archive';
 import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'The Files — Declassified UFO/UAP Archive 1942–2026 · UAP/MATRIX',
+  title: 'The Files, Declassified UFO/UAP Archive 1942–2026 · UAP/MATRIX',
   description:
-    '59 landmark, well-documented UFO/UAP cases from 1942 to 2026 — WWII foo fighters, Project Blue Book, Cold War radar intercepts and modern FLIR footage — each with source agency, document id and craft shape.',
+    '59 landmark, well-documented UFO/UAP cases from 1942 to 2026, WWII foo fighters, Project Blue Book, Cold War radar intercepts and modern FLIR footage, each with source agency, document id and craft shape.',
   alternates: { canonical: '/archive' },
-  openGraph: { title: 'The Files — 84 years of UFO/UAP cases', url: '/archive' },
+  openGraph: { title: 'The Files, 84 years of UFO/UAP cases', url: '/archive' },
 };
 
 /** Plain-language answers (AEO): shown on the page and mirrored as FAQPage schema. */
@@ -28,11 +28,11 @@ const FAQ: ReadonlyArray<[q: string, a: string]> = [
   ],
   [
     'Does “unidentified” mean alien?',
-    'No. UAP means unidentified anomalous phenomena — something that couldn’t be identified with the data available. Many cases are later explained (balloons, drones, sensor artifacts, misidentified aircraft); a small remainder stay unexplained because the data is insufficient, not because aliens were confirmed.',
+    'No. UAP means unidentified anomalous phenomena, something that couldn’t be identified with the data available. Many cases are later explained (balloons, drones, sensor artifacts, misidentified aircraft); a small remainder stay unexplained because the data is insufficient, not because aliens were confirmed.',
   ],
   [
     'Where can I read the original documents?',
-    'Each case file on this page links to the archive that holds its records — for example the U.S. National Archives (Project Blue Book), the FBI Vault, the CIA Reading Room, the UK National Archives and AARO.',
+    'Each case file on this page links to the archive that holds its records, for example the U.S. National Archives (Project Blue Book), the FBI Vault, the CIA Reading Room, the UK National Archives and AARO.',
   ],
 ];
 

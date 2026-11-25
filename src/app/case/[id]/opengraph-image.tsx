@@ -24,7 +24,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
       <OgCard
         kicker={c?.isGovDeclassified ? 'GOV DECLASSIFIED' : 'CASE FILE'}
         title={<span style={{ display: 'flex', fontSize: (c?.title.length ?? 0) > 22 ? 72 : 92 }}>{c?.title ?? 'Unknown contact'}</span>}
-        subtitle={c ? `${year} · ${c.locationName}` : 'Case not found — or classified.'}
+        subtitle={c ? `${year} · ${c.locationName}` : 'Case not found, or classified.'}
         detail={
           c ? (
             <div style={{ display: 'flex', flexDirection: 'column', marginTop: 22 }}>

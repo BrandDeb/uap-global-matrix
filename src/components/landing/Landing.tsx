@@ -21,7 +21,7 @@
  *   08 How it works
  *   09 CTA         magnetic "Enter the Matrix" + GitHub / Google sign-in
  *
- * Sound: an original generative soundtrack (./audio) — off until the visitor
+ * Sound: an original generative soundtrack (./audio), off until the visitor
  * opts in (browser autoplay rules); scroll depth drives its intensity.
  * ---------------------------------------------------------------------------
  */
@@ -56,7 +56,7 @@ gsap.registerPlugin(useGSAP, ScrollTrigger, SplitText);
 const LandingScene = dynamic(() => import('./LandingScene'), { ssr: false });
 
 const MANIFESTO =
-  'Since 1947 the sky has been trying to tell us something. Mostly blurry. Occasionally radar-locked. Always ignored. So we built it a microphone — a live, planet-scale atlas where every sighting is geotagged, forensically scored and argued about in public.';
+  'Since 1947 the sky has been trying to tell us something. Mostly blurry. Occasionally radar-locked. Always ignored. So we built it a microphone, a live, planet-scale atlas where every sighting is geotagged, forensically scored and argued about in public.';
 
 /** Pulls its child toward the cursor while hovered. */
 function Magnetic({ children, strength = 0.35 }: { children: ReactNode; strength?: number }) {
@@ -139,11 +139,10 @@ function SignInPopover() {
   );
 }
 
-function SectionLabel({ n, children }: { n: string; children: ReactNode }) {
+function SectionLabel({ children }: { n?: string; children: ReactNode }) {
   return (
     <p className="mb-6 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.4em] text-white/40">
-      <span className="text-[var(--xeno-a)]">{n}</span>
-      <span className="h-px w-10 bg-white/20" />
+      <span className="h-px w-10 bg-[var(--xeno-a)]/60" />
       {children}
     </p>
   );
@@ -286,7 +285,9 @@ export default function Landing() {
 
       // --- 03 horizontal case reel ---------------------------------------
       const track = document.querySelector<HTMLElement>('.reel-track');
-      if (track) {
+      // Desktop only: on phones the reel is a native swipe carousel instead of
+      // hijacking vertical scroll.
+      if (track && window.matchMedia('(min-width: 768px)').matches) {
         gsap.to(track, {
           x: () => -(track.scrollWidth - window.innerWidth + 48),
           ease: 'none',
@@ -402,7 +403,9 @@ export default function Landing() {
         </nav>
         <div className="flex items-center gap-2">
           <SoundToggle on={soundOn} onToggle={() => void toggleSound()} />
-          <SignInPopover />
+          <div className="hidden sm:block">
+            <SignInPopover />
+          </div>
           <UserChip />
           <Link href="/matrix" className="xeno-btn" data-cursor="ENTER">
             Enter <ArrowUpRight size={12} />
@@ -414,7 +417,7 @@ export default function Landing() {
         {/* 01 HERO */}
         <section className="sec-hero pointer-events-none relative flex min-h-[100svh] flex-col justify-end px-4 pb-10 md:px-10 md:pb-14">
           <div className="hero-title">
-            <h1 className="font-[family-name:var(--font-display)] font-extrabold uppercase leading-[0.82] tracking-tight">
+            <h1 className="font-[family-name:var(--font-display)] font-extrabold uppercase leading-[0.95] tracking-tight">
               <span className="hero-line block text-[13.5vw] md:text-[12.5vw]">We come</span>
               <span className="hero-line block text-[13.5vw] text-[var(--xeno-a)] md:text-[12.5vw]">
                 in peace<span className="text-[var(--xeno-d)]">*</span>
@@ -438,7 +441,7 @@ export default function Landing() {
           <div className="mt-8 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="hero-fade pointer-events-auto max-w-md">
               <p className="text-sm leading-relaxed text-white/60 md:text-base">
-                The world’s live atlas of unidentified anomalous phenomena — 1947 to tonight. Geotagged, forensically
+                The world’s live atlas of unidentified anomalous phenomena, 1947 to tonight. Geotagged, forensically
                 scored, and very slightly unhinged.
               </p>
               {!profile && providers.length > 0 && (
@@ -471,29 +474,29 @@ export default function Landing() {
             </div>
           </div>
           <p className="hero-fade pointer-events-none absolute left-1/2 top-[15vh] hidden -translate-x-1/2 font-mono text-[9px] uppercase tracking-[0.5em] text-white/30 md:block">
-            psst — click the saucer
+            psst, click the saucer
           </p>
         </section>
 
         {/* 02 MANIFESTO */}
         <section className="sec-manifesto relative px-4 py-[22vh] md:px-10">
-          <SectionLabel n="01">Transmission</SectionLabel>
-          <p className="manifesto max-w-6xl font-[family-name:var(--font-display)] text-[8vw] font-medium leading-[1.05] tracking-tight md:text-[4.2vw]">
+          <SectionLabel>Transmission</SectionLabel>
+          <p className="manifesto max-w-6xl font-[family-name:var(--font-display)] text-[8vw] font-medium leading-[1.15] tracking-tight md:text-[4.2vw]">
             {MANIFESTO}
           </p>
         </section>
 
         {/* 03 CASE REEL */}
-        <section id="cases" className="sec-reel relative flex h-[100svh] flex-col justify-center overflow-hidden">
+        <section id="cases" className="sec-reel relative flex flex-col justify-center overflow-hidden py-16 md:h-[100svh] md:py-0">
           <div className="px-4 md:px-10">
-            <SectionLabel n="02">Greatest hits from the archive</SectionLabel>
+            <SectionLabel>Greatest hits from the archive</SectionLabel>
           </div>
-          <div className="reel-track flex gap-5 px-4 md:gap-8 md:px-10">
+          <div className="reel-track flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 [scrollbar-width:none] md:snap-none md:gap-8 md:overflow-visible md:px-10 md:pb-0">
             {CASE_REEL.map((c, i) => (
               <article
                 key={c.title}
                 data-cursor="CASE"
-                className="xeno-glass group relative flex h-[58vh] w-[78vw] shrink-0 flex-col justify-between overflow-hidden p-6 transition-transform duration-500 hover:-rotate-1 hover:scale-[1.02] md:w-[34vw] md:p-8"
+                className="xeno-glass group relative flex h-[56svh] max-h-[520px] w-[82vw] shrink-0 snap-center flex-col justify-between overflow-hidden p-6 transition-transform duration-500 hover:-rotate-1 hover:scale-[1.02] md:w-[34vw] md:p-8"
               >
                 <span className="font-mono text-[10px] tracking-[0.3em] text-white/40">
                   CASE {String(i + 1).padStart(2, '0')} / {String(CASE_REEL.length).padStart(2, '0')}
@@ -523,7 +526,7 @@ export default function Landing() {
         {/* 04 FIELD GUIDE */}
         <section id="field-guide" className="sec-guide relative flex h-[100svh] items-end px-4 pb-12 md:items-center md:px-10 md:pb-0">
           <div className="w-full md:w-[46%]">
-            <SectionLabel n="03">A field guide to things that are not planes</SectionLabel>
+            <SectionLabel>A field guide to things that are not planes</SectionLabel>
             <div className="mb-6 flex items-baseline gap-4 font-mono text-[10px] tracking-[0.3em] text-white/40">
               <span className="text-[var(--xeno-a)]">{String(active + 1).padStart(2, '0')}</span>/
               {String(FIELD_GUIDE.length).padStart(2, '0')}
@@ -531,7 +534,7 @@ export default function Landing() {
             </div>
             <h2
               key={guide.name}
-              className="xeno-fade font-[family-name:var(--font-display)] text-[12vw] font-extrabold uppercase leading-[0.9] md:text-[5.5vw]"
+              className="xeno-fade font-[family-name:var(--font-display)] text-[12vw] font-extrabold uppercase leading-[1.02] md:text-[5.5vw]"
             >
               {guide.name}
             </h2>
@@ -551,7 +554,7 @@ export default function Landing() {
 
         {/* 05 NUMBERS */}
         <section className="sec-stats relative px-4 py-[18vh] md:px-10">
-          <SectionLabel n="04">By the numbers</SectionLabel>
+          <SectionLabel>By the numbers</SectionLabel>
           <div className="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-4">
             {[
               { v: contacts || 28, label: 'Contacts on the globe' },
@@ -570,11 +573,11 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* 06 ZORP — voxel alien (rendered in the WebGL stage) */}
+        {/* 06 ZORP, voxel alien (rendered in the WebGL stage) */}
         <section className="sec-zorp relative flex min-h-[100svh] items-end px-4 pb-16 md:items-center md:px-10 md:pb-0">
           <div className="max-w-md">
-            <SectionLabel n="05">Meet the intern</SectionLabel>
-            <h2 className="font-[family-name:var(--font-display)] text-[16vw] font-extrabold uppercase leading-[0.85] md:text-[8vw]">
+            <SectionLabel>Meet the intern</SectionLabel>
+            <h2 className="font-[family-name:var(--font-display)] text-[16vw] font-extrabold uppercase leading-[0.96] md:text-[8vw]">
               Zorp<span className="text-[var(--xeno-d)]">.</span>
             </h2>
             <p className="mt-5 text-base leading-relaxed text-white/60 md:text-lg">
@@ -590,12 +593,12 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* 07 CROP CIRCLE LAB — 2D canvas */}
+        {/* 07 CROP CIRCLE LAB, 2D canvas */}
         <section className="sec-crop relative px-4 py-[14vh] md:px-10">
           <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
-              <SectionLabel n="06">Crop circle lab</SectionLabel>
-              <h2 className="font-[family-name:var(--font-display)] text-[11vw] font-extrabold uppercase leading-[0.88] md:text-[5vw]">
+              <SectionLabel>Crop circle lab</SectionLabel>
+              <h2 className="font-[family-name:var(--font-display)] text-[11vw] font-extrabold uppercase leading-[1] md:text-[5vw]">
                 Leave a<br />
                 <span className="xeno-gradient-text">calling card</span>
               </h2>
@@ -608,13 +611,13 @@ export default function Landing() {
           <CropCircleCanvas />
         </section>
 
-        {/* 07b LIVE TRANSMISSIONS — real data */}
+        {/* 07b LIVE TRANSMISSIONS, real data */}
         {live.length > 0 && (
           <section className="sec-live relative px-4 py-[12vh] md:px-10">
             <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
               <div>
-                <SectionLabel n="07">Live from the archive</SectionLabel>
-                <h2 className="font-[family-name:var(--font-display)] text-[11vw] font-extrabold uppercase leading-[0.88] md:text-[5vw]">
+                <SectionLabel>Live from the archive</SectionLabel>
+                <h2 className="font-[family-name:var(--font-display)] text-[11vw] font-extrabold uppercase leading-[1] md:text-[5vw]">
                   Top-rated
                   <br />
                   <span className="xeno-gradient-text">weirdness</span>
@@ -637,8 +640,8 @@ export default function Landing() {
             className="xeno-glass group flex flex-col items-start justify-between gap-6 overflow-hidden p-8 md:flex-row md:items-center md:p-12"
           >
             <div>
-              <SectionLabel n="★">Take a break from the truth</SectionLabel>
-              <h2 className="font-[family-name:var(--font-display)] text-[11vw] font-extrabold uppercase leading-[0.88] md:text-[5vw]">
+              <SectionLabel>Take a break from the truth</SectionLabel>
+              <h2 className="font-[family-name:var(--font-display)] text-[11vw] font-extrabold uppercase leading-[1] md:text-[5vw]">
                 The <span className="xeno-gradient-text">Arcade</span>
               </h2>
               <p className="mt-4 max-w-lg text-sm leading-relaxed text-white/55">
@@ -658,12 +661,12 @@ export default function Landing() {
         <section className="relative px-4 py-[10vh] md:px-10">
           <div className="xeno-glass flex flex-col items-start gap-6 p-8 md:flex-row md:items-center md:justify-between md:p-12">
             <div>
-              <SectionLabel n="!">Seen something weird?</SectionLabel>
-              <h2 className="font-[family-name:var(--font-display)] text-[11vw] font-extrabold uppercase leading-[0.88] md:text-[5vw]">
+              <SectionLabel>Seen something weird?</SectionLabel>
+              <h2 className="font-[family-name:var(--font-display)] text-[11vw] font-extrabold uppercase leading-[1] md:text-[5vw]">
                 Report a <span className="xeno-gradient-text">sighting</span>
               </h2>
               <p className="mt-4 max-w-lg text-sm leading-relaxed text-white/55">
-                Upload your photo or clip, drop a pin, and our forensics score it in seconds — EXIF check, deep-fake
+                Upload your photo or clip, drop a pin, and our forensics score it in seconds, EXIF check, deep-fake
                 screen, aircraft &amp; satellite proximity. Credible contacts land on the live globe.
               </p>
             </div>
@@ -691,7 +694,7 @@ export default function Landing() {
 
         {/* 08 HOW IT WORKS */}
         <section className="sec-steps relative px-4 py-[12vh] md:px-10">
-          <SectionLabel n="08">How it works (roughly)</SectionLabel>
+          <SectionLabel>How it works (roughly)</SectionLabel>
           <div className="grid gap-4 md:grid-cols-4">
             {STEPS.map((s) => (
               <div key={s.n} data-cursor={s.n} className="step-card xeno-glass flex min-h-[260px] flex-col justify-between p-6">
@@ -707,7 +710,7 @@ export default function Landing() {
 
         {/* 07 CTA */}
         <section className="sec-cta relative flex min-h-[100svh] flex-col items-center justify-end px-4 pb-24 text-center md:px-10">
-          <h2 className="font-[family-name:var(--font-display)] font-extrabold uppercase leading-[0.85] tracking-tight">
+          <h2 className="font-[family-name:var(--font-display)] font-extrabold uppercase leading-[0.96] tracking-tight">
             <span className="block overflow-hidden">
               <span className="cta-line block text-[13vw] md:text-[9vw]">The sky’s</span>
             </span>

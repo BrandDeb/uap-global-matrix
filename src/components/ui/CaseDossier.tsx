@@ -163,7 +163,7 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
       const data = (await res.json()) as Partial<AiBrief> & { error?: string };
       if (!res.ok || !data.summary) {
         setBriefError(
-          res.status === 503 ? 'AI offline — GEMINI_API_KEY not configured.' : data.error ?? 'Brief failed.',
+          res.status === 503 ? 'AI offline, GEMINI_API_KEY not configured.' : data.error ?? 'Brief failed.',
         );
       } else {
         setAiBrief({ summary: data.summary, threatAssessment: data.threatAssessment ?? 'LOW' });
@@ -378,7 +378,7 @@ export default function CaseDossier({ sighting, onClose, onAddIntel }: CaseDossi
               <div className="space-y-1.5">
                 <input
                   type="text"
-                  placeholder="Anonymous handle — or sign in for a verified ID"
+                  placeholder="Anonymous handle, or sign in for a verified ID"
                   value={handle}
                   maxLength={50}
                   onChange={(e) => setHandle(e.target.value)}

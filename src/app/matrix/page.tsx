@@ -3,7 +3,7 @@
 /**
  * src/app/page.tsx
  * ---------------------------------------------------------------------------
- * UAP Global Matrix — social OSINT command console.
+ * UAP Global Matrix, social OSINT command console.
  *
  *   HUD (status · feed tabs · node count · submit)
  *   ├ rail: hotspot flaps + operator incident stream
@@ -83,7 +83,7 @@ export default function GlobalMatrixDashboard() {
           description: `${Math.round(bestKm).toLocaleString()} km from you · ${best.locationName}`,
         });
       },
-      () => toast.error('Location permission denied — the aliens will have to guess.'),
+      () => toast.error('Location permission denied, the aliens will have to guess.'),
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 },
     );
   };
@@ -168,7 +168,7 @@ export default function GlobalMatrixDashboard() {
     );
     if (!top || loading) return;
     if (prevTopId.current && prevTopId.current !== top.id) {
-      toast('New contact detected', { description: `${top.title} — ${top.locationName}` });
+      toast('New contact detected', { description: `${top.title}, ${top.locationName}` });
       if (xenoAudio?.playing) xenoAudio.chime();
     }
     prevTopId.current = top.id;
@@ -306,7 +306,7 @@ export default function GlobalMatrixDashboard() {
         }`}
       >
         <p className="mb-3 font-mono text-[9px] uppercase tracking-[0.45em] text-white/40">
-          Unidentified anomalous phenomena · 1947 — {MAX_YEAR}
+          Unidentified anomalous phenomena · 1947 – {MAX_YEAR}
         </p>
         <h2 className="font-[family-name:var(--font-display)] text-5xl font-extrabold leading-[0.9] text-white/90">
           The sky<br />

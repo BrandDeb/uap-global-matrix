@@ -5,7 +5,7 @@
  * `postgres` driver over TLS. One pooled client per server instance, reused
  * across hot reloads in development.
  *
- * DATABASE_URL — use Neon's *pooled* connection string in production
+ * DATABASE_URL, use Neon's *pooled* connection string in production
  * (host contains `-pooler`); `prepare: false` keeps it pgbouncer-compatible.
  * When DATABASE_URL is absent (local dev before provisioning Neon), `hasDb()`
  * returns false and `queries.ts` serves the in-memory seed archive cleanly.

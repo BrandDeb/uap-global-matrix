@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'UAP/MATRIX — Xeno Signal Atlas',
+    name: 'UAP/MATRIX, Xeno Signal Atlas',
     short_name: 'UAP/MATRIX',
     description: 'A live atlas of unidentified anomalous phenomena, plus an arcade.',
     start_url: '/',

@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 import { ArrowLeft, Volume2, VolumeX } from 'lucide-react';
 import { xenoAudio } from '@/components/landing/audio';
@@ -20,6 +21,54 @@ import { MooveIt } from './MooveIt';
 import { loadBest, type Game } from './engine';
 import HallOfFame from './HallOfFame';
 import ShareBar from '@/components/ShareBar';
+
+/** ?friend=Name: that friend appears in Moo-ve It as a VIP cow to beam up. */
+function friendFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  const f = new URLSearchParams(window.location.search).get('friend');
+  return f ? f.replace(/[^\p{L}\p{N} _.-]/gu, '').trim().slice(0, 16) || null : null;
+}
+
+function AbductFriend() {
+  const [name, setName] = useState('');
+  const share = async () => {
+    const n = name.trim().slice(0, 16);
+    if (!n) return;
+    const url = `${window.location.origin}/arcade?game=moove-it&friend=${encodeURIComponent(n)}`;
+    const text = `I hid ${n} in a field full of cows. Beam them up 🛸🐄`;
+    try {
+      if (navigator.share) await navigator.share({ url, text });
+      else {
+        await navigator.clipboard.writeText(url);
+        toast('Abduction link copied', { description: 'Send it to them. Or to everyone.' });
+      }
+    } catch {
+      /* cancelled */
+    }
+  };
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void share();
+      }}
+      className="mx-auto mt-4 flex max-w-[1100px] flex-wrap items-center justify-center gap-2"
+    >
+      <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/45">🐄 Abduct a friend</span>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        maxLength={16}
+        placeholder="Friend's name"
+        aria-label="Friend's name"
+        className="w-40 rounded-full border border-white/15 bg-black/50 px-3 py-1.5 font-mono text-xs text-white placeholder:text-white/30 focus:border-[var(--xeno-d)]/60 focus:outline-none"
+      />
+      <button type="submit" disabled={!name.trim()} className="rounded-full bg-[var(--xeno-d)] px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-black disabled:opacity-40">
+        Send link
+      </button>
+    </form>
+  );
+}
 
 interface Entry {
   id: string;
@@ -33,7 +82,7 @@ interface Entry {
 const GAMES: ReadonlyArray<Entry> = [
   {
     id: 'moove-it',
-    create: () => new MooveIt(),
+    create: () => new MooveIt(friendFromUrl()),
     color: '#5effd8',
     emoji: '🐄',
     blurb: 'Five nights. One beam. Too many cows. Storms, searchlights and very angry farmers.',
@@ -134,6 +183,7 @@ export default function Arcade() {
       {game ? (
         <section className="relative z-10">
           <GameCanvas key={game.id} create={game.create} meta={game.meta} gameId={game.id} />
+          {game.id === 'moove-it' && <AbductFriend />}
           <p className="mx-auto mt-4 max-w-[1100px] text-center font-mono text-[10px] uppercase tracking-[0.3em] text-white/35">
             Turn sound on for the full experience · a Lowkee Studios production
           </p>

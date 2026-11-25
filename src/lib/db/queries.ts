@@ -246,6 +246,23 @@ export async function insertVerifiedSighting(s: {
  * Create or refresh an operator profile; returns the stored handle. If the
  * wanted handle is taken by someone else, a numeric suffix is appended.
  */
+const demoPrefs = new Map<string, Record<string, unknown>>();
+
+export async function getPrefs(id: string): Promise<Record<string, unknown>> {
+  if (!hasDb()) return demoPrefs.get(id) ?? {};
+  const rows = await getDb()`SELECT prefs FROM profiles WHERE id = ${id}`;
+  return (rows[0]?.prefs as Record<string, unknown>) ?? {};
+}
+
+export async function savePrefs(id: string, prefs: Record<string, unknown>): Promise<void> {
+  if (!hasDb()) {
+    demoPrefs.set(id, prefs);
+    return;
+  }
+  const sql = getDb();
+  await sql`UPDATE profiles SET prefs = ${sql.json(prefs as never)} WHERE id = ${id}`;
+}
+
 export async function upsertProfile(p: { id: string; handle: string; avatarUrl: string | null }): Promise<string> {
   if (!hasDb()) return p.handle; // demo mode: no persistence
   const sql = getDb();

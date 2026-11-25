@@ -66,6 +66,7 @@ export function saveBest(id: string, score: number): number {
   const best = Math.max(loadBest(id), score);
   try {
     localStorage.setItem(`uap-arcade-best:${id}`, String(best));
+    window.dispatchEvent(new Event('uap-sync-change'));
   } catch {
     /* private mode */
   }

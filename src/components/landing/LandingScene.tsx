@@ -39,6 +39,7 @@ import { SHADER_TIME, TimeDriver } from '@/components/map/sharedTime';
 import { QUALITY, initialQualityTier } from '@/components/map/quality';
 import Cow from './Cow';
 import VoxelAlien from './VoxelAlien';
+import { findEgg } from './eggs';
 import { xenoAudio } from './audio';
 import { INVASION_EVENT, landing } from './landingStore';
 
@@ -133,6 +134,7 @@ function HeroRig({ narrow }: { narrow: boolean }) {
         onClick={() => {
           landing.boops++;
           xenoAudio?.boop();
+          findEgg('boop');
         }}
       >
         <Saucer phase={0} beamAlwaysOn />

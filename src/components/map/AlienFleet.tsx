@@ -37,6 +37,7 @@ import {
 } from 'three';
 import { easing } from 'maath';
 import { SHADER_TIME } from './sharedTime';
+import LightDots, { circleDots } from './LightDots';
 import {
   BellSaucer,
   Chevron,
@@ -299,6 +300,7 @@ function Saucer({ color = '#5effd8', phase = 0, pilot = true }: { color?: string
     [color, phase],
   );
   const rim = useRef<Group>(null);
+  const rimDots = useMemo(() => circleDots(14, 0.93, 0.01, (i) => (i % 2 ? color : '#ffffff')), [color]);
   useFrame((_, d) => {
     if (rim.current) rim.current.rotation.y += d * 2.2;
   });
@@ -317,15 +319,7 @@ function Saucer({ color = '#5effd8', phase = 0, pilot = true }: { color?: string
       </mesh>
       {/* rotating rim lights */}
       <group ref={rim}>
-        {Array.from({ length: 14 }, (_, i) => {
-          const a = (i / 14) * Math.PI * 2;
-          return (
-            <mesh key={i} position={[Math.cos(a) * 0.93, 0.01, Math.sin(a) * 0.93]}>
-              <sphereGeometry args={[0.035, 8, 8]} />
-              <meshBasicMaterial color={i % 2 ? color : '#ffffff'} toneMapped={false} />
-            </mesh>
-          );
-        })}
+        <LightDots dots={rimDots} radius={0.035} />
       </group>
       {/* canopy + pilot */}
       <mesh position={[0, 0.14, 0]}>
@@ -389,6 +383,8 @@ function Triangle() {
   );
 }
 
+const MOTHERSHIP_DOTS = circleDots(36, 0.95, -0.03, (i) => (i % 3 ? '#a58bff' : '#5effd8'));
+
 function Mothership() {
   const ref = useRef<Group>(null);
   const hull = useMemo(() => new LatheGeometry(HULL, 96), []);
@@ -405,15 +401,7 @@ function Mothership() {
       <mesh geometry={hull}>
         <meshStandardMaterial color="#1a1c2a" metalness={0.9} roughness={0.4} />
       </mesh>
-      {Array.from({ length: 36 }, (_, i) => {
-        const a = (i / 36) * Math.PI * 2;
-        return (
-          <mesh key={i} position={[Math.cos(a) * 0.95, -0.03, Math.sin(a) * 0.95]}>
-            <sphereGeometry args={[0.018, 6, 6]} />
-            <meshBasicMaterial color={i % 3 ? '#a58bff' : '#5effd8'} toneMapped={false} />
-          </mesh>
-        );
-      })}
+      <LightDots dots={MOTHERSHIP_DOTS} radius={0.018} detail={6} />
       <mesh position={[0, -0.12, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.3, 48]} />
         <meshBasicMaterial color="#5effd8" toneMapped={false} />
@@ -447,7 +435,46 @@ function HeroAlien() {
 
 /* -------------------------------------------------------------------------- */
 
-export default function AlienFleet() {
+/**
+ * Every orbiting craft, in PRIORITY order: lower quality tiers render only the
+ * first `maxCraft` entries, so the iconic shapes (piloted saucers, tic-tac,
+ * triangle, orb) survive on weak devices and the long tail is dropped first.
+ */
+const CRAFT: ReadonlyArray<{ key: string; node: ReactNode }> = [
+  { key: 'saucer-teal', node: <Orbit radius={2.75} speed={0.35} incline={[0.35, 0, 0.2]} phase={0}><Saucer phase={0} /></Orbit> },
+  { key: 'tictac-1', node: <Orbit radius={2.45} speed={0.6} incline={[1.1, 0, 0.4]} phase={1} jumpy bob={0.02}><TicTac /></Orbit> },
+  { key: 'triangle', node: <Orbit radius={3.4} speed={0.18} incline={[0.15, 0.9, -0.15]} phase={3.5} bob={0.15}><Triangle /></Orbit> },
+  { key: 'saucer-violet', node: <Orbit radius={3.1} speed={-0.25} incline={[-0.5, 0.4, -0.3]} phase={2.2}><Saucer color="#a58bff" phase={2} /></Orbit> },
+  { key: 'orb-orange', node: <Orbit radius={2.4} speed={0.75} incline={[-0.2, 0.1, -1.0]} phase={0.3} jumpy bob={0.03}><PlasmaOrb /></Orbit> },
+  { key: 'bell-gold', node: <Orbit radius={3.25} speed={0.3} incline={[-1.2, -0.5, 0.3]} phase={3.3}><BellSaucer /></Orbit> },
+  { key: 'cigar', node: <Orbit radius={3.7} speed={-0.14} incline={[0.4, 0.3, 1.2]} phase={1.6} bob={0.1}><Cigar /></Orbit> },
+  // ---- medium tier adds ----
+  { key: 'chevron', node: <Orbit radius={3.0} speed={0.27} incline={[-0.3, -0.8, 0.9]} phase={2.7}><Chevron /></Orbit> },
+  { key: 'ring', node: <Orbit radius={3.45} speed={0.24} incline={[-0.7, 1.3, 0.1]} phase={0.6}><RingCraft /></Orbit> },
+  { key: 'diamond', node: <Orbit radius={3.15} speed={-0.33} incline={[0.7, 0.6, -0.9]} phase={3.9}><Diamond /></Orbit> },
+  { key: 'jellyfish', node: <Orbit radius={3.3} speed={-0.16} incline={[1.2, 0.8, 0.6]} phase={4.9} bob={0.2}><Jellyfish /></Orbit> },
+  { key: 'cube-sphere', node: <Orbit radius={2.65} speed={0.4} incline={[0.2, -1.2, -0.7]} phase={6.2} jumpy bob={0.03}><CubeSphere /></Orbit> },
+  { key: 'foo', node: <Orbit radius={2.5} speed={0.55} incline={[-0.6, -0.4, -0.3]} phase={1.2} bob={0.04}><FooFighters /></Orbit> },
+  // ---- high tier adds ----
+  { key: 'saucer-magenta', node: <Orbit radius={3.55} speed={0.2} incline={[0.9, -0.3, 0.5]} phase={5.1}><Saucer color="#ff5ec8" phase={4} /></Orbit> },
+  { key: 'saucer-gold', node: <Orbit radius={2.9} speed={-0.42} incline={[1.4, 0.2, -0.6]} phase={0.8} bob={0.04}><Saucer color="#ffd36b" phase={1} pilot={false} /></Orbit> },
+  { key: 'bell-teal', node: <Orbit radius={2.55} speed={-0.36} incline={[0.6, 1.1, 0.2]} phase={4.4}><BellSaucer color="#5effd8" /></Orbit> },
+  { key: 'tictac-2', node: <Orbit radius={2.6} speed={-0.5} incline={[-0.9, 0.6, 0]} phase={4} jumpy bob={0.02}><TicTac /></Orbit> },
+  { key: 'orb-teal', node: <Orbit radius={2.7} speed={-0.65} incline={[1.0, -1.0, 0]} phase={2.9} bob={0.05}><PlasmaOrb color="#5effd8" /></Orbit> },
+  { key: 'egg', node: <Orbit radius={2.85} speed={0.48} incline={[-1.3, 0.4, 0.8]} phase={5.8} jumpy bob={0.02}><EggCraft /></Orbit> },
+];
+
+export const CRAFT_TOTAL = CRAFT.length;
+
+export default function AlienFleet({
+  maxCraft = CRAFT.length,
+  setPieces = true,
+}: {
+  /** Render only the first N craft (quality tiers). */
+  maxCraft?: number;
+  /** Background mothership + waving hero alien. */
+  setPieces?: boolean;
+}) {
   return (
     <group>
       {/* Lights for the PBR craft (the planet itself is fully shader-lit). */}
@@ -455,73 +482,16 @@ export default function AlienFleet() {
       <directionalLight position={[5, 4, 6]} intensity={2.2} color="#e8f4ff" />
       <pointLight position={[-6, -2, -4]} intensity={30} color="#a58bff" />
 
-      {/* Saucers — the classics, in several liveries */}
-      <Orbit radius={2.75} speed={0.35} incline={[0.35, 0, 0.2]} phase={0}>
-        <Saucer phase={0} />
-      </Orbit>
-      <Orbit radius={3.1} speed={-0.25} incline={[-0.5, 0.4, -0.3]} phase={2.2}>
-        <Saucer color="#a58bff" phase={2} />
-      </Orbit>
-      <Orbit radius={3.55} speed={0.2} incline={[0.9, -0.3, 0.5]} phase={5.1}>
-        <Saucer color="#ff5ec8" phase={4} />
-      </Orbit>
-      <Orbit radius={2.9} speed={-0.42} incline={[1.4, 0.2, -0.6]} phase={0.8} bob={0.04}>
-        <Saucer color="#ffd36b" phase={1} pilot={false} />
-      </Orbit>
-      <Orbit radius={3.25} speed={0.3} incline={[-1.2, -0.5, 0.3]} phase={3.3}>
-        <BellSaucer />
-      </Orbit>
-      <Orbit radius={2.55} speed={-0.36} incline={[0.6, 1.1, 0.2]} phase={4.4}>
-        <BellSaucer color="#5effd8" />
-      </Orbit>
+      {CRAFT.slice(0, maxCraft).map((c) => (
+        <group key={c.key}>{c.node}</group>
+      ))}
 
-      {/* Tic-tacs (UAP-style instant jumps) */}
-      <Orbit radius={2.45} speed={0.6} incline={[1.1, 0, 0.4]} phase={1} jumpy bob={0.02}>
-        <TicTac />
-      </Orbit>
-      <Orbit radius={2.6} speed={-0.5} incline={[-0.9, 0.6, 0]} phase={4} jumpy bob={0.02}>
-        <TicTac />
-      </Orbit>
-
-      {/* Triangles, chevrons, cigars */}
-      <Orbit radius={3.4} speed={0.18} incline={[0.15, 0.9, -0.15]} phase={3.5} bob={0.15}>
-        <Triangle />
-      </Orbit>
-      <Orbit radius={3.0} speed={0.27} incline={[-0.3, -0.8, 0.9]} phase={2.7}>
-        <Chevron />
-      </Orbit>
-      <Orbit radius={3.7} speed={-0.14} incline={[0.4, 0.3, 1.2]} phase={1.6} bob={0.1}>
-        <Cigar />
-      </Orbit>
-
-      {/* Orbs, eggs, diamonds, rings, cube-in-sphere, jellyfish */}
-      <Orbit radius={2.4} speed={0.75} incline={[-0.2, 0.1, -1.0]} phase={0.3} jumpy bob={0.03}>
-        <PlasmaOrb />
-      </Orbit>
-      <Orbit radius={2.7} speed={-0.65} incline={[1.0, -1.0, 0]} phase={2.9} bob={0.05}>
-        <PlasmaOrb color="#5effd8" />
-      </Orbit>
-      <Orbit radius={2.85} speed={0.48} incline={[-1.3, 0.4, 0.8]} phase={5.8} jumpy bob={0.02}>
-        <EggCraft />
-      </Orbit>
-      <Orbit radius={3.15} speed={-0.33} incline={[0.7, 0.6, -0.9]} phase={3.9}>
-        <Diamond />
-      </Orbit>
-      <Orbit radius={3.45} speed={0.24} incline={[-0.7, 1.3, 0.1]} phase={0.6}>
-        <RingCraft />
-      </Orbit>
-      <Orbit radius={2.65} speed={0.4} incline={[0.2, -1.2, -0.7]} phase={6.2} jumpy bob={0.03}>
-        <CubeSphere />
-      </Orbit>
-      <Orbit radius={3.3} speed={-0.16} incline={[1.2, 0.8, 0.6]} phase={4.9} bob={0.2}>
-        <Jellyfish />
-      </Orbit>
-      <Orbit radius={2.5} speed={0.55} incline={[-0.6, -0.4, -0.3]} phase={1.2} bob={0.04}>
-        <FooFighters />
-      </Orbit>
-
-      <HeroAlien />
-      <Mothership />
+      {setPieces && (
+        <>
+          <HeroAlien />
+          <Mothership />
+        </>
+      )}
     </group>
   );
 }

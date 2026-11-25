@@ -34,6 +34,7 @@ import {
   Vector2,
 } from 'three';
 import { SHADER_TIME } from './sharedTime';
+import LightDots, { circleDots, type Dot } from './LightDots';
 
 const ring = (n: number) => Array.from({ length: n }, (_, i) => (i / n) * Math.PI * 2);
 
@@ -52,6 +53,7 @@ const BELL = [
 
 export function BellSaucer({ color = '#ffd36b' }: { color?: string }) {
   const geo = useMemo(() => new LatheGeometry(BELL, 48), []);
+  const portholes = useMemo(() => circleDots(8, 0.44, 0.36, () => color), [color]);
   const spin = useRef<Group>(null);
   useFrame((_, d) => {
     if (spin.current) spin.current.rotation.y += d * 0.8;
@@ -62,12 +64,7 @@ export function BellSaucer({ color = '#ffd36b' }: { color?: string }) {
         <mesh geometry={geo}>
           <meshStandardMaterial color="#c9ccd6" metalness={0.9} roughness={0.25} />
         </mesh>
-        {ring(8).map((a) => (
-          <mesh key={a} position={[Math.cos(a) * 0.44, 0.36, Math.sin(a) * 0.44]}>
-            <sphereGeometry args={[0.06, 10, 10]} />
-            <meshBasicMaterial color={color} toneMapped={false} />
-          </mesh>
-        ))}
+        <LightDots dots={portholes} radius={0.06} />
       </group>
       {ring(3).map((a) => (
         <mesh key={a} position={[Math.cos(a) * 0.5, -0.16, Math.sin(a) * 0.5]}>
@@ -153,6 +150,18 @@ export function PlasmaOrb({ color = '#ff8a3d' }: { color?: string }) {
 
 /* --- Chevron / boomerang ---------------------------------------------------- */
 
+const CHEVRON_DOTS: Dot[] = (
+  [
+    [0, 0.9],
+    [0.4, 0.35],
+    [0.8, -0.2],
+    [1.1, -0.6],
+    [-0.4, 0.35],
+    [-0.8, -0.2],
+    [-1.1, -0.6],
+  ] as const
+).map(([x, y]) => ({ position: [x, y, -0.04] as const, color: '#ffb347' }));
+
 export function Chevron() {
   const shape = useMemo(() => {
     const s = new Shape();
@@ -165,15 +174,6 @@ export function Chevron() {
     s.closePath();
     return s;
   }, []);
-  const lights: [number, number][] = [
-    [0, 0.9],
-    [0.4, 0.35],
-    [0.8, -0.2],
-    [1.1, -0.6],
-    [-0.4, 0.35],
-    [-0.8, -0.2],
-    [-1.1, -0.6],
-  ];
   return (
     // Shape is in XY; lay it flat (XZ) with the point facing +Z.
     <group scale={0.12} rotation={[-Math.PI / 2, 0, 0]}>
@@ -181,12 +181,7 @@ export function Chevron() {
         <extrudeGeometry args={[shape, { depth: 0.08, bevelEnabled: false }]} />
         <meshStandardMaterial color="#07070c" metalness={0.7} roughness={0.5} />
       </mesh>
-      {lights.map(([x, y]) => (
-        <mesh key={`${x},${y}`} position={[x, y, -0.04]}>
-          <sphereGeometry args={[0.07, 10, 10]} />
-          <meshBasicMaterial color="#ffb347" toneMapped={false} />
-        </mesh>
-      ))}
+      <LightDots dots={CHEVRON_DOTS} radius={0.07} />
     </group>
   );
 }
@@ -210,6 +205,8 @@ export function Diamond({ color = '#5effd8' }: { color?: string }) {
 
 /* --- Ring craft ------------------------------------------------------------- */
 
+const RING_DOTS = circleDots(12, 0.8, 0.13, () => '#ffffff');
+
 export function RingCraft({ color = '#a58bff' }: { color?: string }) {
   const ref = useRef<Group>(null);
   useFrame(({ clock }, d) => {
@@ -229,12 +226,7 @@ export function RingCraft({ color = '#a58bff' }: { color?: string }) {
           <icosahedronGeometry args={[0.22, 1]} />
           <meshBasicMaterial color={color} toneMapped={false} />
         </mesh>
-        {ring(12).map((a) => (
-          <mesh key={a} position={[Math.cos(a) * 0.8, 0.13, Math.sin(a) * 0.8]}>
-            <sphereGeometry args={[0.035, 6, 6]} />
-            <meshBasicMaterial color="#ffffff" toneMapped={false} />
-          </mesh>
-        ))}
+        <LightDots dots={RING_DOTS} radius={0.035} detail={6} />
       </group>
     </group>
   );

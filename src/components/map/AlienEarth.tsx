@@ -192,9 +192,12 @@ const tmpQuat = new Quaternion();
 export default function AlienEarth({
   focusPoint,
   children,
+  segments = 128,
 }: {
   focusPoint?: GeoPoint | null;
   children?: ReactNode;
+  /** Planet sphere tessellation (quality tier). */
+  segments?: number;
 }) {
   const [night, topo] = useTexture(
     ['/textures/earth-night.jpg', '/textures/earth-topology.png'],
@@ -259,7 +262,7 @@ export default function AlienEarth({
   return (
     <group ref={tiltRef}>
       <mesh ref={earthRef} material={surface}>
-        <sphereGeometry args={[GLOBE_RADIUS, 128, 128]} />
+        <sphereGeometry args={[GLOBE_RADIUS, segments, segments]} />
         {children}
       </mesh>
       <mesh scale={1.12} material={atmo}>

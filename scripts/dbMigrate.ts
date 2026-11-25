@@ -44,30 +44,32 @@ async function main() {
   try {
     await run('schema.sql');
     if (process.argv.includes('--seed')) await run('seed.sql');
-    // Curated archive: load once (stable ids). The first time it lands it
-    // replaces the generic starter rows (source='seed').
+    // Curated archive (src/data/archive.json). Every deploy upserts by stable
+    // id: new cases appear automatically, existing rows (and their comments /
+    // votes) are never touched. The first time the archive lands it replaces
+    // the generic starter rows (source='seed').
     const [{ n: archived }] = await sql`SELECT count(*)::int AS n FROM uap_sightings WHERE source = 'archive'`;
-    if (archived === 0) {
-      await sql.begin(async (tx) => {
-        await tx`ALTER TABLE uap_sightings DISABLE TRIGGER trg_sighting_cluster_sync`;
-        await tx`DELETE FROM uap_sightings WHERE source = 'seed'`;
-        for (const c of ARCHIVE) {
-          await tx`
-            INSERT INTO uap_sightings
-              (id, title, description, event_timestamp, location_coordinates, location_name, source_tier,
-               evidence_types, credibility_score, is_gov_declassified, document_vault_url, source,
-               archive_source, document_id, craft_morphology, era_tag, primary_source_url)
-            VALUES (${c.id}, ${c.title}, ${c.description}, ${c.eventTimestamp},
-                    ST_SetSRID(ST_MakePoint(${c.longitude}, ${c.latitude}), 4326)::geography, ${c.locationName},
-                    ${c.sourceTier}::classification_tier, ${c.evidenceTypes}::sensor_evidence_type[],
-                    ${c.credibilityScore}, ${c.isGovDeclassified}, ${c.primarySourceUrl}, 'archive',
-                    ${c.archiveSource}, ${c.documentId}, ${c.morphology}, ${c.era}, ${c.primarySourceUrl})
-            ON CONFLICT (id) DO NOTHING`;
-        }
-        await tx`ALTER TABLE uap_sightings ENABLE TRIGGER trg_sighting_cluster_sync`;
-      });
-      console.log(`✓ loaded curated archive (${ARCHIVE.length} cases)`);
-    }
+    let added = 0;
+    await sql.begin(async (tx) => {
+      await tx`ALTER TABLE uap_sightings DISABLE TRIGGER trg_sighting_cluster_sync`;
+      if (archived === 0) await tx`DELETE FROM uap_sightings WHERE source = 'seed'`;
+      for (const c of ARCHIVE) {
+        const r = await tx`
+          INSERT INTO uap_sightings
+            (id, title, description, event_timestamp, location_coordinates, location_name, source_tier,
+             evidence_types, credibility_score, is_gov_declassified, document_vault_url, source,
+             archive_source, document_id, craft_morphology, era_tag, primary_source_url)
+          VALUES (${c.id}, ${c.title}, ${c.description}, ${c.eventTimestamp},
+                  ST_SetSRID(ST_MakePoint(${c.longitude}, ${c.latitude}), 4326)::geography, ${c.locationName},
+                  ${c.sourceTier}::classification_tier, ${c.evidenceTypes}::sensor_evidence_type[],
+                  ${c.credibilityScore}, ${c.isGovDeclassified}, ${c.primarySourceUrl}, 'archive',
+                  ${c.archiveSource}, ${c.documentId}, ${c.morphology}, ${c.era}, ${c.primarySourceUrl})
+          ON CONFLICT (id) DO NOTHING`;
+        added += r.count;
+      }
+      await tx`ALTER TABLE uap_sightings ENABLE TRIGGER trg_sighting_cluster_sync`;
+    });
+    console.log(added ? `✓ archive: added ${added} new case(s)` : '  archive up to date');
     if (process.argv.includes('--seed-if-empty')) {
       const [{ n: seeded }] = await sql`SELECT count(*)::int AS n FROM uap_sightings WHERE source IN ('seed', 'archive')`;
       if (seeded === 0) await run('seed.sql');

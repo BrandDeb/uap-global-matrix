@@ -15,11 +15,17 @@
  * ---------------------------------------------------------------------------
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { motion } from 'motion/react';
+import { motion, useInView } from 'motion/react';
 import { ArrowLeft, ArrowUpRight, Globe2 } from 'lucide-react';
 import { ARCHIVE, ERAS, MORPHOLOGY, type ArchiveCase, type Morphology } from '@/lib/archive';
+
+// WebGL is client-only; both pieces load lazily.
+const CraftView = dynamic(() => import('./CraftViews').then((m) => m.CraftView), { ssr: false });
+const Archivist = dynamic(() => import('./Archivist'), { ssr: false });
+const CraftStage = dynamic(() => import('./CraftViews').then((m) => m.CraftStage), { ssr: false });
 
 /** Tiny line glyph per craft shape. */
 function ShapeGlyph({ m, color }: { m: Morphology; color: string }) {
@@ -84,6 +90,8 @@ function Redacted({ text, open }: { text: string; open: boolean }) {
 function FileCard({ c, color, allOpen }: { c: ArchiveCase; color: string; allOpen: boolean }) {
   const [open, setOpen] = useState(false);
   const revealed = allOpen || open;
+  const stageRef = useRef<HTMLDivElement>(null);
+  const onScreen = useInView(stageRef, { margin: '120px 0px' });
   const pursue = c.era === 'PURSUE_2026_DISCLOSURE';
   return (
     <motion.article
@@ -115,6 +123,14 @@ function FileCard({ c, color, allOpen }: { c: ArchiveCase; color: string; allOpe
       >
         {pursue ? 'AS LISTED' : c.isGovDeclassified ? 'DECLASSIFIED' : 'CIVILIAN FILE'}
       </span>
+
+      {/* 3D model of the reported craft (rendered via the shared canvas) */}
+      <div ref={stageRef} className="relative -mx-2 mb-3 h-36 overflow-hidden rounded-2xl" style={{ background: `radial-gradient(circle at 50% 60%, ${color}22, transparent 70%)` }}>
+        {onScreen && <CraftView morphology={c.morphology} className="absolute inset-0" />}
+        <span className="absolute bottom-2 left-3 font-mono text-[9px] uppercase tracking-[0.2em] text-white/35">
+          As described: {MORPHOLOGY[c.morphology].note}
+        </span>
+      </div>
 
       <div className="flex items-end justify-between gap-4">
         <span className="font-[family-name:var(--font-display)] text-5xl font-extrabold leading-none" style={{ color }}>
@@ -221,6 +237,8 @@ export default function ArchiveFiles() {
 
   return (
     <main className="relative min-h-[100svh] pb-24 text-white">
+      <CraftStage />
+      <Archivist />
       {/* top bar */}
       <header className="sticky top-0 z-30 border-b border-white/5 bg-[var(--xeno-void)]/80 px-4 py-3 backdrop-blur-xl md:px-10">
         <div className="flex items-center justify-between gap-3">

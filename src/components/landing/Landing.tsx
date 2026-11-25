@@ -388,6 +388,9 @@ export default function Landing() {
           <Link href="/feed" className="transition hover:text-white" data-cursor="READ">
             Feed
           </Link>
+          <Link href="/arcade" className="transition hover:text-white" data-cursor="PLAY">
+            Arcade
+          </Link>
         </nav>
         <div className="flex items-center gap-2">
           <SoundToggle on={soundOn} onToggle={() => void toggleSound()} />
@@ -616,6 +619,31 @@ export default function Landing() {
             <LiveTransmissions sightings={live} />
           </section>
         )}
+
+        {/* ARCADE TEASER */}
+        <section className="relative px-4 py-[10vh] md:px-10">
+          <Link
+            href="/arcade"
+            data-cursor="PLAY"
+            className="xeno-glass group flex flex-col items-start justify-between gap-6 overflow-hidden p-8 md:flex-row md:items-center md:p-12"
+          >
+            <div>
+              <SectionLabel n="★">Take a break from the truth</SectionLabel>
+              <h2 className="font-[family-name:var(--font-display)] text-[11vw] font-extrabold uppercase leading-[0.88] md:text-[5vw]">
+                The <span className="xeno-gradient-text">Arcade</span>
+              </h2>
+              <p className="mt-4 max-w-lg text-sm leading-relaxed text-white/55">
+                Three original games: abduct cows before dawn, recycle humanity’s space junk off your moon, and sling debris into a
+                very hungry black hole.
+              </p>
+            </div>
+            <span className="flex gap-4 text-6xl transition-transform duration-500 group-hover:scale-110 md:text-7xl">
+              <span className="inline-block group-hover:animate-bounce">🐄</span>
+              <span className="inline-block [animation-delay:0.1s] group-hover:animate-bounce">🛰️</span>
+              <span className="inline-block [animation-delay:0.2s] group-hover:animate-bounce">🕳️</span>
+            </span>
+          </Link>
+        </section>
 
         {/* 08 HOW IT WORKS */}
         <section className="sec-steps relative px-4 py-[12vh] md:px-10">

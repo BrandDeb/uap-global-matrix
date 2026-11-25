@@ -33,7 +33,12 @@ export const enabledProviders: AuthProviderId[] = [
 
 export const authConfigured = enabledProviders.length > 0;
 
-const providers: Provider[] = [...(githubOn ? [GitHub] : []), ...(googleOn ? [Google] : [])];
+// Trim credentials: a stray space/newline pasted into the dashboard breaks the token exchange.
+const env = (k: string) => process.env[k]?.trim();
+const providers: Provider[] = [
+  ...(githubOn ? [GitHub({ clientId: env('AUTH_GITHUB_ID'), clientSecret: env('AUTH_GITHUB_SECRET') })] : []),
+  ...(googleOn ? [Google({ clientId: env('AUTH_GOOGLE_ID'), clientSecret: env('AUTH_GOOGLE_SECRET') })] : []),
+];
 
 /** Turn a display name into a handle: letters/digits/_/- only, 3..24 chars. */
 function slugHandle(raw: string): string {
@@ -44,6 +49,7 @@ function slugHandle(raw: string): string {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers,
   session: { strategy: 'jwt' },
+  secret: env('AUTH_SECRET'),
   trustHost: true,
   logger: {
     error(error) {

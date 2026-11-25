@@ -16,6 +16,7 @@ const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
   : 'http://localhost:3000';
 
 export const metadata: Metadata = {
+  verification: { google: 'lopbklqTpN6wnK5N3Ii0jpS4YfBTnUaUdawK-crSvdQ' },
   metadataBase: new URL(siteUrl),
   openGraph: { type: 'website', siteName: 'UAP/MATRIX' },
   authors: [{ name: 'Lowkee Studios' }],

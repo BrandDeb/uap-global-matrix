@@ -28,6 +28,8 @@ export function GET(): Response {
       ),
       '',
     ]),
+    'Built by Lowkee Studios.',
+    '',
     'Note: credibility scores are this archive’s own index. 2026 entries are as listed in the source archive.',
   ];
   return new Response(lines.join('\n'), { headers: { 'content-type': 'text/plain; charset=utf-8' } });

@@ -20,7 +20,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { motion, useInView } from 'motion/react';
 import { ArrowLeft, ArrowUpRight, Globe2 } from 'lucide-react';
-import { ARCHIVE, ERAS, MORPHOLOGY, type ArchiveCase, type Morphology } from '@/lib/archive';
+import { ARCHIVE, ERAS, MORPHOLOGY, type ArchiveCase, type EraTag, type Morphology } from '@/lib/archive';
 
 // WebGL is client-only; both pieces load lazily.
 const CraftView = dynamic(() => import('./CraftViews').then((m) => m.CraftView), { ssr: false });
@@ -210,19 +210,19 @@ function FileCard({ c, color, allOpen }: { c: ArchiveCase; color: string; allOpe
 
 const SHAPES: ReadonlyArray<Morphology | 'ALL'> = ['ALL', 'DISC', 'SPHERE', 'TRIANGLE', 'TIC_TAC', 'CIGAR', 'OVAL'];
 
-export default function ArchiveFiles() {
+export default function ArchiveFiles({ only }: { only?: EraTag } = {}) {
   const [shape, setShape] = useState<Morphology | 'ALL'>('ALL');
   const [allOpen, setAllOpen] = useState(false);
 
   const byEra = useMemo(
     () =>
-      ERAS.map((era) => ({
+      ERAS.filter((era) => !only || era.tag === only).map((era) => ({
         era,
         cases: ARCHIVE.filter((c) => c.era === era.tag && (shape === 'ALL' || c.morphology === shape)).sort((a, b) =>
           a.eventTimestamp.localeCompare(b.eventTimestamp),
         ),
       })),
-    [shape],
+    [shape, only],
   );
 
   const shapeCounts = useMemo(() => {
@@ -249,7 +249,7 @@ export default function ArchiveFiles() {
             {ERAS.map((e) => (
               <a
                 key={e.tag}
-                href={`#${e.tag}`}
+                href={only ? `/archive/${e.slug}` : `#${e.tag}`}
                 className="whitespace-nowrap rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-white/55 transition hover:bg-white/5 hover:text-white"
               >
                 <span style={{ color: e.color }}>{e.chapter}</span> <span className="hidden md:inline">{e.name}</span>
@@ -356,6 +356,8 @@ export default function ArchiveFiles() {
       <p className="mx-auto mt-10 max-w-2xl px-4 text-center font-mono text-[10px] leading-relaxed tracking-[0.15em] text-white/30">
         Credibility scores are this archive’s own index, not an official rating. Source links point to the holding
         archive or reading room — dig in, and make up your own mind.
+        <br />
+        Curated, designed &amp; built by <span className="text-[var(--xeno-a)]">Lowkee Studios</span>.
       </p>
     </main>
   );

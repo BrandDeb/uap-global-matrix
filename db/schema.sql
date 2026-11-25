@@ -183,3 +183,14 @@ LANGUAGE sql STABLE AS $$
   ORDER BY upvote_count DESC, s.title
   LIMIT max_rows;
 $$;
+
+-- --- arcade leaderboards ----------------------------------------------------
+CREATE TABLE IF NOT EXISTS arcade_scores (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  game       text NOT NULL,
+  handle     text NOT NULL,
+  score      integer NOT NULL CHECK (score >= 0),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS arcade_scores_game_time_idx ON arcade_scores (game, created_at DESC);
+CREATE INDEX IF NOT EXISTS arcade_scores_game_score_idx ON arcade_scores (game, score DESC);

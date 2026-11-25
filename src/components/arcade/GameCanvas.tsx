@@ -12,6 +12,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { H, W, type Game, type HudState, type Input } from './engine';
+import Leaderboard from './Leaderboard';
 
 export interface GameMeta {
   readonly title: string;
@@ -90,7 +91,7 @@ async function shareScore(src: HTMLCanvasElement, meta: GameMeta, hud: HudState)
 
 const BLOCK = new Set([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 
-export default function GameCanvas({ create, meta }: { create: () => Game; meta: GameMeta }) {
+export default function GameCanvas({ create, meta, gameId }: { create: () => Game; meta: GameMeta; gameId: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [hud, setHud] = useState<HudState>({ phase: 'title', score: 0, best: 0 });
 
@@ -111,6 +112,8 @@ export default function GameCanvas({ create, meta }: { create: () => Game; meta:
       input.pointer.y = ((e.clientY - r.top) / r.height) * H;
     };
     const onKeyDown = (e: KeyboardEvent) => {
+      // Typing in a field (leaderboard name) must not drive the game.
+      if ((e.target as HTMLElement | null)?.closest('input,textarea')) return;
       if (BLOCK.has(e.key)) e.preventDefault();
       const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
       if (!input.keys.has(k)) input.pressed.add(k);
@@ -240,6 +243,7 @@ export default function GameCanvas({ create, meta }: { create: () => Game; meta:
                 >
                   Share score card ↗
                 </button>
+                <Leaderboard key={`${gameId}-${hud.score}`} game={gameId} score={hud.score} />
               </>
             ) : (
               <>

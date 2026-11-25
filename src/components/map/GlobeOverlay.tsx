@@ -29,6 +29,7 @@ import GlobeFx, { type GlobeFxHotspot } from './GlobeFx';
 import Trajectories from './Trajectories';
 import { TimeDriver } from './sharedTime';
 import AlienFleet from './AlienFleet';
+import SightingHeatmap from './SightingHeatmap';
 import { QUALITY, initialQualityTier, qualityLocked, type QualityTier } from './quality';
 
 interface GeoPoint {
@@ -43,6 +44,8 @@ interface GlobeOverlayProps {
   readonly pingPoint?: GeoPoint | null;
   readonly focusPoint?: GeoPoint | null;
   readonly onSelect?: (id: string) => void;
+  /** Show the sighting-density heatmap layer. */
+  readonly heatmap?: boolean;
 }
 
 /**
@@ -120,6 +123,7 @@ export default function GlobeOverlay({
   pingPoint,
   focusPoint,
   onSelect,
+  heatmap = false,
 }: GlobeOverlayProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   // Adaptive quality: start from a device guess, never climb above it.
@@ -184,6 +188,7 @@ export default function GlobeOverlay({
               <DataPoints points={points} onSelect={onSelect} onHover={setHoveredId} />
             </group>
             <Trajectories points={points} />
+            {heatmap && <SightingHeatmap points={points} />}
             <GlobeFx hotspots={hotspots} pingPoint={pingPoint} focusPoint={focusPoint} />
           </AlienEarth>
           <AlienFleet maxCraft={q.craft} setPieces={q.setPieces} />

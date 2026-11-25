@@ -79,6 +79,8 @@ export const ARCHIVE: ReadonlyArray<ArchiveCase> = (raw as RawCase[]).map((r) =>
 /** Era chapters — editorial copy for the archive page. */
 export const ERAS: ReadonlyArray<{
   tag: EraTag;
+  /** URL slug for /archive/[era]. */
+  slug: string;
   chapter: string;
   name: string;
   span: string;
@@ -87,6 +89,7 @@ export const ERAS: ReadonlyArray<{
 }> = [
   {
     tag: 'WWII_FOO_FIGHTERS',
+    slug: 'foo-fighters',
     chapter: 'I',
     name: 'Foo Fighters',
     span: '1942 – 1946',
@@ -95,6 +98,7 @@ export const ERAS: ReadonlyArray<{
   },
   {
     tag: 'BLUE_BOOK_ERA',
+    slug: 'blue-book',
     chapter: 'II',
     name: 'The Blue Book Years',
     span: '1947 – 1969',
@@ -103,6 +107,7 @@ export const ERAS: ReadonlyArray<{
   },
   {
     tag: 'COLD_WAR_FLAPS',
+    slug: 'cold-war',
     chapter: 'III',
     name: 'Cold War Flaps',
     span: '1970 – 1999',
@@ -111,6 +116,7 @@ export const ERAS: ReadonlyArray<{
   },
   {
     tag: 'MODERN_SENSOR_ERA',
+    slug: 'sensor-age',
     chapter: 'IV',
     name: 'The Sensor Age',
     span: '2000 – 2025',
@@ -119,6 +125,7 @@ export const ERAS: ReadonlyArray<{
   },
   {
     tag: 'PURSUE_2026_DISCLOSURE',
+    slug: 'disclosure-2026',
     chapter: 'V',
     name: 'The 2026 Disclosure Drops',
     span: '2026',

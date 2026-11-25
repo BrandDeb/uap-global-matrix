@@ -271,3 +271,46 @@ export async function getProfile(id: string): Promise<Row | null> {
   const rows = await getDb()`SELECT * FROM profiles WHERE id = ${id}`;
   return rows[0] ?? null;
 }
+
+/* --- arcade leaderboards ------------------------------------------------- */
+
+const demoScores: { game: string; handle: string; score: number; created_at: string }[] = [];
+
+/** Best score per handle for a game; `weekly` = since Monday 00:00 UTC. */
+export async function topScores(game: string, weekly: boolean, limit = 10): Promise<Row[]> {
+  if (!hasDb()) {
+    const since = weekly ? weekStartIso() : '';
+    const best = new Map<string, Row>();
+    for (const s of demoScores) {
+      if (s.game !== game || s.created_at < since) continue;
+      const cur = best.get(s.handle);
+      if (!cur || Number(cur.score) < s.score) best.set(s.handle, { handle: s.handle, score: s.score });
+    }
+    return [...best.values()].sort((a, b) => Number(b.score) - Number(a.score)).slice(0, limit);
+  }
+  const sql = getDb();
+  return sql`
+    SELECT handle, max(score)::int AS score
+    FROM arcade_scores
+    WHERE game = ${game} AND ${weekly ? sql`created_at >= date_trunc('week', now())` : sql`TRUE`}
+    GROUP BY handle
+    ORDER BY score DESC
+    LIMIT ${limit}
+  `;
+}
+
+export async function insertScore(game: string, handle: string, score: number): Promise<void> {
+  if (!hasDb()) {
+    demoScores.push({ game, handle, score, created_at: new Date().toISOString() });
+    return;
+  }
+  await getDb()`INSERT INTO arcade_scores (game, handle, score) VALUES (${game}, ${handle}, ${score})`;
+}
+
+function weekStartIso(): string {
+  const d = new Date();
+  const day = (d.getUTCDay() + 6) % 7; // Monday = 0
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() - day);
+  return d.toISOString();
+}

@@ -129,9 +129,9 @@ export default function Arcade() {
 
       {game ? (
         <section className="relative z-10">
-          <GameCanvas key={game.id} create={game.create} meta={game.meta} />
+          <GameCanvas key={game.id} create={game.create} meta={game.meta} gameId={game.id} />
           <p className="mx-auto mt-4 max-w-[1100px] text-center font-mono text-[10px] uppercase tracking-[0.3em] text-white/35">
-            Turn sound on for the full experience · best scores saved on this device
+            Turn sound on for the full experience · a Lowkee Studios production
           </p>
         </section>
       ) : (

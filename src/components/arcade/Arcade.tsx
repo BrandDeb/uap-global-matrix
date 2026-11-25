@@ -3,7 +3,7 @@
 /**
  * src/components/arcade/Arcade.tsx
  * ---------------------------------------------------------------------------
- * The /arcade experience: a cabinet-select screen with three original games,
+ * The /arcade experience: a cabinet-select screen with four original games,
  * deep-linkable via ?game=<id>, plus a soundtrack toggle (the games' SFX ride
  * the same Web Audio engine as the landing page).
  * ---------------------------------------------------------------------------
@@ -18,6 +18,7 @@ import GameCanvas, { type GameMeta } from './GameCanvas';
 import { GravityJanitor } from './GravityJanitor';
 import { JunkInvaders } from './JunkInvaders';
 import { MooveIt } from './MooveIt';
+import { RadarGhost } from './RadarGhost';
 import { loadBest, type Game } from './engine';
 import HallOfFame from './HallOfFame';
 import ShareBar from '@/components/ShareBar';
@@ -119,6 +120,19 @@ const GAMES: ReadonlyArray<Entry> = [
       controls: ['← → rotate · ↑ thrust', 'Space  fire', 'E / Shift  tractor + fling', 'Mouse  aim · hold to fly'],
     },
   },
+  {
+    id: 'radar-ghost',
+    create: () => new RadarGhost(),
+    color: '#a58bff',
+    emoji: '📡',
+    blurb: 'Military airspace. Sweeping radar. Fighter jets. You, a very visible saucer. Stay dark.',
+    meta: {
+      title: 'Radar Ghost',
+      tagline:
+        'Fly through military airspace without being tracked. Radar dishes sweep the sky and jets patrol with sensor cones: linger in either and your detection meter fills. Cloak to vanish (it drains fast, and you can’t grab data while invisible). Each sector is faster and busier.',
+      controls: ['Arrows / WASD  fly', 'Space / Shift  cloak', 'Touch  steer · hold right edge to cloak'],
+    },
+  },
 ];
 
 const HOF_GAMES = GAMES.map((g) => ({ id: g.id, title: g.meta.title, color: g.color }));
@@ -191,12 +205,12 @@ export default function Arcade() {
       ) : (
         <section className="relative z-10">
           <div className="mb-10 text-center">
-            <p className="font-mono text-[10px] uppercase tracking-[0.5em] text-white/40">Three original games · zero quarters</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.5em] text-white/40">Four original games · zero quarters</p>
             <h1 className="mt-3 font-[family-name:var(--font-display)] text-[13vw] font-extrabold uppercase leading-[0.96] md:text-[7vw]">
               The <span className="xeno-gradient-text">Arcade</span>
             </h1>
           </div>
-          <div className="mx-auto grid max-w-6xl gap-5 md:grid-cols-3">
+          <div className="mx-auto grid max-w-7xl gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {GAMES.map((g, i) => (
               <button
                 key={g.id}

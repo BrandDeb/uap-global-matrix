@@ -216,7 +216,7 @@ export class MooveIt implements Game {
         if (c.kind === 'farmer') {
           c.cooldown -= dt;
           if (c.cooldown <= 0) {
-            c.cooldown = rand(1.6, 3.2);
+            c.cooldown = rand(1.6, 3.2) * (this.night === 1 ? 1.6 : 1); // Night 1 farmers are sleepy
             const dx = this.ship.x - c.x;
             const dy = this.ship.y - (c.y - 30);
             const d = Math.hypot(dx, dy) || 1;

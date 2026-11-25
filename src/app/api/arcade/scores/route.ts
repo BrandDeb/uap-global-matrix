@@ -13,7 +13,7 @@ import { cleanHandle, jsonError, readJson } from '@/lib/apiHelpers';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const MAX_SCORE: Record<string, number> = { 'moove-it': 400_000, 'junk-invaders': 2_000_000, 'gravity-janitor': 2_000_000 };
+const MAX_SCORE: Record<string, number> = { 'moove-it': 400_000, 'junk-invaders': 2_000_000, 'gravity-janitor': 2_000_000, 'radar-ghost': 2_000_000 };
 const hits = new Map<string, number[]>();
 
 export async function GET(req: Request): Promise<Response> {

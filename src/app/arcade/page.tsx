@@ -4,9 +4,9 @@ import JsonLd from '@/components/JsonLd';
 import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'Free UFO games: Moo-ve It, Junk Invaders, Gravity Janitor',
+  title: 'Free UFO games: Moo-ve It, Junk Invaders, Gravity Janitor, Radar Ghost',
   description:
-    'Play free browser UFO arcade games. Beam up cows across five nights in Moo-ve It, recycle space junk in Junk Invaders, and fling debris into a black hole in Gravity Janitor. Weekly leaderboards with prizes for the top 3.',
+    'Play free browser UFO arcade games. Beam up cows across five nights in Moo-ve It, recycle space junk in Junk Invaders, fling debris into a black hole in Gravity Janitor, and dodge military radar in Radar Ghost. Weekly leaderboards with prizes for the top 3.',
   alternates: { canonical: '/arcade' },
   openGraph: { url: '/arcade' },
 };
@@ -15,6 +15,7 @@ const GAMES = [
   ['Moo-ve It', 'moove-it', 'Beam cows into your saucer across five nights with quotas, storms, searchlights and power-ups.'],
   ['Junk Invaders', 'junk-invaders', 'Defend your moon from descending space junk and recycle it for a super shot.'],
   ['Gravity Janitor', 'gravity-janitor', 'Clean orbital debris around a black hole whose gravity bends your ship and your shots.'],
+  ['Radar Ghost', 'radar-ghost', 'A stealth flyer: slip your saucer past sweeping military radar and fighter-jet sensors, cloaking to stay invisible.'],
 ];
 
 export default function ArcadePage() {

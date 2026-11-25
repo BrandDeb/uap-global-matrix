@@ -421,7 +421,7 @@ export async function insertCrop(c: { id: string; handle: string; field: string;
 export async function listCrops(sort: 'top' | 'new', limit = 48): Promise<CropRow[]> {
   if (!hasDb()) {
     const rows = [...demoCrops].sort((a, b) => (sort === 'top' ? b.likes - a.likes : 0) || b.created_at.localeCompare(a.created_at));
-    return rows.slice(0, limit).map(({ image: _i, ...r }) => r);
+    return rows.slice(0, limit).map((r) => ({ id: r.id, handle: r.handle, field: r.field, likes: r.likes, created_at: r.created_at }));
   }
   const sql = getDb();
   return sql<CropRow[]>`
@@ -434,8 +434,7 @@ export async function getCrop(id: string): Promise<CropRow | null> {
   if (!hasDb()) {
     const c = demoCrops.find((x) => x.id === id);
     if (!c) return null;
-    const { image: _i, ...r } = c;
-    return r;
+    return { id: c.id, handle: c.handle, field: c.field, likes: c.likes, created_at: c.created_at };
   }
   const rows = await getDb()<CropRow[]>`SELECT id, handle, field, likes, created_at FROM crop_circles WHERE id = ${id}`;
   return rows[0] ?? null;
@@ -456,4 +455,21 @@ export async function likeCrop(id: string): Promise<number | null> {
   }
   const rows = await getDb()`UPDATE crop_circles SET likes = likes + 1 WHERE id = ${id} RETURNING likes`;
   return rows[0] ? Number(rows[0].likes) : null;
+}
+
+/* --- nearby alerts --------------------------------------------------------- */
+
+/** New citizen reports since `since` within `km` of a point (newest first). */
+export async function nearbySince(lat: number, lon: number, km: number, since: string): Promise<{ id: string; title: string; location_name: string; km: number }[]> {
+  if (!hasDb()) return [];
+  return getDb()`
+    SELECT id, title, location_name,
+           round((ST_Distance(location_coordinates, ST_MakePoint(${lon}, ${lat})::geography) / 1000)::numeric, 0)::int AS km
+    FROM uap_sightings
+    WHERE source = 'citizen' AND NOT is_gov_declassified
+      AND created_at > ${since}::timestamptz
+      AND ST_DWithin(location_coordinates, ST_MakePoint(${lon}, ${lat})::geography, ${km * 1000})
+    ORDER BY created_at DESC
+    LIMIT 5
+  ` as unknown as Promise<{ id: string; title: string; location_name: string; km: number }[]>;
 }

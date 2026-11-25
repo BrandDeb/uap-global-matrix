@@ -214,7 +214,7 @@ export default function GameCanvas({ create, meta, gameId }: { create: () => Gam
               </div>
             )}
             <div className="text-right">
-              <span className="block text-white/40">{meta.title === 'Moo-ve It' ? 'Night' : 'Wave'} {hud.level ?? ''}</span>
+              <span className="block text-white/40">{meta.title === 'Moo-ve It' ? 'Night' : meta.title === 'Radar Ghost' ? 'Sector' : 'Wave'} {hud.level ?? ''}</span>
               <span className="text-base text-[var(--xeno-d)] md:text-lg">{'♥'.repeat(Math.max(0, hud.lives ?? 0))}</span>
             </div>
           </div>

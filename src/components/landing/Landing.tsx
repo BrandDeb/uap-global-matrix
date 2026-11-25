@@ -823,13 +823,22 @@ export default function Landing() {
             <span>UAP/MATRIX · est. 1947 (sort of)</span>
             <span>No cows were harmed. Several were confused.</span>
           </div>
-          <div className="mt-3 px-4 text-center font-mono text-[10px] uppercase tracking-[0.35em] text-white/45 md:px-10">
-            Designed &amp; built by <span className="text-[var(--xeno-a)]">Lowkee Studios</span>
+          <div className="relative z-10 mx-4 mt-8 flex flex-col items-center gap-4 rounded-[28px] border border-white/10 bg-black/50 px-6 py-8 text-center backdrop-blur md:mx-10">
+            <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-white/45">Designed &amp; built by</p>
+            <p className="font-[family-name:var(--font-display)] text-4xl font-extrabold uppercase leading-[1] md:text-6xl">
+              <span className="xeno-gradient-text">Lowkee Studios</span>
+            </p>
+            <p className="max-w-md text-sm text-white/55">The people behind UAP/Matrix. Made with three.js, too much coffee and a healthy distrust of weather balloons.</p>
+            <nav className="mt-2 flex flex-wrap justify-center gap-x-6 gap-y-2 font-mono text-[10px] uppercase tracking-[0.3em] text-white/45">
+              <Link href="/matrix" className="hover:text-white">Globe</Link>
+              <Link href="/archive" className="hover:text-white">Archive</Link>
+              <Link href="/arcade" className="hover:text-white">Arcade</Link>
+              <Link href="/privacy" className="hover:text-white">Privacy</Link>
+              <Link href="/terms" className="hover:text-white">Terms</Link>
+            </nav>
+            <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-white/25">© {new Date().getFullYear()} Lowkee Studios</p>
           </div>
-          <div className="mt-3 flex justify-center gap-6 font-mono text-[9px] uppercase tracking-[0.3em] text-white/35">
-            <Link href="/privacy" className="hover:text-white">Privacy</Link>
-            <Link href="/terms" className="hover:text-white">Terms</Link>
-          </div>
+          <div className="h-20 md:h-10" />
         </footer>
       </main>
     </div>

@@ -14,7 +14,7 @@ import { saveProfile, useLocalProfile, type ThemePref } from '@/lib/profile';
 export function AvatarPicker({ count = ALIENS.length }: { count?: number }) {
   const { avatar } = useLocalProfile();
   return (
-    <div className="grid grid-cols-5 gap-3 sm:grid-cols-10">
+    <div className="grid grid-cols-5 justify-items-center gap-x-2 gap-y-4 px-1 py-1">
       {ALIENS.slice(0, count).map((a, i) => (
         <button
           key={a.name}

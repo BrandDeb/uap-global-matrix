@@ -1,7 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1400 400">
-  <defs><linearGradient id="t" x1="0" x2="1"><stop offset="0" stop-color="#fff"/><stop offset=".45" stop-color="#5effd8"/><stop offset=".8" stop-color="#a58bff"/><stop offset="1" stop-color="#ff5ec8"/></linearGradient></defs>
-  <rect width="1400" height="400" fill="#020208"/>
-  <image href="uap-matrix-mark.svg" x="50" y="50" width="300" height="300"/>
-  <text x="400" y="225" font-family="'Unbounded','Arial Black',sans-serif" font-weight="900" font-size="132" letter-spacing="6" fill="url(#t)">UAP/MATRIX</text>
-  <text x="406" y="295" font-family="'JetBrains Mono',monospace" font-size="30" letter-spacing="12" fill="#ffffff" fill-opacity=".45">THE PLANET'S UFO SIGHTING MAP</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1400 400"><defs><linearGradient id="t" x1="0" x2="1"><stop offset="0" stop-color="#fff"/><stop offset=".45" stop-color="#5effd8"/><stop offset=".8" stop-color="#a58bff"/><stop offset="1" stop-color="#ff5ec8"/></linearGradient></defs><rect width="1400" height="400" fill="#020208"/><image width="300" height="300" x="50" y="50" href="uap-matrix-mark.svg"/><text x="400" y="225" fill="url(#t)" font-family="'Unbounded','Arial Black',sans-serif" font-size="132" font-weight="900" letter-spacing="6">UAP/MATRIX</text><text x="406" y="295" fill="#fff" fill-opacity=".45" font-family="'JetBrains Mono',monospace" font-size="30" letter-spacing="12">THE PLANET&apos;S UFO SIGHTING MAP</text></svg>

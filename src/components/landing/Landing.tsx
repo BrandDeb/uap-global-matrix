@@ -46,6 +46,8 @@ import { toLiveSighting, type LiveSighting } from '@/lib/sightings';
 import { toast } from 'sonner';
 import { xenoAudio } from './audio';
 import CropCircleCanvas from './CropCircleCanvas';
+import SubmissionModal from '@/components/ui/SubmissionModal';
+import { useRouter } from 'next/navigation';
 
 gsap.registerPlugin(useGSAP, ScrollTrigger, SplitText);
 
@@ -152,6 +154,8 @@ export default function Landing() {
   const [contacts, setContacts] = useState(0);
   const [live, setLive] = useState<LiveSighting[]>([]);
   const stickerTaps = useRef(0);
+  const [reportOpen, setReportOpen] = useState(false);
+  const router = useRouter();
   const [statsOn, setStatsOn] = useState(false);
   const { profile, providers } = useAuth();
   const [soundOn, setSoundOn] = useState(false);
@@ -648,6 +652,41 @@ export default function Landing() {
           </Link>
         </section>
 
+        {/* REPORT A SIGHTING */}
+        <section className="relative px-4 py-[10vh] md:px-10">
+          <div className="xeno-glass flex flex-col items-start gap-6 p-8 md:flex-row md:items-center md:justify-between md:p-12">
+            <div>
+              <SectionLabel n="!">Seen something weird?</SectionLabel>
+              <h2 className="font-[family-name:var(--font-display)] text-[11vw] font-extrabold uppercase leading-[0.88] md:text-[5vw]">
+                Report a <span className="xeno-gradient-text">sighting</span>
+              </h2>
+              <p className="mt-4 max-w-lg text-sm leading-relaxed text-white/55">
+                Upload your photo or clip, drop a pin, and our forensics score it in seconds — EXIF check, deep-fake
+                screen, aircraft &amp; satellite proximity. Credible contacts land on the live globe.
+              </p>
+            </div>
+            <Magnetic>
+              <button
+                type="button"
+                onClick={() => setReportOpen(true)}
+                data-cursor="REPORT"
+                className="rounded-full bg-[var(--xeno-d)] px-8 py-4 font-mono text-xs font-bold uppercase tracking-[0.25em] text-black shadow-[0_0_50px_rgba(255,94,200,0.5)] transition hover:scale-105"
+              >
+                File a report ↗
+              </button>
+            </Magnetic>
+          </div>
+        </section>
+        {reportOpen && (
+          <SubmissionModal
+            onClose={() => setReportOpen(false)}
+            onSubmitted={(id) => {
+              setReportOpen(false);
+              if (id) router.push(`/matrix?case=${id}`);
+            }}
+          />
+        )}
+
         {/* 08 HOW IT WORKS */}
         <section className="sec-steps relative px-4 py-[12vh] md:px-10">
           <SectionLabel n="08">How it works (roughly)</SectionLabel>
@@ -716,6 +755,9 @@ export default function Landing() {
           <div className="mt-4 flex justify-between px-4 font-mono text-[9px] uppercase tracking-[0.3em] text-white/30 md:px-10">
             <span>UAP/MATRIX · est. 1947 (sort of)</span>
             <span>No cows were harmed. Several were confused.</span>
+          </div>
+          <div className="mt-3 px-4 text-center font-mono text-[10px] uppercase tracking-[0.35em] text-white/45 md:px-10">
+            Designed &amp; built by <span className="text-[var(--xeno-a)]">Lowkee Studios</span>
           </div>
         </footer>
       </main>

@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { ARCHIVE } from '@/lib/archive';
+import { ARCHIVE, ERAS } from '@/lib/archive';
 import { SITE_URL } from '@/lib/site';
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -13,6 +13,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
   return [
     ...pages,
+    ...ERAS.map((e) => ({ url: `${SITE_URL}/archive/${e.slug}`, lastModified: now, changeFrequency: 'monthly' as const, priority: 0.8 })),
     ...ARCHIVE.map((c) => ({ url: `${SITE_URL}/case/${c.id}`, lastModified: now, changeFrequency: 'monthly' as const, priority: 0.7 })),
   ];
 }

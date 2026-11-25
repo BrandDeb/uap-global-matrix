@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Space_Grotesk, JetBrains_Mono, Unbounded } from 'next/font/google';
 import { Toaster } from 'sonner';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
 import SmoothScroll from '@/components/fx/SmoothScroll';
 
@@ -15,6 +17,9 @@ const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   openGraph: { type: 'website', siteName: 'UAP/MATRIX' },
+  authors: [{ name: 'Lowkee Studios' }],
+  creator: 'Lowkee Studios',
+  publisher: 'Lowkee Studios',
   twitter: { card: 'summary_large_image' },
   title: 'UAP Global Matrix — Xeno Signal Atlas',
   description: 'A living atlas of unidentified anomalous phenomena, mapped across the planet in real time.',
@@ -33,6 +38,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             className: '!rounded-2xl !border-white/10 !bg-[#0a0818]/90 !font-mono !text-xs !backdrop-blur-xl',
           }}
         />
+        <Analytics />
+        <SpeedInsights />
         <div className="xeno-scan" aria-hidden />
       </body>
     </html>

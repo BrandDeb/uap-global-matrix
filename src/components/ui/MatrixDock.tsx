@@ -9,7 +9,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { Keyboard, LocateFixed, Pause, Play, Volume2, VolumeX } from 'lucide-react';
+import { Flame, Keyboard, LocateFixed, Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { Dialog } from '@/components/primitives/dialog';
 import { Tooltip, TooltipProvider } from '@/components/primitives/tooltip';
 
@@ -23,6 +23,7 @@ export const SHORTCUTS: ReadonlyArray<[keys: string, action: string]> = [
   ['T', 'Autopilot tour on/off'],
   ['M', 'Soundtrack on/off'],
   ['N', 'Closest sighting to you'],
+  ['H', 'Sighting heatmap on/off'],
   ['R', 'Report a sighting'],
   ['?', 'This help'],
 ];
@@ -35,9 +36,11 @@ interface MatrixDockProps {
   readonly helpOpen: boolean;
   readonly onHelp: (open: boolean) => void;
   readonly onNearMe: () => void;
+  readonly heatmap: boolean;
+  readonly onHeatmap: () => void;
 }
 
-export default function MatrixDock({ touring, onTour, soundOn, onSound, helpOpen, onHelp, onNearMe }: MatrixDockProps) {
+export default function MatrixDock({ touring, onTour, soundOn, onSound, helpOpen, onHelp, onNearMe, heatmap, onHeatmap }: MatrixDockProps) {
   return (
     <>
       <TooltipProvider>
@@ -53,6 +56,17 @@ export default function MatrixDock({ touring, onTour, soundOn, onSound, helpOpen
             >
               {touring ? <Pause size={12} /> : <Play size={12} />}
               <span className="hidden sm:inline">{touring ? 'Touring' : 'Tour'}</span>
+            </button>
+          </Tooltip>
+          <Tooltip label="Sighting heatmap (H)">
+            <button
+              type="button"
+              onClick={onHeatmap}
+              aria-pressed={heatmap}
+              aria-label="Toggle sighting heatmap"
+              className={`rounded-[14px] px-2.5 py-1.5 transition ${heatmap ? 'text-[var(--xeno-d)]' : 'text-white/60 hover:text-white'}`}
+            >
+              <Flame size={14} />
             </button>
           </Tooltip>
           <Tooltip label="Closest sighting to you (N)">

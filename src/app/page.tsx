@@ -22,8 +22,10 @@ export default function Home() {
               name: 'UAP/MATRIX',
               url: SITE_URL,
               description: metadata.description,
+              creator: { '@type': 'Organization', name: 'Lowkee Studios' },
             },
             { '@type': 'Organization', name: 'UAP/MATRIX', url: SITE_URL, logo: `${SITE_URL}/icon.svg` },
+            { '@type': 'Organization', name: 'Lowkee Studios', description: 'Designed and built UAP/MATRIX.' },
           ],
         }}
       />

@@ -307,7 +307,7 @@ export default function LandingScene({ eventSource }: { eventSource?: RefObject<
     <div className="fixed inset-0 z-0" aria-hidden>
       <Canvas
         camera={{ position: [0, 0, 9], fov: 40 }}
-        dpr={[1, Math.min(q.dpr, 1.75)]}
+        dpr={[1, tier === 0 ? 1 : Math.min(q.dpr, 1.75)]}
         gl={{ antialias: false, powerPreference: 'high-performance' }}
         // The canvas sits behind the page; route pointer events from the page
         // root so the saucer stays clickable under the DOM layer.
@@ -328,6 +328,8 @@ export default function LandingScene({ eventSource }: { eventSource?: RefObject<
           <Showcase narrow={narrow} />
           <VoxelAlien narrow={narrow} />
           <InvasionFleet />
+          {tier > 0 && (
+          <>
           <Flyby y={2.8} z={-6} speed={0.09} delay={0.2}>
             <group scale={8}>
               <TicTac />
@@ -338,6 +340,8 @@ export default function LandingScene({ eventSource }: { eventSource?: RefObject<
               <Triangle />
             </group>
           </Flyby>
+          </>
+          )}
           {tier > 0 && (
             <Flyby y={-0.6} z={-14} speed={0.035} delay={0.1}>
               <group scale={14}>

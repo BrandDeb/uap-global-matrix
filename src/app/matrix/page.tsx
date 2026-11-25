@@ -47,6 +47,7 @@ export default function GlobalMatrixDashboard() {
   const [touring, setTouring] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [heatmap, setHeatmap] = useState(false);
   const tourIdx = useRef(0);
   const prevTopId = useRef<string | null>(null);
 
@@ -224,6 +225,9 @@ export default function GlobalMatrixDashboard() {
         case 'm':
           void toggleSound();
           break;
+        case 'h':
+          setHeatmap((v) => !v);
+          break;
         case 'n':
           nearMe();
           break;
@@ -290,6 +294,7 @@ export default function GlobalMatrixDashboard() {
           sightings[0] ? { latitude: sightings[0].latitude, longitude: sightings[0].longitude } : null
         }
         onSelect={openCase}
+        heatmap={heatmap}
       />
 
       {/* Editorial hero copy (bottom-left, fades when a dossier occupies left rail) */}
@@ -436,6 +441,8 @@ export default function GlobalMatrixDashboard() {
             helpOpen={helpOpen}
             onHelp={setHelpOpen}
             onNearMe={nearMe}
+            heatmap={heatmap}
+            onHeatmap={() => setHeatmap((v) => !v)}
           />
         </div>
 

@@ -51,7 +51,8 @@ export default function ArchivePage() {
               temporalCoverage: '1942/2026',
               spatialCoverage: 'Worldwide',
               keywords: ['UFO', 'UAP', 'declassified', 'Project Blue Book', 'foo fighters', 'AARO', 'FOIA'],
-              creator: { '@type': 'Organization', name: 'UAP/MATRIX', url: SITE_URL },
+              creator: { '@type': 'Organization', name: 'Lowkee Studios' },
+              publisher: { '@type': 'Organization', name: 'UAP/MATRIX', url: SITE_URL },
               isAccessibleForFree: true,
             },
             {

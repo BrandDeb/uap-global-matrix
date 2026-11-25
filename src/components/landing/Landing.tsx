@@ -657,7 +657,7 @@ export default function Landing() {
         </section>
 
         {/* 07 CROP CIRCLE LAB, 2D canvas */}
-        <section className="sec-crop relative px-4 py-[14vh] md:px-10">
+        <section id="crop-lab" className="sec-crop relative px-4 py-[14vh] md:px-10">
           <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
               <SectionLabel>Crop circle lab</SectionLabel>
@@ -834,6 +834,8 @@ export default function Landing() {
               <Link href="/matrix" className="hover:text-white">Globe</Link>
               <Link href="/archive" className="hover:text-white">Archive</Link>
               <Link href="/arcade" className="hover:text-white">Arcade</Link>
+              <Link href="/daily" className="hover:text-white">Daily challenge</Link>
+              <Link href="/crop-circles" className="hover:text-white">Crop circles</Link>
               <Link href="/privacy" className="hover:text-white">Privacy</Link>
               <Link href="/terms" className="hover:text-white">Terms</Link>
             </nav>

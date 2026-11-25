@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
 import SmoothScroll from '@/components/fx/SmoothScroll';
+import ThemeSync, { THEME_BOOT_SCRIPT } from '@/components/profile/ThemeSync';
 
 const body = Space_Grotesk({ variable: '--font-body', subsets: ['latin'] });
 const mono = JetBrains_Mono({ variable: '--font-mono-x', subsets: ['latin'] });
@@ -27,8 +28,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${body.variable} ${mono.variable} ${display.variable} h-full antialiased`}>
+    <html lang="en" data-theme="dark" suppressHydrationWarning className={`${body.variable} ${mono.variable} ${display.variable} h-full antialiased`}>
+      <head>
+        {/* Apply the saved theme before first paint (no flash). */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body className="flex min-h-full flex-col">
+        <ThemeSync />
         <SmoothScroll />
         {children}
         <Toaster

@@ -20,7 +20,11 @@ export default function Leaderboard({ game, score }: { game: string; score: numb
   const [weekly, setWeekly] = useState<Entry[] | null>(null);
   const [name, setName] = useState(() => {
     try {
-      return localStorage.getItem(NAME_KEY) ?? '';
+      return (
+        localStorage.getItem(NAME_KEY) ??
+        (JSON.parse(localStorage.getItem('uap-profile') ?? '{}') as { name?: string }).name ??
+        ''
+      );
     } catch {
       return '';
     }

@@ -227,3 +227,14 @@ body {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
 }
+
+/* --- Light theme --------------------------------------------------------------
+   The site is designed dark-first; light mode inverts the UI chrome while
+   imagery, 3D scenes, games and avatars are re-inverted to keep true colors. */
+html[data-theme='light'] {
+  filter: invert(1) hue-rotate(180deg);
+  background: #fff;
+}
+html[data-theme='light'] :is(canvas, img, video, svg[role='img'], [data-keep-colors]) {
+  filter: invert(1) hue-rotate(180deg);
+}

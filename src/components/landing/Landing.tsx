@@ -37,6 +37,7 @@ import { motion, useMotionValue, useSpring } from 'motion/react';
 import { ArrowDown, ArrowUpRight, LogIn, X } from 'lucide-react';
 import NumberTicker from '@/components/fx/NumberTicker';
 import SignInButtons from '@/components/ui/SignInButtons';
+import UserChip from '@/components/ui/UserChip';
 import { useAuth } from '@/hooks/useAuth';
 import AlienCursor from './AlienCursor';
 import { CASE_REEL, FIELD_GUIDE, STEPS } from './content';
@@ -402,6 +403,7 @@ export default function Landing() {
         <div className="flex items-center gap-2">
           <SoundToggle on={soundOn} onToggle={() => void toggleSound()} />
           <SignInPopover />
+          <UserChip />
           <Link href="/matrix" className="xeno-btn" data-cursor="ENTER">
             Enter <ArrowUpRight size={12} />
           </Link>

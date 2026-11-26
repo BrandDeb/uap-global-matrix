@@ -3,18 +3,24 @@
 /**
  * src/components/hangar/Craft3D.tsx
  * ---------------------------------------------------------------------------
- * A real-time 3D preview of the assembled craft, built procedurally from the
- * equipped parts with three.js/WebGL. Fuselage, wings, thrusters and cockpit
- * are generated from the frame/wing/thruster/weapon ids and the livery colour,
- * lit with key + rim lights on a slow turntable. Rebuilds when parts change.
+ * Real-time 3D preview of the assembled craft, built procedurally from the
+ * Spore-style BLUEPRINT with three.js/WebGL: a hull plus every placed module
+ * (thruster nozzle+plume, wing slab/ring, weapon barrel) rendered at its
+ * blueprint (x,y). Lit with key + rim lights on a slow turntable; rebuilds
+ * when the blueprint changes.
+ *
+ * Blueprint space -> world:  x in [-1,1] -> +X (right),  y in [-1,1] -> +Z (nose).
  * ---------------------------------------------------------------------------
  */
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { PART_BY_ID, type Craft } from '@/lib/craft';
+import { PART_BY_ID, type Blueprint } from '@/lib/craft';
 
-export default function Craft3D({ craft, className }: { craft: Craft; className?: string }) {
+const FLAME_TINT: Record<string, string> = { ion: '#8af2ff', pulse: '#ffffff', plasma: '#ff9a7a', warp: '#d2b4ff', void: '#5effd8' };
+
+export default function Craft3D({ bp, className }: { bp: Blueprint; className?: string }) {
   const mount = useRef<HTMLDivElement>(null);
+  const key = `${bp.hull}|${bp.color}|${bp.modules.map((m) => `${m.part}@${m.x.toFixed(2)},${m.y.toFixed(2)}`).join(';')}`;
 
   useEffect(() => {
     const el = mount.current;
@@ -28,110 +34,110 @@ export default function Craft3D({ craft, className }: { craft: Craft; className?
 
     const scene = new THREE.Scene();
     const cam = new THREE.PerspectiveCamera(42, w / h, 0.1, 100);
-    cam.position.set(0, 2.9, 5.9);
+    cam.position.set(0, 3.1, 6.1);
     cam.lookAt(0, 0, 0);
 
-    const col = new THREE.Color(craft.color);
+    const col = new THREE.Color(bp.color);
     const steel = new THREE.Color('#2a2f3a');
     scene.add(new THREE.AmbientLight(0xffffff, 0.45));
-    const key = new THREE.DirectionalLight(0xffffff, 1.5);
-    key.position.set(-4, 6, 5);
-    scene.add(key);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    keyLight.position.set(-4, 6, 5);
+    scene.add(keyLight);
     const rim = new THREE.PointLight(col.getHex(), 2.2, 30);
     rim.position.set(4, 1, -3);
     scene.add(rim);
 
     const ship = new THREE.Group();
     scene.add(ship);
-    const frame = PART_BY_ID[craft.frame];
-    const wings = PART_BY_ID[craft.wings];
-    const weap = PART_BY_ID[craft.weapon];
-    const size = frame?.size ?? 1;
-    const shape = frame?.shape ?? 'falcon';
 
-    const flameTint = { ion: '#8af2ff', pulse: '#ffffff', plasma: '#ff9a7a', warp: '#d2b4ff', void: '#5effd8' }[PART_BY_ID[craft.thrusters]?.flame ?? 'ion'];
+    const hull = PART_BY_ID[bp.hull];
+    const size = hull?.size ?? 1;
+    const shape = hull?.shape ?? 'falcon';
     const body = new THREE.MeshStandardMaterial({ color: col, metalness: 0.8, roughness: 0.3, emissive: col, emissiveIntensity: 0.1 });
     const dark = new THREE.MeshStandardMaterial({ color: steel, metalness: 0.85, roughness: 0.45 });
     const glass = new THREE.MeshStandardMaterial({ color: new THREE.Color('#e6ffff'), metalness: 0.1, roughness: 0.08, emissive: col, emissiveIntensity: 0.55 });
-    const glowMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(flameTint), emissive: new THREE.Color(flameTint), emissiveIntensity: 1.6, metalness: 0.2, roughness: 0.5 });
 
-    // Convention: +Z = nose (forward), +Y = up, +X = right.
-    const bw = { dart: 0.42, falcon: 0.55, manta: 0.7, juggernaut: 0.72, phantom: 0.5, titan: 0.8 }[shape] * size;
+    const bw = ({ dart: 0.42, falcon: 0.55, manta: 0.7, juggernaut: 0.72, phantom: 0.5, titan: 0.8 }[shape] ?? 0.55) * size;
     const len = (shape === 'dart' || shape === 'phantom' ? 2.6 : 2.2) * size;
+    // Blueprint (x,y) -> world (X,Z). Kept close to the hull so parts attach.
+    const WX = bw * 1.15;
+    const WZ = len * 0.42;
 
-    // Fuselage: a capsule along Z, flattened to a sleek hull.
-    const hull = new THREE.Mesh(new THREE.CapsuleGeometry(bw * 0.5, len * 0.7, 6, 16), body);
-    hull.rotation.x = Math.PI / 2;          // capsule axis Y -> Z (nose forward)
-    hull.scale.set(1.05, 0.42, 1);          // widen X, flatten Y
-    ship.add(hull);
-    // nose spike
+    // Fuselage hull.
+    const fuse = new THREE.Mesh(new THREE.CapsuleGeometry(bw * 0.5, len * 0.7, 6, 16), body);
+    fuse.rotation.x = Math.PI / 2;
+    fuse.scale.set(1.05, 0.42, 1);
+    ship.add(fuse);
     const noseCone = new THREE.Mesh(new THREE.ConeGeometry(bw * 0.3, len * 0.5, 14), body);
     noseCone.rotation.x = -Math.PI / 2;
     noseCone.scale.set(1.05, 1, 0.42);
     noseCone.position.z = len * 0.48;
     ship.add(noseCone);
-
-    // Cockpit glass, raised and forward.
     const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.26 * size, 20, 16), glass);
     cockpit.position.set(0, 0.16 * size, 0.28 * size);
     cockpit.scale.set(1, 0.8, 1.5);
     ship.add(cockpit);
 
-    // Wings as thin angled slabs sweeping back from the mid-hull.
-    const wingSpread = ({ stub: 1.05, delta: 1.3, swept: 1.3, ring: 1.0, solar: 1.55, reaper: 1.45 }[wings?.wingShape ?? 'stub'] ?? 1.3) * size;
-    const sweep = wings?.wingShape === 'swept' || wings?.wingShape === 'reaper' ? -0.7 : -0.2;
-    if ((wings?.wingShape ?? 'stub') === 'ring') {
-      for (const d of [-1, 1]) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.4 * size, 0.07 * size, 10, 22), dark);
-        ring.position.set(d * bw * 1.7, 0, -0.1 * size);
-        ship.add(ring);
-      }
-    } else {
-      for (const d of [-1, 1]) {
-        const wshape = new THREE.Shape();
-        wshape.moveTo(0, 0.25 * size);
-        wshape.lineTo(d * wingSpread, sweep * size);
-        wshape.lineTo(d * wingSpread * 0.55, -0.7 * size);
-        wshape.lineTo(0, -0.45 * size);
-        wshape.closePath();
-        const wingMat = new THREE.MeshStandardMaterial({ color: col.clone().multiplyScalar(0.5), metalness: 0.8, roughness: 0.4, emissive: col, emissiveIntensity: 0.06 });
-        const wg = new THREE.Mesh(new THREE.ExtrudeGeometry(wshape, { depth: 0.08 * size, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03, bevelSegments: 1 }), wingMat);
-        wg.rotation.x = -Math.PI / 2;        // lay flat in XZ plane
-        wg.position.y = -0.02 * size;
-        ship.add(wg);
-      }
-    }
-    // Wing-gun barrels.
-    for (let i = 1; i <= (wings?.wingGuns ?? 0); i++) {
-      for (const d of [-1, 1]) {
-        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.045 * size, 0.045 * size, 0.7 * size, 8), weap?.shot === 'seeker' ? glowMat : dark);
-        bar.rotation.x = Math.PI / 2;
-        bar.position.set(d * (wingSpread * 0.55 + i * 0.12 * size), -0.02 * size, 0.5 * size);
-        ship.add(bar);
-      }
-    }
-
-    // Thrusters at the tail (-Z): nozzle + emissive plume.
     const flames: THREE.Mesh[] = [];
-    const nThr = shape === 'titan' || shape === 'juggernaut' ? 3 : 2;
-    for (let i = 0; i < nThr; i++) {
-      const ox = (i - (nThr - 1) / 2) * 0.34 * size;
-      const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.15 * size, 0.1 * size, 0.28 * size, 12), dark);
-      nozzle.rotation.x = Math.PI / 2;
-      nozzle.position.set(ox, 0, -len * 0.42);
-      ship.add(nozzle);
-      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.13 * size, 0.85 * size, 12), glowMat.clone());
-      flame.rotation.x = Math.PI / 2;        // point -Z
-      flame.position.set(ox, 0, -len * 0.62);
-      ship.add(flame);
-      flames.push(flame);
-    }
 
-    // Nose weapon barrel.
-    const gun = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * size, 0.08 * size, 0.55 * size, 10), weap?.rarity === 'legendary' ? glowMat : dark);
-    gun.rotation.x = Math.PI / 2;
-    gun.position.set(0, 0, len * 0.6);
-    ship.add(gun);
+    // Place every module at its blueprint coordinate.
+    for (const m of bp.modules) {
+      const part = PART_BY_ID[m.part];
+      if (!part) continue;
+      const px = m.x * WX;
+      const pz = m.y * WZ;
+
+      if (part.slot === 'thrusters') {
+        const tint = FLAME_TINT[part.flame ?? 'ion'];
+        const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.15 * size, 0.1 * size, 0.28 * size, 12), dark);
+        nozzle.rotation.x = Math.PI / 2;
+        nozzle.position.set(px, 0, pz - 0.12 * size);
+        ship.add(nozzle);
+        const flameMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(tint), emissive: new THREE.Color(tint), emissiveIntensity: 1.6, metalness: 0.2, roughness: 0.5 });
+        const flame = new THREE.Mesh(new THREE.ConeGeometry(0.13 * size, 0.8 * size, 12), flameMat);
+        flame.rotation.x = Math.PI / 2;
+        flame.position.set(px, 0, pz - 0.5 * size);
+        ship.add(flame);
+        flames.push(flame);
+      } else if (part.slot === 'wings') {
+        if (part.wingShape === 'ring') {
+          const ring = new THREE.Mesh(new THREE.TorusGeometry(0.34 * size, 0.06 * size, 10, 22), dark);
+          ring.position.set(px, 0, pz);
+          ship.add(ring);
+        } else {
+          const dir = m.x >= 0 ? 1 : -1;
+          const spread = ({ stub: 0.42, delta: 0.52, swept: 0.56, solar: 0.64, reaper: 0.6 }[part.wingShape ?? 'stub'] ?? 0.5) * size;
+          const sweep = part.wingShape === 'swept' || part.wingShape === 'reaper' ? -0.55 : -0.2;
+          const sh = new THREE.Shape();
+          sh.moveTo(0, 0.2 * size);
+          sh.lineTo(dir * spread, sweep * size);
+          sh.lineTo(dir * spread * 0.55, -0.55 * size);
+          sh.lineTo(0, -0.38 * size);
+          sh.closePath();
+          const wingMat = new THREE.MeshStandardMaterial({ color: col.clone().multiplyScalar(0.5), metalness: 0.8, roughness: 0.4, emissive: col, emissiveIntensity: 0.06 });
+          const wg = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 0.07 * size, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03, bevelSegments: 1 }), wingMat);
+          wg.rotation.x = -Math.PI / 2;
+          wg.position.set(px, -0.02 * size, pz);
+          ship.add(wg);
+          // wing-gun barrels
+          for (let i = 1; i <= (part.wingGuns ?? 0); i++) {
+            const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * size, 0.04 * size, 0.6 * size, 8), dark);
+            bar.rotation.x = Math.PI / 2;
+            bar.position.set(px + dir * (spread * 0.5 + i * 0.1 * size), -0.02 * size, pz + 0.4 * size);
+            ship.add(bar);
+          }
+        }
+      } else if (part.slot === 'weapon') {
+        const glow = part.rarity === 'legendary' || part.shot === 'seeker';
+        const barMat = glow
+          ? new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 1.4, metalness: 0.3, roughness: 0.4 })
+          : dark;
+        const gun = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * size, 0.08 * size, 0.55 * size, 10), barMat);
+        gun.rotation.x = Math.PI / 2;
+        gun.position.set(px, 0.02 * size, pz + 0.26 * size);
+        ship.add(gun);
+      }
+    }
 
     ship.rotation.x = 0.34;
 
@@ -167,12 +173,13 @@ export default function Craft3D({ craft, className }: { craft: Craft; className?
       scene.traverse((o) => {
         if (o instanceof THREE.Mesh) {
           o.geometry.dispose();
-          (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
+          (Array.isArray(o.material) ? o.material : [o.material]).forEach((mm) => mm.dispose());
         }
       });
       el.removeChild(renderer.domElement);
     };
-  }, [craft.frame, craft.thrusters, craft.wings, craft.weapon, craft.color]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
   return <div ref={mount} className={className} />;
 }

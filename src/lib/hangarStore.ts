@@ -7,26 +7,22 @@
  * so a browser can't fabricate inventory or dodge Tarkov-style loss.
  */
 import { useEffect, useSyncExternalStore } from 'react';
-import { DEFAULT_CRAFT, type Craft, type Slot } from './craft';
+import { DEFAULT_BLUEPRINT, type Blueprint, type Craft } from './craft';
 
 export interface HangarView {
-  color: string;
-  frame: string;
-  thrusters: string;
-  wings: string;
-  weapon: string;
+  craft: Blueprint;
   secure: string | null;
   scrap: number;
   scrap_earned: number;
   best_wave: number;
-  raid: { seed: number; startedAt: number; insured: boolean; loadout: Record<Slot, string> } | null;
+  raid: { seed: number; startedAt: number; insured: boolean; atRisk: string[] } | null;
 }
 export interface HangarState {
   status: 'loading' | 'signed-out' | 'ready' | 'error';
   hangar: HangarView;
   owned: Record<string, number>;
 }
-const EMPTY_HANGAR: HangarView = { ...DEFAULT_CRAFT, secure: null, scrap: 0, scrap_earned: 0, best_wave: 0, raid: null };
+const EMPTY_HANGAR: HangarView = { craft: DEFAULT_BLUEPRINT, secure: null, scrap: 0, scrap_earned: 0, best_wave: 0, raid: null };
 const EMPTY: HangarState = { status: 'loading', hangar: EMPTY_HANGAR, owned: {} };
 
 let state = EMPTY;

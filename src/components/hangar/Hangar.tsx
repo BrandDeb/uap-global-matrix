@@ -1,20 +1,33 @@
 'use client';
 
 /**
- * /hangar: server-authoritative craft builder with Tarkov-style raids.
- * Build from parts you own, insure or secure gear, then launch a Star Forge
- * raid. Extract after a boss to keep the loot the server rolls; die and your
- * uninsured equipped parts are lost. A 3D (three.js) preview shows the craft.
+ * /hangar: server-authoritative, Spore-style craft builder with Tarkov raids.
+ * Drag parts onto a blueprint hull (auto-mirror), watch it assemble live in 3D,
+ * insure or secure gear, then launch a Star Forge raid. Extract after a boss to
+ * keep the loot the server rolls; die and your uninsured placed parts are lost.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { ArrowLeft, Rocket, Shield, Lock, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import GameCanvas, { type GameMeta } from '@/components/arcade/GameCanvas';
 import { StarForge } from '@/components/arcade/StarForge';
-import { craftLevel, loadoutStats, PART_BY_ID, partsOfSlot, RARITY, SHIP_COLORS, INSURE_COST, isStock, type Craft, type Slot } from '@/lib/craft';
-import { hangarAction, useHangar, type HangarView } from '@/lib/hangarStore';
+import BlueprintEditor from './BlueprintEditor';
+import {
+  blueprintStats,
+  blueprintToCraft,
+  craftLevel,
+  partsAtRisk,
+  partsOfSlot,
+  PART_BY_ID,
+  RARITY,
+  SHIP_COLORS,
+  INSURE_COST,
+  isStock,
+  type Blueprint,
+} from '@/lib/craft';
+import { hangarAction, useHangar } from '@/lib/hangarStore';
 import { xenoAudio } from '@/components/landing/audio';
 import type { Game } from '@/components/arcade/engine';
 
@@ -25,14 +38,8 @@ const META: GameMeta = {
   tagline: 'Survive the waves. After each boss an EXTRACT beacon opens — leave to keep your haul, or push deeper for more. Die and your uninsured gear is lost.',
   controls: ['Arrows / WASD fly', 'Auto-fire', 'Touch: drag to steer'],
 };
-const SLOTS: { slot: Slot; label: string }[] = [
-  { slot: 'frame', label: 'Frame' },
-  { slot: 'thrusters', label: 'Thrusters' },
-  { slot: 'wings', label: 'Wings' },
-  { slot: 'weapon', label: 'Weapon' },
-];
 const BUY_PRICE: Record<string, number> = { common: 150, rare: 450, epic: 1100, legendary: 3000 };
-const toCraft = (h: HangarView): Craft => ({ frame: h.frame, thrusters: h.thrusters, wings: h.wings, weapon: h.weapon, color: h.color });
+const sig = (b: Blueprint) => `${b.hull}|${b.color}|${[...b.modules].map((m) => `${m.part}:${m.x.toFixed(3)}:${m.y.toFixed(3)}`).sort().join(',')}`;
 
 interface RaidResult {
   extracted: boolean;
@@ -47,12 +54,44 @@ interface RaidResult {
 export default function Hangar() {
   const h = useHangar();
   const [mode, setMode] = useState<'build' | 'raid'>('build');
-  const [slot, setSlot] = useState<Slot>('frame');
   const [insure, setInsure] = useState(false);
   const [result, setResult] = useState<RaidResult | null>(null);
+  const [bp, setBp] = useState<Blueprint | null>(null);
   const game = useRef<StarForge | null>(null);
   const [canExtract, setCanExtract] = useState(false);
   const resolving = useRef(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSentSig = useRef<string>('');
+
+  const serverCraft = h.status === 'ready' ? h.hangar.craft : null;
+  const serverSig = serverCraft ? sig(serverCraft) : '';
+
+  // Seed the editable blueprint, and re-seed when the server changes it out from
+  // under us (e.g. a raid stripped lost parts) rather than from our own save.
+  useEffect(() => {
+    if (!serverCraft) return;
+    if (bp === null || (serverSig !== lastSentSig.current && serverSig !== sig(bp))) {
+      setBp(serverCraft);
+      lastSentSig.current = serverSig;
+    }
+  }, [serverSig]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const flushSave = useCallback(() => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+  }, []);
+
+  // Editor edits: update local immediately, debounce the server save.
+  const onEdit = useCallback((next: Blueprint) => {
+    setBp(next);
+    lastSentSig.current = sig(next);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      void hangarAction('craft', { craft: next });
+    }, 450);
+  }, []);
 
   // An unresolved raid (e.g. closed the tab mid-run) is abandoned safely on return.
   useEffect(() => {
@@ -68,7 +107,7 @@ export default function Hangar() {
     return () => window.clearInterval(t);
   }, [mode]);
 
-  if (h.status === 'loading') return <Shell><p className="mt-10 text-white/50">Opening the Hangar…</p></Shell>;
+  if (h.status === 'loading' || (h.status === 'ready' && bp === null)) return <Shell><p className="mt-10 text-white/50">Opening the Hangar…</p></Shell>;
   if (h.status === 'signed-out')
     return (
       <Shell>
@@ -79,10 +118,12 @@ export default function Hangar() {
       </Shell>
     );
 
-  const craft = toCraft(h.hangar);
-  const stats = loadoutStats(craft);
+  const blueprint = bp as Blueprint;
+  const stats = blueprintStats(blueprint);
+  const craft = blueprintToCraft(blueprint);
   const lvl = craftLevel(h.hangar.scrap_earned);
-  const insureCost = SLOTS.reduce((s, { slot: sl }) => (isStock(h.hangar[sl]) ? s : s + INSURE_COST[PART_BY_ID[h.hangar[sl]].rarity]), 0);
+  const atRisk = partsAtRisk(blueprint);
+  const insureCost = atRisk.reduce((s, id) => s + (INSURE_COST[PART_BY_ID[id]?.rarity] ?? 0), 0);
 
   const resolve = async (g: Game) => {
     if (resolving.current) return;
@@ -95,6 +136,8 @@ export default function Hangar() {
   };
 
   const launch = async () => {
+    flushSave();
+    await hangarAction('craft', { craft: blueprint }); // ensure the server has the latest build
     const r = await hangarAction<{ seed?: number; insured?: boolean }>('launch', { insure });
     if (r.error || r.seed === undefined) {
       toast(r.error ?? 'Could not launch.');
@@ -113,7 +156,7 @@ export default function Hangar() {
           <ArrowLeft size={12} /> Abandon raid
         </button>
         <div className="relative">
-          <GameCanvas key={h.hangar.raid?.seed ?? 'raid'} create={() => new StarForge(craft)} meta={META} gameId="star-forge" onReady={(g) => (game.current = g as StarForge)} onPhaseChange={(p, g) => p === 'over' && void resolve(g)} />
+          <GameCanvas key={h.hangar.raid?.seed ?? 'raid'} create={() => new StarForge(craft, stats)} meta={META} gameId="star-forge" onReady={(g) => (game.current = g as StarForge)} onPhaseChange={(p, g) => p === 'over' && void resolve(g)} />
           {canExtract && (
             <button type="button" onClick={() => { game.current?.extract(); setCanExtract(false); }} className="absolute left-1/2 top-16 z-20 -translate-x-1/2 animate-pulse rounded-full bg-[var(--xeno-a)] px-6 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-black shadow-[0_0_30px_rgba(94,255,216,0.6)]">
               ◆ Extract now
@@ -127,15 +170,45 @@ export default function Hangar() {
 
   return (
     <Shell scrap={h.hangar.scrap} rank={lvl}>
-      <div className="mt-8 grid gap-6 lg:grid-cols-[380px_1fr]">
-        <div>
-          <div className="xeno-glass overflow-hidden" style={{ background: `radial-gradient(circle at 50% 35%, ${h.hangar.color}22, #07060f 70%)` }}>
-            <Craft3D craft={craft} className="mx-auto h-[300px] w-full" />
+      <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
+        {/* blueprint editor */}
+        <div className="min-w-0">
+          <BlueprintEditor bp={blueprint} owned={h.owned} onChange={onEdit} />
+
+          {/* buy more parts */}
+          <div className="mt-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/45">Buy parts (scrap) · or loot them in raids</p>
+            <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+              {(['thrusters', 'wings', 'weapon', 'frame'] as const).flatMap((slot) =>
+                partsOfSlot(slot).filter((p) => !(h.owned[p.id] > 0)).map((p) => {
+                  const rc = RARITY[p.rarity];
+                  return (
+                    <li key={p.id} className="flex items-center justify-between gap-2 rounded-xl border border-white/10 p-2.5">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">{p.name} <span className="font-mono text-[9px] uppercase text-white/35">{p.slot}</span></p>
+                        <p className="truncate text-[11px] text-white/45">{p.blurb}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className="rounded-full px-1.5 py-0.5 font-mono text-[8px] uppercase text-black" style={{ background: rc.color }}>{rc.name[0]}</span>
+                        <button type="button" disabled={h.hangar.scrap < BUY_PRICE[p.rarity]} onClick={() => void hangarAction('buy', { id: p.id }).then((r) => !r.error && xenoAudio?.chime())} className="rounded-full bg-[#ffd23f] px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-black disabled:opacity-40">🔧 {BUY_PRICE[p.rarity]}</button>
+                      </div>
+                    </li>
+                  );
+                }),
+              )}
+            </ul>
+          </div>
+        </div>
+
+        {/* preview + stats + raid prep */}
+        <div className="min-w-0">
+          <div className="xeno-glass overflow-hidden" style={{ background: `radial-gradient(circle at 50% 35%, ${blueprint.color}22, #07060f 70%)` }}>
+            <Craft3D bp={blueprint} className="mx-auto h-[280px] w-full" />
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/45">Livery</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/45">Paint</span>
             {SHIP_COLORS.map((c) => (
-              <button key={c} type="button" aria-label={`Colour ${c}`} onClick={() => void hangarAction('color', { color: c })} className={`h-6 w-6 rounded-full transition ${h.hangar.color === c ? 'ring-2 ring-white ring-offset-2 ring-offset-black' : 'opacity-70 hover:opacity-100'}`} style={{ background: c, boxShadow: `0 0 10px ${c}` }} />
+              <button key={c} type="button" aria-label={`Colour ${c}`} onClick={() => onEdit({ ...blueprint, color: c })} className={`h-6 w-6 rounded-full transition ${blueprint.color === c ? 'ring-2 ring-white ring-offset-2 ring-offset-black' : 'opacity-70 hover:opacity-100'}`} style={{ background: c, boxShadow: `0 0 10px ${c}` }} />
             ))}
           </div>
           <dl className="mt-4 grid grid-cols-3 gap-2 font-mono text-xs">
@@ -156,9 +229,9 @@ export default function Hangar() {
                 <input type="checkbox" checked={insure} disabled={insureCost === 0} onChange={(e) => setInsure(e.target.checked)} />
               </span>
             </label>
-            <p className="mt-1 text-[11px] leading-snug text-white/40">Insured parts have an 80% chance to return if you die. Uninsured non-stock parts are lost. The secure slot always comes home.</p>
+            <p className="mt-1 text-[11px] leading-snug text-white/40">Insured parts have an 80% chance to return if you die. Uninsured non-stock parts are lost. The secure part always comes home.</p>
             <div className="mt-2 flex items-center justify-between gap-2">
-              <span className="flex items-center gap-1.5 text-xs text-white/60"><Lock size={12} /> Secure slot</span>
+              <span className="flex items-center gap-1.5 text-xs text-white/60"><Lock size={12} /> Secure part</span>
               <select value={h.hangar.secure ?? ''} onChange={(e) => void hangarAction('secure', { id: e.target.value || null })} className="rounded-lg border border-white/15 bg-black/50 px-2 py-1 text-xs text-white">
                 <option value="">— none —</option>
                 {Object.keys(h.owned).filter((id) => !isStock(id)).map((id) => (
@@ -172,51 +245,7 @@ export default function Hangar() {
             <Rocket size={14} /> Launch raid
           </button>
           {h.hangar.best_wave > 0 && <p className="mt-2 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">Best wave {h.hangar.best_wave}</p>}
-        </div>
-
-        {/* parts stash */}
-        <div>
-          <nav className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-            {SLOTS.map((s) => (
-              <button key={s.slot} type="button" onClick={() => setSlot(s.slot)} aria-pressed={slot === s.slot} className={`shrink-0 rounded-full border px-4 py-2 font-mono text-[11px] uppercase tracking-[0.2em] ${slot === s.slot ? 'border-[var(--xeno-a)] bg-[var(--xeno-a)]/15 text-white' : 'border-white/15 text-white/55'}`}>
-                {s.label}
-              </button>
-            ))}
-          </nav>
-          <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-            {partsOfSlot(slot).map((p) => {
-              const qty = h.owned[p.id];
-              const owned = qty !== undefined && qty > 0;
-              const equipped = h.hangar[slot] === p.id;
-              const rc = RARITY[p.rarity];
-              return (
-                <li key={p.id} className={`rounded-2xl border p-3 ${equipped ? 'border-[var(--xeno-a)] bg-[var(--xeno-a)]/10' : 'border-white/10'} ${!owned ? 'opacity-80' : ''}`}>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-semibold">
-                      {p.name}
-                      {owned && qty !== Infinity && <span className="ml-1.5 font-mono text-[10px] text-white/45">×{qty}</span>}
-                      {qty === Infinity && <span className="ml-1.5 font-mono text-[9px] uppercase text-white/35">stock</span>}
-                    </p>
-                    <span className="shrink-0 rounded-full px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-black" style={{ background: rc.color }}>{rc.name}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-white/50">{p.blurb}</p>
-                  <div className="mt-2">
-                    {equipped ? (
-                      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--xeno-a)]">Equipped</span>
-                    ) : owned ? (
-                      <button type="button" onClick={() => void hangarAction('equip', { slot, id: p.id }).then(() => xenoAudio?.blip(0.7))} className="xeno-btn !py-1.5">Equip</button>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <button type="button" disabled={h.hangar.scrap < BUY_PRICE[p.rarity]} onClick={() => void hangarAction('buy', { id: p.id }).then((r) => !r.error && xenoAudio?.chime())} className="rounded-full bg-[#ffd23f] px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-black disabled:opacity-40">🔧 {BUY_PRICE[p.rarity]}</button>
-                        <span className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-white/35"><Lock size={10} /> or loot it in a raid</span>
-                      </div>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-          <p className="mt-4 text-xs text-white/40">Loot drops land in your stash only if you EXTRACT. Die and the run’s loot is gone, along with any uninsured equipped parts.</p>
+          <p className="mt-3 text-xs text-white/40">Loot drops land in your stash only if you EXTRACT. Die and the run’s loot is gone, along with any uninsured parts on your craft.</p>
         </div>
       </div>
     </Shell>
@@ -236,7 +265,7 @@ function Shell({ children, scrap, rank }: { children: React.ReactNode; scrap?: n
         )}
       </header>
       <h1 className="mt-6 font-[family-name:var(--font-display)] text-4xl font-extrabold uppercase leading-[1] md:text-6xl">The <span className="xeno-gradient-text">Hangar</span></h1>
-      <p className="mt-2 max-w-xl text-sm text-white/55">Build your craft, then raid Star Forge for loot. High risk, high reward: extract to keep what you find, or lose it.</p>
+      <p className="mt-2 max-w-xl text-sm text-white/55">Drag parts onto your hull, watch it build in 3D, then raid Star Forge for loot. Extract to keep what you find, or lose it.</p>
       {children}
     </main>
   );
@@ -274,7 +303,7 @@ function ResultModal({ r, onClose }: { r: RaidResult; onClose: () => void }) {
                 </ul>
               </div>
             ) : (
-              <p className="text-sm text-white/60">{r.insured ? 'Insurance held — your gear made it home.' : 'Only stock gear was equipped, nothing lost.'}</p>
+              <p className="text-sm text-white/60">{r.insured ? 'Insurance held — your gear made it home.' : 'Only stock gear was on your craft, nothing lost.'}</p>
             )}
             {r.insured && r.keptParts && r.keptParts.length > 0 && <p className="font-mono text-[10px] text-white/45">Insurance returned: {r.keptParts.filter((id) => !isStock(id)).map((id) => PART_BY_ID[id]?.name).filter(Boolean).join(', ') || 'stock only'}</p>}
           </div>

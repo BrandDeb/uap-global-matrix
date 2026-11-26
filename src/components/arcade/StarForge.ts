@@ -9,7 +9,7 @@
  */
 import { xenoAudio } from '@/components/landing/audio';
 import { Fx, H, Starfield, W, clamp, drawSaucer, glow, loadBest, rand, saveBest, type Game, type HudState, type Input } from './engine';
-import { loadoutStats, drawShip, rollPart, RARITY, type Craft } from '@/lib/craft';
+import { loadoutStats, drawShip, rollPart, RARITY, type Craft, type LoadoutStats } from '@/lib/craft';
 
 interface Bullet { x: number; y: number; vx: number; vy: number; dmg: number; homing?: boolean; pierce?: boolean; }
 interface Enemy { x: number; y: number; vx: number; vy: number; hp: number; max: number; r: number; kind: string; t: number; cd: number; boss?: boolean; }
@@ -40,9 +40,9 @@ export class StarForge implements Game {
   private extractT = 0;
   outcome: { extracted: boolean; wave: number } | null = null;
 
-  constructor(private craft: Craft) {
+  constructor(private craft: Craft, private stats?: LoadoutStats) {
     this.hud.best = loadBest(this.id);
-    this.s = loadoutStats(craft);
+    this.s = stats ?? loadoutStats(craft);
   }
 
   /** Player chose to extract (only valid during the post-boss window). */

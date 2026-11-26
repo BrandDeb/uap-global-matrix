@@ -486,11 +486,18 @@ export default function Landing() {
 
       <main className="relative z-10">
         {/* 01 HERO */}
-        <section className="sec-hero pointer-events-none relative flex min-h-[100svh] flex-col justify-end px-4 pb-10 md:px-10 md:pb-14">
+        <section className="sec-hero pointer-events-none relative flex min-h-[100svh] flex-col justify-end px-4 pb-28 md:px-10 md:pb-14">
           <div className="hero-title">
-            <h1 className="font-[family-name:var(--font-display)] font-extrabold uppercase leading-[0.95] tracking-tight">
-              <span className="hero-line block text-[13.5vw] md:text-[12.5vw]">We come</span>
-              <span className="hero-line block text-[13.5vw] text-[var(--xeno-a)] md:text-[12.5vw]">
+            <p className="hero-fade mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.3em] text-white/60 backdrop-blur">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--xeno-a)] opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--xeno-a)]" />
+              </span>
+              Live UFO atlas · since 1947
+            </p>
+            <h1 className="font-[family-name:var(--font-display)] font-extrabold uppercase leading-[0.92] tracking-tight">
+              <span className="hero-line block text-[clamp(2.5rem,10.5vw,7rem)]">We come</span>
+              <span className="hero-line block text-[clamp(2.5rem,10.5vw,7rem)] text-[var(--xeno-a)]">
                 in peace<span className="text-[var(--xeno-d)]">*</span>
               </span>
             </h1>
@@ -509,7 +516,7 @@ export default function Landing() {
               *mostly
             </button>
           </div>
-          <div className="mt-8 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div className="mt-6 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div className="hero-fade pointer-events-auto max-w-md">
               <p className="text-sm leading-relaxed text-white/60 md:text-base">
                 The world’s live atlas of unidentified anomalous phenomena, 1947 to tonight. Geotagged, forensically
@@ -519,12 +526,15 @@ export default function Landing() {
                 <SignInButtons prefix="Join with" redirectTo="/matrix" className="mt-5" />
               )}
             </div>
-            <div className="hero-fade pointer-events-auto flex items-center gap-4">
+            <div className="hero-fade pointer-events-auto flex flex-wrap items-center gap-3">
               <Magnetic>
                 <Link href="/matrix" className="xeno-btn !px-6 !py-3" data-cursor="ENTER">
                   Open the atlas <ArrowUpRight size={14} />
                 </Link>
               </Magnetic>
+              <Link href="/play" className="flex items-center gap-2 rounded-full bg-[var(--xeno-a)] px-6 py-3 font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-black transition hover:scale-105" data-cursor="PLAY">
+                Play ▸
+              </Link>
               {!soundOn && (
                 <button
                   type="button"
@@ -552,7 +562,7 @@ export default function Landing() {
         {/* 02 MANIFESTO */}
         <section className="sec-manifesto relative px-4 py-[22vh] md:px-10">
           <SectionLabel>Transmission</SectionLabel>
-          <p className="manifesto max-w-6xl font-[family-name:var(--font-display)] text-[8vw] font-medium leading-[1.15] tracking-tight md:text-[4.2vw]">
+          <p className="manifesto max-w-6xl font-[family-name:var(--font-display)] text-[clamp(1.5rem,5vw,3rem)] font-medium leading-[1.2] tracking-tight">
             {MANIFESTO}
           </p>
         </section>
@@ -605,7 +615,7 @@ export default function Landing() {
             </div>
             <h2
               key={guide.name}
-              className="xeno-fade font-[family-name:var(--font-display)] text-[12vw] font-extrabold uppercase leading-[1.02] md:text-[5.5vw]"
+              className="xeno-fade font-[family-name:var(--font-display)] text-[clamp(2.25rem,8.5vw,4.25rem)] font-extrabold uppercase leading-[1.02]"
             >
               {guide.name}
             </h2>
@@ -649,7 +659,7 @@ export default function Landing() {
           <div className="max-w-md">
             <SectionLabel>The lineup</SectionLabel>
             <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--xeno-a)]">{SPECIES[species].tag}</p>
-            <h2 className="font-[family-name:var(--font-display)] text-[13vw] font-extrabold uppercase leading-[0.96] md:text-[6vw]">
+            <h2 className="font-[family-name:var(--font-display)] text-[clamp(2.25rem,9vw,4.5rem)] font-extrabold uppercase leading-[0.96]">
               {SPECIES[species].name}
               <span className="text-[var(--xeno-d)]">.</span>
             </h2>
@@ -683,7 +693,7 @@ export default function Landing() {
           <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
               <SectionLabel>Crop circle lab</SectionLabel>
-              <h2 className="font-[family-name:var(--font-display)] text-[11vw] font-extrabold uppercase leading-[1] md:text-[5vw]">
+              <h2 className="font-[family-name:var(--font-display)] text-[clamp(2rem,8vw,3.75rem)] font-extrabold uppercase leading-[1.02]">
                 Leave a<br />
                 <span className="xeno-gradient-text">calling card</span>
               </h2>
@@ -702,7 +712,7 @@ export default function Landing() {
             <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
               <div>
                 <SectionLabel>Live from the archive</SectionLabel>
-                <h2 className="font-[family-name:var(--font-display)] text-[11vw] font-extrabold uppercase leading-[1] md:text-[5vw]">
+                <h2 className="font-[family-name:var(--font-display)] text-[clamp(2rem,8vw,3.75rem)] font-extrabold uppercase leading-[1.02]">
                   Top-rated
                   <br />
                   <span className="xeno-gradient-text">weirdness</span>
@@ -753,7 +763,7 @@ export default function Landing() {
           <div className="xeno-glass flex flex-col items-start gap-6 p-8 md:flex-row md:items-center md:justify-between md:p-12">
             <div>
               <SectionLabel>Seen something weird?</SectionLabel>
-              <h2 className="font-[family-name:var(--font-display)] text-[11vw] font-extrabold uppercase leading-[1] md:text-[5vw]">
+              <h2 className="font-[family-name:var(--font-display)] text-[clamp(2rem,8vw,3.75rem)] font-extrabold uppercase leading-[1.02]">
                 Report a <span className="xeno-gradient-text">sighting</span>
               </h2>
               <p className="mt-4 max-w-lg text-sm leading-relaxed text-white/55">
@@ -803,13 +813,13 @@ export default function Landing() {
         <section className="sec-cta relative flex min-h-[100svh] flex-col items-center justify-end px-4 pb-24 text-center md:px-10">
           <h2 className="font-[family-name:var(--font-display)] font-extrabold uppercase leading-[0.96] tracking-tight">
             <span className="block overflow-hidden">
-              <span className="cta-line block text-[13vw] md:text-[9vw]">The sky’s</span>
+              <span className="cta-line block text-[clamp(2.5rem,11vw,6.5rem)]">The sky’s</span>
             </span>
             <span className="block overflow-hidden">
-              <span className="cta-line xeno-gradient-text block text-[13vw] md:text-[9vw]">group chat</span>
+              <span className="cta-line xeno-gradient-text block text-[clamp(2.5rem,11vw,6.5rem)]">group chat</span>
             </span>
             <span className="block overflow-hidden">
-              <span className="cta-line block text-[13vw] md:text-[9vw]">is open.</span>
+              <span className="cta-line block text-[clamp(2.5rem,11vw,6.5rem)]">is open.</span>
             </span>
           </h2>
           <div className="mt-10 flex flex-col items-center gap-5">

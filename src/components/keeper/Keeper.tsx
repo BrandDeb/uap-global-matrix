@@ -16,8 +16,8 @@ import XenoCard from '@/components/cards/XenoCard';
 import AlienAvatar from '@/components/profile/AlienAvatar';
 import { xenoAudio } from '@/components/landing/audio';
 import { ARCHIVE } from '@/lib/archive';
-import { CARD_BY_ID, CARDS, rng, summon, type CardDef } from '@/lib/cards';
-import { addCard, grant, useCollection } from '@/lib/collection';
+import { CARD_BY_ID, CARDS, type CardDef } from '@/lib/cards';
+import { cardAction, useCollection } from '@/lib/collection';
 import { QUIZ } from '@/lib/spaceQuiz';
 import { dayNumber } from '@/lib/daily';
 
@@ -110,15 +110,17 @@ export default function Keeper() {
   }, []);
   const today = dayNumber();
   const site = ARCHIVE[(today * 13 + 5) % ARCHIVE.length];
-  const scansLeft = k.scanDay === today ? SCANS_PER_DAY - k.scans : SCANS_PER_DAY;
+  const todayIso = new Date(Date.UTC(2025, 0, 1) + today * 86_400_000).toISOString().slice(0, 10);
+  const scansLeft = col.status !== 'ready' ? 0 : col.wallet.scan_day?.slice(0, 10) === todayIso ? SCANS_PER_DAY - col.wallet.scans : SCANS_PER_DAY;
   const [encounter, setEncounter] = useState<CardDef | null>(null);
 
-  const scan = () => {
-    if (scansLeft <= 0) return;
-    const r = rng(Date.now());
-    const def = summon(r, 0);
-    write({ ...read(), scanDay: today, scans: (k.scanDay === today ? k.scans : 0) + 1 });
-    setEncounter(def);
+  const scan = async () => {
+    const d = await cardAction<{ encounter?: string }>('scan');
+    if (!d.encounter) {
+      toast(d.error ?? 'Scan failed.');
+      return;
+    }
+    setEncounter(CARD_BY_ID[d.encounter]);
     xenoAudio?.whoosh();
   };
 
@@ -147,9 +149,9 @@ export default function Keeper() {
           Near the {site.year} “{site.title}” site. Debris still warm.
         </p>
         {encounter ? (
-          <CatchGame def={encounter} onDone={(caught) => {
-            if (caught) {
-              const res = addCard(encounter.id);
+          <CatchGame def={encounter} onDone={async (caught) => {
+            const res = await cardAction<{ caught?: boolean; isNew?: boolean; starUp?: boolean; stars?: number }>('catch', { caught });
+            if (res.caught) {
               const s = read();
               write({ ...s, catches: s.catches + 1, xp: s.xp + 80 });
               toast(res.isNew ? `🛸 ${encounter.name} joined your collection!` : res.starUp ? `⭐ ${encounter.name} is now ${res.stars}★!` : `+1 ${encounter.name} shard`);
@@ -161,9 +163,13 @@ export default function Keeper() {
           }} />
         ) : (
           <div className="mt-5 flex flex-wrap items-center gap-4">
-            <button type="button" onClick={scan} disabled={scansLeft <= 0} className="rounded-full bg-[var(--xeno-a)] px-6 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-black disabled:opacity-40">
+            {col.status === 'signed-out' ? (
+              <Link href="/signin?callbackUrl=/keeper" className="rounded-full bg-[var(--xeno-a)] px-6 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-black">Sign in to start rescuing</Link>
+            ) : (
+            <button type="button" onClick={() => void scan()} disabled={scansLeft <= 0} className="rounded-full bg-[var(--xeno-a)] px-6 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-black disabled:opacity-40">
               📡 Scan for survivors
             </button>
+            )}
             <span className="font-mono text-xs text-white/50">{scansLeft > 0 ? `${scansLeft} scan${scansLeft === 1 ? '' : 's'} left today` : 'Scanners recharging. New site at midnight UTC.'}</span>
           </div>
         )}
@@ -200,11 +206,11 @@ export default function Keeper() {
 }
 
 /** Timing catch: stop the shrinking ring inside the target band. Rarer = faster. */
-function CatchGame({ def, onDone }: { def: CardDef; onDone: (caught: boolean) => void }) {
+function CatchGame({ def, onDone }: { def: CardDef; onDone: (caught: boolean) => void | Promise<void> }) {
   const [r, setR] = useState(1);
   const [tries, setTries] = useState(2);
   const t0 = useRef(0);
-  const speed = { C: 0.55, R: 0.75, E: 0.95, L: 1.2, U: 1.5 }[def.rarity];
+  const speed = { C: 0.55, R: 0.75, E: 0.95, L: 1.2, U: 1.5, M: 1.8 }[def.rarity];
   useEffect(() => {
     let raf = 0;
     const loop = (t: number) => {
@@ -218,8 +224,8 @@ function CatchGame({ def, onDone }: { def: CardDef; onDone: (caught: boolean) =>
   }, [speed]);
   const hit = r > 0.28 && r < 0.42;
   const tap = () => {
-    if (hit) onDone(true);
-    else if (tries <= 1) onDone(false);
+    if (hit) void onDone(true);
+    else if (tries <= 1) void onDone(false);
     else {
       setTries(tries - 1);
       xenoAudio?.blip(0.2);
@@ -254,7 +260,7 @@ function Pet({ id, care, now }: { id: string; care: Care; now: number }) {
     const correct = i === q.answer;
     feed(id, correct);
     if (correct) {
-      grant({ energy: 1 });
+      void cardAction('quiz');
       xenoAudio?.chime();
     }
     toast(correct ? `🍽 ${def.name} loved that! +1 energy` : 'Not quite!', { description: q.fact });

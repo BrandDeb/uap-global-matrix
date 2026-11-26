@@ -361,15 +361,17 @@ function weekStartIso(): string {
 
 const demoDaily: { day: number; handle: string; guess: string; correct: boolean; streak: number }[] = [];
 
-export async function saveDailyGuess(g: { day: number; handle: string; guess: string; correct: boolean; streak: number }) {
+export async function saveDailyGuess(g: { day: number; handle: string; guess: string; correct: boolean; streak: number }): Promise<boolean> {
   if (!hasDb()) {
-    if (!demoDaily.some((d) => d.day === g.day && d.handle === g.handle)) demoDaily.push(g);
-    return;
+    if (demoDaily.some((d) => d.day === g.day && d.handle === g.handle)) return false;
+    demoDaily.push(g);
+    return true;
   }
-  await getDb()`
+  const rows = await getDb()`
     INSERT INTO daily_guesses (day, handle, guess, correct, streak)
     VALUES (${g.day}, ${g.handle}, ${g.guess}, ${g.correct}, ${g.streak})
-    ON CONFLICT (day, handle) DO NOTHING`;
+    ON CONFLICT (day, handle) DO NOTHING RETURNING day`;
+  return rows.length > 0;
 }
 
 /** Today's guess split + the longest live streaks. */

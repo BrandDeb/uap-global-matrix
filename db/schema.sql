@@ -253,3 +253,42 @@ CREATE TABLE IF NOT EXISTS card_teams (
   rating     integer NOT NULL DEFAULT 1000,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- --- card economy (server-authoritative) ------------------------------------
+CREATE TABLE IF NOT EXISTS card_wallets (
+  user_id     text PRIMARY KEY,
+  signals     integer NOT NULL DEFAULT 10,
+  energy      integer NOT NULL DEFAULT 10,
+  pity        integer NOT NULL DEFAULT 0,
+  pulls       integer NOT NULL DEFAULT 0,
+  wins        integer NOT NULL DEFAULT 0,
+  losses      integer NOT NULL DEFAULT 0,
+  last_daily  date,
+  scan_day    date,
+  scans       integer NOT NULL DEFAULT 0,
+  encounter   text,
+  quiz_day    date,
+  quiz_count  integer NOT NULL DEFAULT 0,
+  team        text[] NOT NULL DEFAULT '{}',
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS card_owned (
+  user_id  text NOT NULL,
+  card_id  text NOT NULL,
+  shards   integer NOT NULL DEFAULT 0,
+  level    integer NOT NULL DEFAULT 1,
+  PRIMARY KEY (user_id, card_id)
+);
+CREATE TABLE IF NOT EXISTS card_trades (
+  id          bigserial PRIMARY KEY,
+  from_user   text NOT NULL,
+  from_handle text NOT NULL,
+  to_user     text NOT NULL,
+  to_handle   text NOT NULL,
+  give_card   text NOT NULL,
+  want_card   text NOT NULL,
+  status      text NOT NULL DEFAULT 'open',  -- open | accepted | declined | cancelled
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS card_trades_to_idx ON card_trades (to_user, status);
+CREATE INDEX IF NOT EXISTS card_trades_from_idx ON card_trades (from_user, status);

@@ -59,6 +59,12 @@ body {
   font-family: var(--font-body), system-ui, sans-serif;
 }
 
+/* body is a flex column: let page roots shrink to the screen instead of
+   growing to their widest child (fixes sideways overflow on phones). */
+body > * {
+  min-width: 0;
+}
+
 ::selection {
   background: var(--xeno-a);
   color: #000;

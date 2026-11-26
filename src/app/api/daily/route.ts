@@ -3,7 +3,8 @@
  *   GET  → today's case (without the answer), guess split and top streaks
  *   POST { guess, handle, streak } → records today's guess, returns the answer
  */
-import { verifiedHandle } from '@/auth';
+import { verifiedHandle, verifiedOperatorId } from '@/auth';
+import { grantSignal } from '@/lib/db/cardEconomy';
 import { dailyStats, saveDailyGuess } from '@/lib/db/queries';
 import { cleanHandle, jsonError, readJson } from '@/lib/apiHelpers';
 import { ANSWERS, caseForDay, dayNumber } from '@/lib/daily';
@@ -33,7 +34,10 @@ export async function POST(req: Request): Promise<Response> {
   const handle = (await verifiedHandle()) ?? cleanHandle(body?.handle);
   if (handle) {
     try {
-      await saveDailyGuess({ day, handle, guess, correct, streak });
+      const first = await saveDailyGuess({ day, handle, guess, correct, streak });
+      // A correct first guess of the day earns a summon signal (signed-in pilots).
+      const uid = await verifiedOperatorId();
+      if (first && correct && uid) await grantSignal(uid);
     } catch {
       /* stats are best effort */
     }

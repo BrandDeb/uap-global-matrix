@@ -13,9 +13,10 @@
  * ---------------------------------------------------------------------------
  */
 import type { Spec } from '@/components/profile/AlienAvatar';
+import { generateCards } from './cardgen';
 
 export type Color = 'red' | 'yellow' | 'purple' | 'green' | 'blue';
-export type Rarity = 'C' | 'R' | 'E' | 'L' | 'U';
+export type Rarity = 'C' | 'R' | 'E' | 'L' | 'U' | 'M';
 
 export const COLORS: Record<Color, { name: string; hex: string; glow: string; skill: string; skillText: string; icon: string }> = {
   red: { name: 'Blaze', hex: '#ff5c5c', glow: '#ff9a7a', skill: 'Plasma Burst', skillText: 'Deals 1.8× damage.', icon: '🔥' },
@@ -30,11 +31,12 @@ export const beats = (a: Color, b: Color) => WHEEL[(WHEEL.indexOf(a) + 1) % WHEE
 export const typeMult = (a: Color, b: Color) => (beats(a, b) ? 1.5 : beats(b, a) ? 0.67 : 1);
 
 export const RARITY: Record<Rarity, { name: string; weight: number; mult: number; frame: string }> = {
-  C: { name: 'Common', weight: 58, mult: 1, frame: '#8a93a8' },
+  C: { name: 'Common', weight: 57.8, mult: 1, frame: '#8a93a8' },
   R: { name: 'Rare', weight: 27, mult: 1.2, frame: '#5ec8ff' },
   E: { name: 'Epic', weight: 10, mult: 1.45, frame: '#b46bff' },
   L: { name: 'Legendary', weight: 4, mult: 1.75, frame: '#ffcf4a' },
   U: { name: 'Ultra', weight: 1, mult: 2.1, frame: 'holo' },
+  M: { name: 'Mythic', weight: 0.2, mult: 2.6, frame: 'holo' },
 };
 
 export interface CardDef {
@@ -48,6 +50,8 @@ export interface CardDef {
   spd: number;
   lore: string;
   art: Spec;
+  /** Collector number 1–156. */
+  no?: number;
 }
 
 const a = (skin: string, bg: string, head: Spec['head'], eyes: Spec['eyes'], top: Spec['top'], mouth: Spec['mouth'], spots = false): Spec => ({ name: '', skin, bg, head, eyes, top, mouth, spots });
@@ -90,7 +94,11 @@ export const CARDS: CardDef[] = [
   { id: 'ultra-gaia', name: 'Gaia Seed', color: 'green', rarity: 'U', hp: 180, atk: 54, def: 42, spd: 16, lore: 'Planted the first forest. Waiting to harvest.', art: a('#b6ffcf', '#0f2a1a', 'blob', 'almond', 'halo', 'smile', true) },
   { id: 'ultra-abyss', name: 'Abyss Leviathan', color: 'blue', rarity: 'U', hp: 170, atk: 60, def: 38, spd: 20, lore: 'The ocean of Europa is its bathtub.', art: a('#4cb8ff', '#06142a', 'squid', 'trio', 'fins', 'fangs') },
 ];
-CARDS.forEach((c) => (c.art.name = c.name));
+CARDS.push(...generateCards(CARDS));
+CARDS.forEach((c, i) => {
+  c.art.name = c.name;
+  c.no = i + 1;
+});
 export const CARD_BY_ID = Object.fromEntries(CARDS.map((c) => [c.id, c]));
 
 /* --- stars, levels, stats ----------------------------------------------------- */
@@ -154,6 +162,13 @@ export function summon(rand: () => number, pity = 0): CardDef {
   }
   const pool = CARDS.filter((c) => c.rarity === rarity);
   return pool[Math.floor(rand() * pool.length)];
+}
+
+/** Chance (%) of pulling this exact card on a normal summon. */
+export function dropChance(def: CardDef): number {
+  const total = Object.values(RARITY).reduce((sum, r) => sum + r.weight, 0);
+  const same = CARDS.filter((c) => c.rarity === def.rarity).length;
+  return (RARITY[def.rarity].weight / total / same) * 100;
 }
 
 /* --- battle ------------------------------------------------------------------------ */

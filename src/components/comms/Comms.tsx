@@ -72,7 +72,7 @@ export default function Comms() {
 
   const meta = ROOMS.find((r) => r.id === room)!;
   return (
-    <main className="mx-auto flex h-[100svh] max-w-5xl flex-col px-4 pb-4 pt-5 md:px-6">
+    <main className="mx-auto flex h-[100svh] w-full min-w-0 max-w-5xl flex-col px-4 pb-4 pt-5 md:px-6">
       <header className="flex items-center justify-between gap-3">
         <Link href="/" className="xeno-btn">
           <ArrowLeft size={12} /> Home

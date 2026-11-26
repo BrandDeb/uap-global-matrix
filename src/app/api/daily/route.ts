@@ -3,6 +3,7 @@
  *   GET  → today's case (without the answer), guess split and top streaks
  *   POST { guess, handle, streak } → records today's guess, returns the answer
  */
+import { clientIp, limited } from '@/lib/apiHelpers';
 import { verifiedHandle, verifiedOperatorId } from '@/auth';
 import { grantSignal } from '@/lib/db/cardEconomy';
 import { dailyStats, saveDailyGuess } from '@/lib/db/queries';
@@ -24,6 +25,7 @@ export async function GET(): Promise<Response> {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  if (limited(`daily:${clientIp(req)}`, 10, 60000)) return Response.json({ error: 'Too many requests. Try again shortly.' }, { status: 429 });
   const body = await readJson(req);
   const guess = typeof body?.guess === 'string' ? body.guess : '';
   if (!ANSWERS.some((a) => a.id === guess)) return jsonError(400, 'Unknown answer.');

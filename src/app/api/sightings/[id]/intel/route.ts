@@ -5,9 +5,12 @@
  * A signed-in operator always posts under their verified GitHub handle; the
  * client-supplied `handle` is only used for anonymous posts.
  */
-import { verifiedHandle } from '@/auth';
+import { verifiedHandle, verifiedOperatorId } from '@/auth';
 import { insertThread, listThreads } from '@/lib/db/queries';
-import { cleanHandle, isUuid, isoOrNull, jsonError, readJson } from '@/lib/apiHelpers';
+import { isUuid, isoOrNull, jsonError, readJson } from '@/lib/apiHelpers';
+import { limited } from '@/lib/apiHelpers';
+import { BAN_NOW, moderate } from '@/lib/moderation';
+import { standing, strike } from '@/lib/db/queries';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -31,7 +34,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!text || text.length > 2000) return jsonError(400, 'Text must be 1–2000 characters.');
   const parentId = body?.parentId == null ? null : body.parentId;
   if (parentId !== null && !isUuid(parentId)) return jsonError(400, 'Invalid parentId.');
-  const handle = (await verifiedHandle()) ?? cleanHandle(body?.handle) ?? 'ANON_OPERATOR';
+  const [userId, handle] = await Promise.all([verifiedOperatorId(), verifiedHandle()]);
+  if (!userId || !handle) return jsonError(401, 'Sign in to join the discussion.');
+  if ((await standing(userId)).banned) return jsonError(403, 'Your account is suspended.');
+  if (limited(`intel:${userId}`, 1, 10_000) || limited(`intel-day:${userId}`, 60, 86_400_000)) return jsonError(429, 'Slow down a little.');
+  const { verdict } = await moderate(text);
+  if (verdict !== 'ok') {
+    const st = await strike(userId, verdict, BAN_NOW.includes(verdict));
+    return jsonError(st.banned ? 403 : 422, st.banned ? 'That broke the rules. Your account has been suspended.' : `Comment blocked (${verdict}). Warning ${st.strikes} of 3.`);
+  }
   try {
     const row = await insertThread({ sightingId: id, parentId, handle, text });
     return Response.json(row, { status: 201 });

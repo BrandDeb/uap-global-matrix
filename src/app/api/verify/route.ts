@@ -18,9 +18,11 @@
  * Runtime: Node.js (required, `exifr` + `Buffer` are not Edge-compatible).
  * ---------------------------------------------------------------------------
  */
+import { clientIp, limited } from '@/lib/apiHelpers';
 
 import exifr from 'exifr';
 import { insertVerifiedSighting } from '@/lib/db/queries';
+import { moderate } from '@/lib/moderation';
 import {
   clamp01,
   computeCredibilityIndex,
@@ -342,6 +344,7 @@ function evidenceTypesFromMedia(mediaType: string): SensorEvidenceType[] {
  * ======================================================================== */
 
 export async function POST(request: Request): Promise<Response> {
+  if (limited(`verify:${clientIp(request)}`, 5, 600000)) return Response.json({ error: 'Too many requests. Try again shortly.' }, { status: 429 });
   try {
     // 1. Parse multipart payload.
     let form: FormData;
@@ -353,6 +356,11 @@ export async function POST(request: Request): Promise<Response> {
 
     // 2. Validate + normalize.
     const input = parseVerifyInput(form);
+    // Public text is moderated like Comms before anything is stored.
+    const textCheck = await moderate(`${input.title}\n${input.description}\n${input.locationName}`);
+    if (textCheck.verdict !== 'ok') {
+      return json(422, { success: false, error: 'Please keep reports clean and on-topic (no swearing, links or offensive content).' });
+    }
     const buffer = Buffer.from(await input.file.arrayBuffer());
 
     // 3–6. Analyse the media and score it.

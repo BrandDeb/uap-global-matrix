@@ -3,6 +3,7 @@
  * POST, triage a raw user encounter log into a structured report via Gemini.
  * Gated on GEMINI_API_KEY (503 if absent). The key is server-only.
  */
+import { clientIp, limited } from '@/lib/apiHelpers';
 
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
@@ -18,6 +19,7 @@ interface AnalyzeRequest {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  if (limited(`ana:${clientIp(req)}`, 6, 60000)) return Response.json({ error: 'Too many requests. Try again shortly.' }, { status: 429 });
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: 'GEMINI_API_KEY is not configured.' }, { status: 503 });

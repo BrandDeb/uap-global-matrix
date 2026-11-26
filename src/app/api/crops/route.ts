@@ -4,9 +4,11 @@
  *   POST { image (JPEG data URL), handle, field } → { id }
  */
 import { randomBytes } from 'node:crypto';
-import { verifiedHandle } from '@/auth';
+import { verifiedHandle, verifiedOperatorId } from '@/auth';
+import { BAN_NOW, moderateImage } from '@/lib/moderation';
+import { standing, strike } from '@/lib/db/queries';
 import { insertCrop, listCrops } from '@/lib/db/queries';
-import { cleanHandle, jsonError, readJson } from '@/lib/apiHelpers';
+import { jsonError, readJson } from '@/lib/apiHelpers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,6 +26,9 @@ export async function GET(req: Request): Promise<Response> {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  const [userId, signedHandle] = await Promise.all([verifiedOperatorId(), verifiedHandle()]);
+  if (!userId || !signedHandle) return jsonError(401, 'Sign in to publish to the gallery.');
+  if ((await standing(userId)).banned) return jsonError(403, 'Your account is suspended.');
   const ip = (req.headers.get('x-forwarded-for') ?? 'local').split(',')[0].trim();
   const now = Date.now();
   const recent = (hits.get(ip) ?? []).filter((t) => now - t < 10 * 60_000);
@@ -38,7 +43,18 @@ export async function POST(req: Request): Promise<Response> {
   if (buf.length > 450_000) return jsonError(413, 'Image too large.');
   if (buf[0] !== 0xff || buf[1] !== 0xd8) return jsonError(400, 'Not a JPEG.');
   const field = typeof body?.field === 'string' && FIELDS.includes(body.field) ? body.field : 'wheat';
-  const handle = (await verifiedHandle()) ?? cleanHandle(body?.handle) ?? 'anonymous_pilot';
+  const handle = signedHandle;
+  // Every image is AI-screened before publishing; anything indecent bans the account.
+  const verdict = await moderateImage(buf, 'image/jpeg');
+  if (!verdict.ok) {
+    if (verdict.label === 'unavailable') return jsonError(503, 'Image check is busy. Try again in a minute.');
+    if (BAN_NOW.includes(verdict.label as never) || verdict.label === 'violent') {
+      await strike(userId, `image:${verdict.label}`, true);
+      return jsonError(403, 'That image broke the rules. Your account has been suspended.');
+    }
+    await strike(userId, `image:${verdict.label}`);
+    return jsonError(422, 'Only crop circle drawings can be published (no text, links or photos).');
+  }
   const id = randomBytes(6).toString('base64url');
   try {
     await insertCrop({ id, handle, field, image: buf });

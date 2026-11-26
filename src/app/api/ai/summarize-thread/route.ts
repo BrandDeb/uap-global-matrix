@@ -4,6 +4,7 @@
  * and cache it in `uap_ai_briefs`. Briefs are only ever written server-side
  * here, so clients cannot forge "official" briefs. Gated on the key.
  */
+import { clientIp, limited } from '@/lib/apiHelpers';
 
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
@@ -27,6 +28,7 @@ interface SummarizeRequest {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  if (limited(`sum:${clientIp(req)}`, 6, 60000)) return Response.json({ error: 'Too many requests. Try again shortly.' }, { status: 429 });
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: 'GEMINI_API_KEY is not configured.' }, { status: 503 });

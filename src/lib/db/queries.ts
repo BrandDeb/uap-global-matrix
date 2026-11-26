@@ -499,3 +499,103 @@ export async function cropsByHandle(handle: string, limit = 12): Promise<CropRow
   if (!hasDb()) return [];
   return getDb()<CropRow[]>`SELECT id, handle, field, likes, created_at FROM crop_circles WHERE lower(handle) = lower(${handle}) ORDER BY created_at DESC LIMIT ${limit}`;
 }
+
+/* --- comms ------------------------------------------------------------------ */
+
+export interface CommsMsg {
+  id: number;
+  room: string;
+  handle: string;
+  body: string;
+  created_at: string;
+}
+
+export async function commsList(room: string, after = 0): Promise<CommsMsg[]> {
+  if (!hasDb()) return [];
+  const rows = await getDb()<CommsMsg[]>`
+    SELECT id::int, room, handle, body, created_at FROM comms_messages
+    WHERE room = ${room} AND NOT hidden AND id > ${after}
+    ORDER BY id DESC LIMIT 60`;
+  return rows.reverse();
+}
+
+export async function commsInsert(m: { room: string; userId: string; handle: string; body: string }): Promise<number> {
+  if (!hasDb()) return 0;
+  const rows = await getDb()`INSERT INTO comms_messages (room, user_id, handle, body) VALUES (${m.room}, ${m.userId}, ${m.handle}, ${m.body}) RETURNING id::int`;
+  return Number(rows[0].id);
+}
+
+export async function commsRecentCount(userId: string, seconds: number): Promise<number> {
+  if (!hasDb()) return 0;
+  const rows = await getDb()`SELECT count(*)::int AS n FROM comms_messages WHERE user_id = ${userId} AND created_at > now() - make_interval(secs => ${seconds})`;
+  return Number(rows[0].n);
+}
+
+export async function standing(userId: string): Promise<{ strikes: number; banned: boolean }> {
+  if (!hasDb()) return { strikes: 0, banned: false };
+  const rows = await getDb()`SELECT strikes, banned FROM user_standing WHERE user_id = ${userId}`;
+  return rows[0] ? { strikes: Number(rows[0].strikes), banned: Boolean(rows[0].banned) } : { strikes: 0, banned: false };
+}
+
+/** Add a strike (or ban outright). Bans at 3 strikes. */
+export async function strike(userId: string, reason: string, ban = false): Promise<{ strikes: number; banned: boolean }> {
+  if (!hasDb()) return { strikes: 1, banned: ban };
+  const rows = await getDb()`
+    INSERT INTO user_standing (user_id, strikes, banned, reason) VALUES (${userId}, 1, ${ban}, ${reason})
+    ON CONFLICT (user_id) DO UPDATE SET
+      strikes = user_standing.strikes + 1,
+      banned = user_standing.banned OR ${ban} OR user_standing.strikes + 1 >= 3,
+      reason = ${reason}, updated_at = now()
+    RETURNING strikes, banned`;
+  return { strikes: Number(rows[0].strikes), banned: Boolean(rows[0].banned) };
+}
+
+/** Report a message; 3 distinct reporters hide it. */
+export async function commsReport(id: number, reporter: string): Promise<void> {
+  if (!hasDb()) return;
+  const sql = getDb();
+  await sql`INSERT INTO comms_reports (message_id, reporter) VALUES (${id}, ${reporter}) ON CONFLICT DO NOTHING`;
+  await sql`UPDATE comms_messages SET hidden = true WHERE id = ${id} AND (SELECT count(*) FROM comms_reports WHERE message_id = ${id}) >= 3`;
+}
+
+/* --- card teams (async PvP) -------------------------------------------------- */
+
+export async function saveTeam(t: { userId: string; handle: string; team: unknown; power: number }) {
+  if (!hasDb()) return;
+  const sql = getDb();
+  await sql`
+    INSERT INTO card_teams (user_id, handle, team, power) VALUES (${t.userId}, ${t.handle}, ${sql.json(t.team as never)}, ${t.power})
+    ON CONFLICT (user_id) DO UPDATE SET handle = ${t.handle}, team = ${sql.json(t.team as never)}, power = ${t.power}, updated_at = now()`;
+}
+
+export async function findOpponent(userId: string, power: number): Promise<{ handle: string; team: unknown; rating: number } | null> {
+  if (!hasDb()) return null;
+  const rows = await getDb()`
+    SELECT handle, team, rating FROM card_teams
+    WHERE user_id <> ${userId}
+    ORDER BY abs(power - ${power}) + random() * 400 LIMIT 1`;
+  return rows[0] ? { handle: String(rows[0].handle), team: rows[0].team, rating: Number(rows[0].rating) } : null;
+}
+
+export async function adjustRating(userId: string, delta: number): Promise<number | null> {
+  if (!hasDb()) return null;
+  const rows = await getDb()`UPDATE card_teams SET rating = greatest(0, rating + ${delta}) WHERE user_id = ${userId} RETURNING rating`;
+  return rows[0] ? Number(rows[0].rating) : null;
+}
+
+export async function topTeams(limit = 20): Promise<{ handle: string; rating: number; power: number }[]> {
+  if (!hasDb()) return [];
+  return getDb()`SELECT handle, rating, power FROM card_teams ORDER BY rating DESC LIMIT ${limit}` as unknown as Promise<{ handle: string; rating: number; power: number }[]>;
+}
+
+/** Change a pilot's public handle. Returns false if taken. */
+export async function renameHandle(id: string, handle: string): Promise<boolean> {
+  if (!hasDb()) return true;
+  try {
+    const rows = await getDb()`UPDATE profiles SET operator_handle = ${handle} WHERE id = ${id} RETURNING id`;
+    return rows.length > 0;
+  } catch (err: unknown) {
+    if ((err as { code?: string }).code === '23505') return false;
+    throw err;
+  }
+}

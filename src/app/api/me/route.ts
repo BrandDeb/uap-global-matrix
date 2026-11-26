@@ -6,7 +6,7 @@
  *         badges, arcade bests) to the account. Signed-in only.
  */
 import { enabledProviders, verifiedOperatorId } from '@/auth';
-import { getPrefs, getProfile, savePrefs } from '@/lib/db/queries';
+import { getPrefs, getProfile, renameHandle, savePrefs } from '@/lib/db/queries';
 import { jsonError, readJson } from '@/lib/apiHelpers';
 
 export const runtime = 'nodejs';
@@ -44,6 +44,7 @@ export async function PUT(req: Request): Promise<Response> {
     // Game saves (Xeno Keeper family, Hangar craft); size-capped below.
     keeper: p.keeper && typeof p.keeper === 'object' ? p.keeper : undefined,
     hangar: p.hangar && typeof p.hangar === 'object' ? p.hangar : undefined,
+    cards: p.cards && typeof p.cards === 'object' ? p.cards : undefined,
     bio: str(p.bio, 160) ?? '',
     custom:
       p.custom && typeof p.custom === 'object'
@@ -54,11 +55,24 @@ export async function PUT(req: Request): Promise<Response> {
           )
         : null,
   };
-  if (JSON.stringify(clean).length > 24000) return jsonError(413, 'Too much data.');
+  if (JSON.stringify(clean).length > 48000) return jsonError(413, 'Too much data.');
   try {
     await savePrefs(id, clean);
     return Response.json({ ok: true });
   } catch (err: unknown) {
     return jsonError(502, err instanceof Error ? err.message : 'Database error.');
   }
+}
+
+/** PATCH { handle } → change your public handle (letters, numbers, _ or -; 3 to 24). */
+export async function PATCH(req: Request): Promise<Response> {
+  const id = await verifiedOperatorId();
+  if (!id) return jsonError(401, 'Sign in first.');
+  const body = await readJson(req);
+  const handle = typeof body?.handle === 'string' ? body.handle.trim() : '';
+  if (!/^[A-Za-z0-9_-]{3,24}$/.test(handle)) return jsonError(400, 'Handles are 3 to 24 letters, numbers, _ or -.');
+  const { localCheck } = await import('@/lib/moderation');
+  if (localCheck(handle.replace(/[_-]/g, ' ')) !== 'ok') return jsonError(400, 'Pick a cleaner handle.');
+  if (!(await renameHandle(id, handle))) return jsonError(409, 'That handle is taken.');
+  return Response.json({ ok: true, handle, note: 'Sign out and back in to refresh it everywhere.' });
 }

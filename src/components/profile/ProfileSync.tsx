@@ -25,12 +25,13 @@ interface Prefs {
   daily?: unknown;
   keeper?: { savedAt?: number };
   hangar?: { savedAt?: number };
+  cards?: { savedAt?: number };
   bio?: string;
   custom?: unknown;
 }
 
 /** Game saves synced whole; the newer save (by savedAt) wins. */
-const SAVES = { keeper: 'uap-keeper', hangar: 'uap-hangar' } as const;
+const SAVES = { keeper: 'uap-keeper', hangar: 'uap-hangar', cards: 'uap-cards' } as const;
 const readSave = (k: string) => {
   try {
     return JSON.parse(localStorage.getItem(k) ?? 'null') ?? undefined;
@@ -63,6 +64,7 @@ function local(): Prefs {
     daily: daily ?? undefined,
     keeper: readSave(SAVES.keeper),
     hangar: readSave(SAVES.hangar),
+    cards: readSave(SAVES.cards),
   };
 }
 

@@ -8,6 +8,7 @@ import ShareBar from '@/components/ShareBar';
 import { ANSWERS, type AnswerId } from '@/lib/daily';
 import { awardBadge, SYNC_EVENT } from '@/lib/achievements';
 import { useLocalProfile } from '@/lib/profile';
+import { grant } from '@/lib/collection';
 
 interface Today {
   day: number;
@@ -87,7 +88,10 @@ export default function DailyChallenge() {
     window.dispatchEvent(new Event(SYNC_EVENT));
     setSaved(next);
     setToday({ ...today, split: { ...today.split, [g]: (today.split[g] ?? 0) + 1 }, total: today.total + 1 });
-    if (d.correct) xenoAudio?.chime();
+    if (d.correct) {
+      xenoAudio?.chime();
+      grant({ signals: 1 });
+    }
     else xenoAudio?.boop();
     if (streak >= 7) awardBadge('daily-7');
     setBusy(false);
@@ -153,7 +157,7 @@ export default function DailyChallenge() {
           {result && (
             <div className="mt-6 rounded-2xl border border-white/10 bg-black/40 p-5">
               <p className={`font-[family-name:var(--font-display)] text-xl font-extrabold ${result.correct ? 'text-[var(--xeno-a)]' : 'text-[var(--xeno-d)]'}`}>
-                {result.correct ? `Correct. Streak ${saved.streak} 🔥` : 'Not quite.'}
+                {result.correct ? `Correct. Streak ${saved.streak} 🔥 · +1 summon signal` : 'Not quite.'}
               </p>
               <p className="mt-2 leading-relaxed text-white/70">{result.reveal}</p>
               <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.25em] text-white/40">New case at midnight UTC</p>

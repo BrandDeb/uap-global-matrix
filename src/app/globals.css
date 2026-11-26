@@ -52,6 +52,8 @@
 
 html,
 body {
+  /* Never allow sideways page scroll on phones (fixed bars stay on screen). */
+  overflow-x: clip;
   background: var(--xeno-void);
   color: var(--foreground);
   font-family: var(--font-body), system-ui, sans-serif;

@@ -10,6 +10,7 @@ import JsonLd from '@/components/JsonLd';
 import ProfileSync from '@/components/profile/ProfileSync';
 import SightingAlerts from '@/components/profile/SightingAlerts';
 import ArchivistMount from '@/components/archive/ArchivistMount';
+import MobileDock from '@/components/ui/MobileDock';
 import { SITE_DESCRIPTION, SITE_URL, SOCIALS, X_HANDLE } from '@/lib/site';
 import type { Viewport } from 'next';
 
@@ -76,11 +77,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ProfileSync />
         <SightingAlerts />
         <ArchivistMount />
+        <MobileDock />
         <SmoothScroll />
         {children}
         <Toaster
           theme="dark"
-          position="bottom-right"
+          position="top-center"
           toastOptions={{
             className: '!rounded-2xl !border-white/10 !bg-[#0a0818]/90 !font-mono !text-xs !backdrop-blur-xl',
           }}

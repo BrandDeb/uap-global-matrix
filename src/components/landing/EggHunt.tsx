@@ -8,7 +8,7 @@ export default function EggHunt() {
   const found = useFoundEggs();
   const [open, setOpen] = useState(false);
   return (
-    <div className="fixed bottom-4 left-4 z-40 md:bottom-6 md:left-6">
+    <div className="fixed bottom-24 left-4 z-40 md:bottom-6 md:left-6">
       {open && (
         <div className="xeno-glass absolute bottom-12 left-0 w-[min(84vw,340px)] p-4">
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/45">Secrets · {found.length}/{EGGS.length}</p>

@@ -12,15 +12,17 @@ function readLocal() {
   let daily = null;
   let keeper = null;
   let hangar = null;
+  let cards = null;
   try {
     for (const g of ['moove-it', 'junk-invaders', 'gravity-janitor', 'radar-ghost', 'star-forge']) bests[g] = Number(localStorage.getItem(`uap-arcade-best:${g}`) ?? 0) || 0;
     daily = JSON.parse(localStorage.getItem('uap-daily') ?? 'null');
     keeper = JSON.parse(localStorage.getItem('uap-keeper') ?? 'null');
     hangar = JSON.parse(localStorage.getItem('uap-hangar') ?? 'null');
+    cards = JSON.parse(localStorage.getItem('uap-cards') ?? 'null');
   } catch {
     /* ignore */
   }
-  return { bests, daily, keeper, hangar };
+  return { bests, daily, keeper, hangar, cards };
 }
 
 /** XP bar + rank ladder; links to the public pilot page when signed in. */
@@ -80,5 +82,31 @@ export function BioField() {
         className="mt-2 w-full resize-none rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:border-[var(--xeno-a)]/60 focus:outline-none"
       />
     </label>
+  );
+}
+
+/** Change the public handle (signed-in only). Real names are never required. */
+export function HandleField({ current }: { current: string }) {
+  const [v, setV] = useState(current);
+  const [msg, setMsg] = useState<string | null>(null);
+  const save = async () => {
+    setMsg(null);
+    const r = await fetch('/api/me', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ handle: v }) });
+    const d = (await r.json().catch(() => ({}))) as { error?: string; note?: string };
+    setMsg(r.ok ? `Saved. ${d.note ?? ''}` : (d.error ?? 'Could not save.'));
+  };
+  return (
+    <div className="mt-6">
+      <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/45">Public handle</span>
+      <div className="mt-2 flex gap-2">
+        <span className="grid place-items-center pl-2 text-white/40">@</span>
+        <input value={v} onChange={(e) => setV(e.target.value.slice(0, 24))} aria-label="Public handle" className="min-w-0 flex-1 rounded-full border border-white/10 bg-black/40 px-4 py-2 text-sm text-white focus:border-[var(--xeno-a)]/60 focus:outline-none" />
+        <button type="button" onClick={() => void save()} disabled={v === current} className="xeno-btn disabled:opacity-40">
+          Save
+        </button>
+      </div>
+      <p className="mt-1.5 text-[11px] text-white/40">Shown in Comms, leaderboards and your pilot page. Use a codename; your real name is never shown unless you choose to.</p>
+      {msg && <p className="mt-1 text-xs text-[var(--xeno-a)]">{msg}</p>}
+    </div>
   );
 }

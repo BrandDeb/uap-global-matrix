@@ -45,6 +45,13 @@ function slugHandle(raw: string): string {
   return (s || 'operator').slice(0, 24);
 }
 
+const ADJ = ['Cosmic', 'Quiet', 'Neon', 'Lunar', 'Solar', 'Stellar', 'Silent', 'Rogue', 'Hidden', 'Glowing', 'Drifting', 'Orbital', 'Nebula', 'Static', 'Velvet', 'Atomic'];
+const NOUN = ['Saucer', 'Comet', 'Probe', 'Orb', 'Signal', 'Drifter', 'Grey', 'Beacon', 'Pulsar', 'Voyager', 'Watcher', 'Nomad', 'Specter', 'Quasar', 'Lantern', 'Moth'];
+const pick = (a: string[]) => a[Math.floor(Math.random() * a.length)];
+function codename(): string {
+  return `${pick(ADJ)}${pick(NOUN)}_${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers,
   session: { strategy: 'jwt' },
@@ -58,11 +65,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const provider = account.provider;
         const accountId = String(account.providerAccountId);
         const id = `${provider}:${accountId}`;
-        const base =
-          provider === 'github'
-            ? String((profile as { login?: string }).login ?? token.name ?? 'operator')
-            : // Google has no username: display name + a short stable suffix.
-              `${slugHandle(String(profile.name ?? token.name ?? 'operator'))}_${accountId.slice(-4)}`;
+        // Privacy: never derive the public handle from a real name or login.
+        // New pilots get a random alien codename (changeable in Settings).
+        const base = codename();
         let handle = slugHandle(base);
         try {
           handle = await upsertProfile({ id, handle, avatarUrl: token.picture ?? null });

@@ -17,7 +17,7 @@ import SignInButtons from '@/components/ui/SignInButtons';
 import { useAuth } from '@/hooks/useAuth';
 import { clearProfile, saveProfile, useLocalProfile } from '@/lib/profile';
 import { BADGES, useBadges } from '@/lib/achievements';
-import { RankCard, BioField } from './RankCard';
+import { RankCard, BioField, HandleField } from './RankCard';
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -94,6 +94,7 @@ export default function SettingsView() {
             <p className="mb-3 mt-6 font-mono text-[10px] uppercase tracking-[0.3em] text-white/45">Pick your alien</p>
             <AvatarPicker />
             <BioField />
+            {profile && <HandleField current={profile.operatorHandle} />}
           </Card>
 
           <Card title="Rank">

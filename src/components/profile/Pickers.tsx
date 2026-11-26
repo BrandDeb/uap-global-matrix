@@ -47,7 +47,7 @@ export function NameField() {
         maxLength={24}
         className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-base text-white placeholder:text-white/25 focus:border-[var(--xeno-a)]/60 focus:outline-none"
       />
-      <span className="mt-1.5 block text-[11px] text-white/35">Shown on comments, co-witness logs and arcade leaderboards.</span>
+      <span className="mt-1.5 block text-[11px] text-white/35">A nickname or codename (no real names needed). Shown on comments, leaderboards and your pilot page.</span>
     </label>
   );
 }

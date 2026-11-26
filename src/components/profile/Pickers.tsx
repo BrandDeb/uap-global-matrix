@@ -9,6 +9,8 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Check, MapPin, Bell } from 'lucide-react';
 import { loadAlerts, saveAlerts } from '@/lib/alerts';
+import { useBadges } from '@/lib/achievements';
+import { PARTS, type Spec } from './AlienAvatar';
 import AlienAvatar, { ALIENS } from './AlienAvatar';
 import { saveProfile, useLocalProfile, type ThemePref } from '@/lib/profile';
 
@@ -20,7 +22,7 @@ export function AvatarPicker({ count = ALIENS.length }: { count?: number }) {
         <button
           key={a.name}
           type="button"
-          onClick={() => saveProfile({ avatar: i })}
+          onClick={() => saveProfile({ avatar: i, custom: null })}
           aria-pressed={avatar === i}
           aria-label={`Choose ${a.name}`}
           title={a.name}
@@ -231,6 +233,89 @@ export function AlertsToggle() {
       )}
       {msg && <p className="mt-3 pl-14 text-xs text-[var(--xeno-d)]">{msg}</p>}
       <p className="mt-3 pl-14 text-[11px] text-white/35">Alerts arrive while a UAP/MATRIX tab is open (install the app to keep it handy).</p>
+    </div>
+  );
+}
+
+
+/** Build-your-own alien. Some parts unlock with badges. */
+const LOCKS: Record<string, { badge: string; label: string }> = {
+  'top:halo': { badge: 'hall-of-fame', label: 'Hall of Famer' },
+  'top:spikes': { badge: 'night-5', label: 'Rodeo Survivor' },
+  'eyes:visor': { badge: 'ghost', label: 'Radar Ghost' },
+  'skin:#ffd36b': { badge: 'secrets-all', label: 'Truth Seeker' },
+  'mouth:fangs': { badge: 'abductor', label: 'Friend Abductor' },
+};
+
+export function AlienBuilder() {
+  const p = useLocalProfile();
+  const have = useBadges();
+  const base: Spec = p.custom ?? { ...ALIENS[p.avatar % ALIENS.length] };
+  const [draft, setDraft] = useState<Spec>({ ...base, name: base.name || 'My alien' });
+  const locked = (k: string, v: string) => {
+    const l = LOCKS[`${k}:${v}`];
+    return l && !have.includes(l.badge) ? l : null;
+  };
+  const cycle = <K extends 'head' | 'eyes' | 'top' | 'mouth' | 'skin' | 'bg'>(k: K, dir: number) => {
+    const opts = PARTS[k] as string[];
+    let i = opts.indexOf(draft[k] as string);
+    for (let n = 0; n < opts.length; n++) {
+      i = (i + dir + opts.length) % opts.length;
+      if (!locked(k, opts[i])) break;
+    }
+    setDraft({ ...draft, [k]: opts[i] });
+  };
+  const random = () => {
+    const pick = (k: keyof typeof PARTS) => {
+      const ok = (PARTS[k] as string[]).filter((v) => !locked(k, v));
+      return ok[Math.floor(Math.random() * ok.length)];
+    };
+    setDraft({ ...draft, head: pick('head') as Spec['head'], eyes: pick('eyes') as Spec['eyes'], top: pick('top') as Spec['top'], mouth: pick('mouth') as Spec['mouth'], skin: pick('skin'), bg: pick('bg'), spots: Math.random() < 0.3 });
+  };
+  const rows: { k: 'head' | 'eyes' | 'top' | 'mouth' | 'skin' | 'bg'; label: string }[] = [
+    { k: 'head', label: 'Head' },
+    { k: 'eyes', label: 'Eyes' },
+    { k: 'top', label: 'Topper' },
+    { k: 'mouth', label: 'Mouth' },
+    { k: 'skin', label: 'Skin' },
+    { k: 'bg', label: 'Backdrop' },
+  ];
+  const lockedList = Object.entries(LOCKS).filter(([, l]) => !have.includes(l.badge));
+  return (
+    <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
+      <div className="flex flex-col items-center gap-3">
+        <AlienAvatar index={0} spec={draft} size={132} className="drop-shadow-[0_0_30px_rgba(165,139,255,0.4)]" />
+        <input
+          value={draft.name}
+          onChange={(e) => setDraft({ ...draft, name: e.target.value.slice(0, 16) })}
+          aria-label="Alien name"
+          className="w-36 rounded-full border border-white/15 bg-black/40 px-3 py-1 text-center text-sm text-white focus:border-[var(--xeno-a)]/60 focus:outline-none"
+        />
+      </div>
+      <div className="w-full flex-1 space-y-2">
+        {rows.map(({ k, label }) => (
+          <div key={k} className="flex items-center justify-between gap-2">
+            <span className="w-20 font-mono text-[10px] uppercase tracking-[0.25em] text-white/45">{label}</span>
+            <button type="button" onClick={() => cycle(k, -1)} className="rounded-full border border-white/15 px-3 py-1 text-white/70 hover:text-white" aria-label={`Previous ${label}`}>‹</button>
+            <span className="flex-1 text-center text-sm capitalize text-white/80">
+              {k === 'skin' || k === 'bg' ? <span className="inline-block h-4 w-10 rounded-full align-middle" style={{ background: draft[k] }} /> : String(draft[k])}
+            </span>
+            <button type="button" onClick={() => cycle(k, 1)} className="rounded-full border border-white/15 px-3 py-1 text-white/70 hover:text-white" aria-label={`Next ${label}`}>›</button>
+          </div>
+        ))}
+        <label className="flex items-center gap-2 pt-1 text-xs text-white/60">
+          <input type="checkbox" checked={!!draft.spots} onChange={(e) => setDraft({ ...draft, spots: e.target.checked })} /> Spots
+        </label>
+        <div className="flex flex-wrap gap-2 pt-2">
+          <button type="button" onClick={random} className="xeno-btn">🎲 Random</button>
+          <button type="button" onClick={() => saveProfile({ custom: draft })} className="xeno-btn !border-[var(--xeno-a)]">Use this alien</button>
+        </div>
+        {lockedList.length > 0 && (
+          <p className="pt-2 text-[11px] leading-relaxed text-white/40">
+            🔒 Rare parts: {lockedList.map(([k, l]) => `${k.split(':')[1].startsWith('#') ? 'gold skin' : k.split(':')[1]} (${l.label})`).join(' · ')}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

@@ -18,7 +18,8 @@ import { jsonError, readJson } from '@/lib/apiHelpers';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const MODEL = process.env.GEMINI_MODEL ?? 'gemini-2.0-flash';
+// Free-tier Gemini models, tried in order (older ones get retired over time).
+const MODELS = [process.env.GEMINI_MODEL, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash'].filter(Boolean) as string[];
 const WINDOW_MS = 60_000;
 const MAX_PER_WINDOW = 8;
 const hits = new Map<string, number[]>();
@@ -30,10 +31,11 @@ const CONTEXT = ARCHIVE.map(
     } | source: ${c.archiveSource} (${c.documentId}) | credibility ${Math.round(c.credibilityScore)}% | ${c.description}`,
 ).join('\n');
 
-const SYSTEM = `You are "The Archivist", the resident guide of UAP/MATRIX, a site about well-documented UFO/UAP sightings.
+const SYSTEM = `You are "The Archivist", the resident guide of UAP/MATRIX, a site about well-documented UFO/UAP sightings and the wider universe.
+You also teach space science: astronomy, planets, stars, exoplanets, the search for extraterrestrial life (SETI, Drake equation, Fermi paradox, astrobiology), rockets and satellites. For these, use well-established science and say when something is unknown.
 Voice: warm, curious, a little playful (the site is fun), but rigorous. Short paragraphs, under 180 words unless asked for more.
 Rules:
-1. Answer ONLY from the ARCHIVE below plus widely known, uncontroversial historical context. Never invent cases, documents, quotes or numbers.
+1. For UFO cases, answer ONLY from the ARCHIVE below plus widely known, uncontroversial historical context. Never invent cases, documents, quotes or numbers.
 2. When you mention a case, use its exact title and year, e.g. "Rendlesham Forest RAF Woodbridge Multi-Night Incident (1980)".
 3. If the archive doesn't cover something, say so plainly and suggest the closest case it does have.
 4. Distinguish evidence from interpretation: "unidentified" does not mean "alien". Mention prosaic explanations where they are well established.
@@ -69,12 +71,24 @@ export async function POST(req: Request): Promise<Response> {
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-    const res = await ai.models.generateContent({
-      model: MODEL,
-      contents: messages,
-      config: { systemInstruction: SYSTEM, temperature: 0.6, maxOutputTokens: 600 },
-    });
-    const answer = res.text?.trim();
+    let answer: string | undefined;
+    let lastErr: unknown;
+    for (const model of MODELS) {
+      try {
+        const res = await ai.models.generateContent({
+          model,
+          contents: messages,
+          config: { systemInstruction: SYSTEM, temperature: 0.6, maxOutputTokens: 700 },
+        });
+        answer = res.text?.trim();
+        if (answer) break;
+      } catch (e) {
+        lastErr = e;
+        // Only fall through to the next model when this one doesn't exist / isn't available.
+        if (!/not found|404|not supported|unavailable|deprecated/i.test(e instanceof Error ? e.message : '')) throw e;
+      }
+    }
+    if (!answer && lastErr) throw lastErr;
     if (!answer) return jsonError(502, 'The Archivist went quiet. Try rephrasing?');
     return Response.json({ answer });
   } catch (err: unknown) {

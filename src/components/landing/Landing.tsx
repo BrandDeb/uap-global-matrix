@@ -46,6 +46,7 @@ import LiveTransmissions from './LiveTransmissions';
 import { toLiveSighting, type LiveSighting } from '@/lib/sightings';
 import { toast } from 'sonner';
 import EggHunt from './EggHunt';
+import SiteMenu from '@/components/ui/SiteMenu';
 import { findEgg } from './eggs';
 import { SPECIES } from './voxelSpecies';
 import { SOCIALS } from '@/lib/site';
@@ -437,14 +438,11 @@ export default function Landing() {
           <a href="#field-guide" className="transition hover:text-white" data-cursor="SCROLL">
             Field guide
           </a>
-          <a href="#cases" className="transition hover:text-white" data-cursor="SCROLL">
-            Cases
-          </a>
-          <Link href="/feed" className="transition hover:text-white" data-cursor="READ">
-            Feed
+          <Link href="/daily" className="transition hover:text-white" data-cursor="PLAY">
+            Daily
           </Link>
-          <Link href="/archive" className="transition hover:text-white" data-cursor="READ">
-            Files
+          <Link href="/pilots" className="transition hover:text-white" data-cursor="READ">
+            Pilots
           </Link>
           <Link href="/arcade" className="transition hover:text-white" data-cursor="PLAY">
             Arcade
@@ -452,6 +450,7 @@ export default function Landing() {
         </nav>
         <div className="flex items-center gap-2">
           <SoundToggle on={soundOn} onToggle={() => void toggleSound()} />
+          <SiteMenu />
           <div className="hidden sm:block">
             <SignInPopover />
           </div>

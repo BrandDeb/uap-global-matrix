@@ -41,8 +41,20 @@ export async function PUT(req: Request): Promise<Response> {
     badges: strList(p.badges),
     bests,
     daily: p.daily && typeof p.daily === 'object' ? p.daily : undefined,
+    // Game saves (Xeno Keeper family, Hangar craft); size-capped below.
+    keeper: p.keeper && typeof p.keeper === 'object' ? p.keeper : undefined,
+    hangar: p.hangar && typeof p.hangar === 'object' ? p.hangar : undefined,
+    bio: str(p.bio, 160) ?? '',
+    custom:
+      p.custom && typeof p.custom === 'object'
+        ? Object.fromEntries(
+            Object.entries(p.custom as Record<string, unknown>)
+              .filter(([k, v]) => ['name', 'skin', 'bg', 'head', 'eyes', 'top', 'mouth', 'spots'].includes(k) && (typeof v === 'string' || typeof v === 'boolean'))
+              .map(([k, v]) => [k, typeof v === 'string' ? v.slice(0, 20) : v]),
+          )
+        : null,
   };
-  if (JSON.stringify(clean).length > 8000) return jsonError(413, 'Too much data.');
+  if (JSON.stringify(clean).length > 24000) return jsonError(413, 'Too much data.');
   try {
     await savePrefs(id, clean);
     return Response.json({ ok: true });

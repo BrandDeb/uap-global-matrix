@@ -7,12 +7,12 @@
  * ---------------------------------------------------------------------------
  */
 
-type Head = 'bulb' | 'round' | 'squid' | 'tall' | 'blob';
-type Eyes = 'almond' | 'cyclops' | 'trio' | 'stalks' | 'visor' | 'googly' | 'sleepy';
-type Top = 'none' | 'antennae' | 'single' | 'fins' | 'halo' | 'spikes';
-type Mouth = 'smile' | 'o' | 'none' | 'fangs' | 'grin';
+export type Head = 'bulb' | 'round' | 'squid' | 'tall' | 'blob';
+export type Eyes = 'almond' | 'cyclops' | 'trio' | 'stalks' | 'visor' | 'googly' | 'sleepy';
+export type Top = 'none' | 'antennae' | 'single' | 'fins' | 'halo' | 'spikes';
+export type Mouth = 'smile' | 'o' | 'none' | 'fangs' | 'grin';
 
-interface Spec {
+export interface Spec {
   name: string;
   skin: string;
   bg: string;
@@ -191,9 +191,19 @@ function MouthShape({ m, head }: { m: Mouth; head: Head }) {
   }
 }
 
-/** Render alien #index (wraps around). */
-export default function AlienAvatar({ index, size = 48, className }: { index: number; size?: number; className?: string }) {
-  const a = ALIENS[((index % ALIENS.length) + ALIENS.length) % ALIENS.length];
+/** Builder options (everything the renderer can draw). */
+export const PARTS = {
+  head: ['bulb', 'round', 'squid', 'tall', 'blob'] as Head[],
+  eyes: ['almond', 'cyclops', 'trio', 'stalks', 'visor', 'googly', 'sleepy'] as Eyes[],
+  top: ['none', 'antennae', 'single', 'fins', 'halo', 'spikes'] as Top[],
+  mouth: ['smile', 'o', 'none', 'fangs', 'grin'] as Mouth[],
+  skin: ['#7dffb0', '#a58bff', '#ff8fd0', '#5effd8', '#ffd36b', '#ff7a5c', '#9aa3b8', '#6fb6ff', '#c6ff6b', '#e8b58a'],
+  bg: ['#1b3a2c', '#241a46', '#40183a', '#0f3a36', '#3a2d10', '#3a1a14', '#1c2030', '#10264a', '#26330f', '#2a0f2f'],
+};
+
+/** Render alien #index (wraps around), or a custom-built `spec`. */
+export default function AlienAvatar({ index, size = 48, className, spec }: { index: number; size?: number; className?: string; spec?: Spec | null }) {
+  const a = spec ?? ALIENS[((index % ALIENS.length) + ALIENS.length) % ALIENS.length];
   return (
     <svg viewBox="0 0 100 100" width={size} height={size} className={className} role="img" aria-label={`${a.name} the alien`}>
       <circle cx="50" cy="50" r="50" fill={a.bg} />

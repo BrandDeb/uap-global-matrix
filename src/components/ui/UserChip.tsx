@@ -17,7 +17,7 @@ export default function UserChip({ className = '' }: { className?: string }) {
   const name = profile?.operatorHandle ?? p.name;
   return (
     <Link href="/settings" className={`xeno-btn !py-1 !pl-1 normal-case ${className}`} aria-label="Your profile and settings" data-cursor="YOU">
-      <AlienAvatar index={p.avatar} size={26} />
+      <AlienAvatar index={p.avatar} spec={p.custom} size={26} />
       <span className="hidden max-w-[8rem] truncate lg:inline">{name ? `@${name}` : 'Settings'}</span>
     </Link>
   );

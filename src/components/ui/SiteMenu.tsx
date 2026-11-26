@@ -15,6 +15,7 @@ export const SITE_LINKS = [
   { href: '/cards', label: 'Xeno Cards', note: 'Summon, star up, train, battle' },
   { href: '/keeper', label: 'Xeno Keeper', note: 'Rescue and raise aliens' },
   { href: '/arcade', label: 'Arcade', note: 'Four games, weekly prizes' },
+  { href: '/hangar', label: 'Hangar', note: 'Build a craft, fly Star Forge' },
   { href: '/archive', label: 'The Files', note: 'Declassified cases, 1942 to now' },
   { href: '/crop-circles', label: 'Crop Circles', note: 'Community gallery' },
   { href: '/pilots', label: 'Pilots', note: 'Profiles, ranks and the crew feed' },

@@ -12,6 +12,7 @@ const ITEMS = [
   { href: '/keeper', title: 'Xeno Keeper', note: 'Rescue survivors, raise your alien family', emoji: '🛸', color: '#5effd8' },
   { href: '/daily', title: 'Daily Challenge', note: 'One real case a day. Keep the streak', emoji: '📅', color: '#ffd23f' },
   { href: '/arcade', title: 'Arcade', note: 'Four games, weekly prizes', emoji: '🕹', color: '#ff5ec8' },
+  { href: '/hangar', title: 'Hangar', note: 'Build your craft, fly Star Forge', emoji: '🛠', color: '#38e8ff' },
   { href: '/crop-circles', title: 'Crop Circles', note: 'Draw, publish, collect likes', emoji: '🌾', color: '#c6ff6b' },
   { href: '/pilots', title: 'Pilots', note: 'Ranks and profiles', emoji: '🏆', color: '#4cb8ff' },
 ];

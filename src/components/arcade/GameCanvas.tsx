@@ -92,11 +92,17 @@ async function shareScore(src: HTMLCanvasElement, meta: GameMeta, hud: HudState)
 
 const BLOCK = new Set([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 
-export default function GameCanvas({ create, meta, gameId }: { create: () => Game; meta: GameMeta; gameId: string }) {
+export default function GameCanvas({ create, meta, gameId, onReady, onPhaseChange }: { create: () => Game; meta: GameMeta; gameId: string; onReady?: (g: Game) => void; onPhaseChange?: (phase: HudState['phase'], g: Game) => void }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [hud, setHud] = useState<HudState>({ phase: 'title', score: 0, best: 0 });
   const wrap = useRef<HTMLDivElement>(null);
   const [immersive, setImmersive] = useState(false);
+  const onReadyRef = useRef(onReady);
+  const onPhaseRef = useRef(onPhaseChange);
+  useEffect(() => {
+    onReadyRef.current = onReady;
+    onPhaseRef.current = onPhaseChange;
+  });
 
   // Full-screen: real Fullscreen API where supported (Android), plus a fixed
   // overlay that also works on iPhone (which blocks element fullscreen).
@@ -137,6 +143,7 @@ export default function GameCanvas({ create, meta, gameId }: { create: () => Gam
     const ctx = c?.getContext('2d');
     if (!c || !ctx) return;
     const game = create();
+    onReadyRef.current?.(game);
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     c.width = W * dpr;
     c.height = H * dpr;
@@ -199,6 +206,7 @@ export default function GameCanvas({ create, meta, gameId }: { create: () => Gam
       hudT += dt;
       if (hudT > 0.1 || game.hud.phase !== lastPhase) {
         hudT = 0;
+        if (game.hud.phase !== lastPhase) onPhaseRef.current?.(game.hud.phase, game);
         lastPhase = game.hud.phase;
         setHud({ ...game.hud });
       }

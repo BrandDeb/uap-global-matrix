@@ -1,96 +1,83 @@
 'use client';
 
 /**
- * src/lib/hangarStore.ts, the Hangar save (localStorage "uap-hangar", synced
- * to the account by ProfileSync). Tracks the parts you OWN (found or bought),
- * the craft you've assembled, scrap, lifetime scrap (pilot rank) and best wave.
+ * src/lib/hangarStore.ts, client view of the server-authoritative Hangar.
+ * All state comes from /api/hangar; actions post there and re-fetch. Parts,
+ * scrap and the raid lifecycle (launch/extract/die) are owned by the server
+ * so a browser can't fabricate inventory or dodge Tarkov-style loss.
  */
-import { useSyncExternalStore } from 'react';
-import { craftLevel, DEFAULT_CRAFT, PART_BY_ID, STARTER_PARTS, type Craft, type Rarity, type Slot } from './craft';
+import { useEffect, useSyncExternalStore } from 'react';
+import { DEFAULT_CRAFT, type Craft, type Slot } from './craft';
 
-export interface HangarSave {
-  savedAt: number;
-  craft: Craft;
-  owned: string[];
+export interface HangarView {
+  color: string;
+  frame: string;
+  thrusters: string;
+  wings: string;
+  weapon: string;
+  secure: string | null;
   scrap: number;
-  scrapEarned: number;
-  bestWave: number;
+  scrap_earned: number;
+  best_wave: number;
+  raid: { seed: number; startedAt: number; insured: boolean; loadout: Record<Slot, string> } | null;
 }
-const KEY = 'uap-hangar';
-const START: HangarSave = { savedAt: 0, craft: DEFAULT_CRAFT, owned: [...STARTER_PARTS], scrap: 0, scrapEarned: 0, bestWave: 0 };
-export const BUY_PRICE: Record<Rarity, number> = { common: 150, rare: 450, epic: 1100, legendary: 3000 };
+export interface HangarState {
+  status: 'loading' | 'signed-out' | 'ready' | 'error';
+  hangar: HangarView;
+  owned: Record<string, number>;
+}
+const EMPTY_HANGAR: HangarView = { ...DEFAULT_CRAFT, secure: null, scrap: 0, scrap_earned: 0, best_wave: 0, raid: null };
+const EMPTY: HangarState = { status: 'loading', hangar: EMPTY_HANGAR, owned: {} };
 
-let raw: string | null = null;
-let cache = START;
-function read(): HangarSave {
-  if (typeof window === 'undefined') return START;
-  let r: string | null = null;
-  try {
-    r = localStorage.getItem(KEY);
-  } catch {
-    /* ignore */
-  }
-  if (r === raw) return cache;
-  raw = r;
-  try {
-    const p = r ? JSON.parse(r) : {};
-    cache = { ...START, ...p, craft: { ...DEFAULT_CRAFT, ...(p.craft ?? {}) }, owned: [...new Set([...STARTER_PARTS, ...(p.owned ?? [])])] };
-  } catch {
-    cache = START;
-  }
-  return cache;
+let state = EMPTY;
+let inflight: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+const emit = () => listeners.forEach((l) => l());
+
+export function refreshHangar(): Promise<void> {
+  inflight ??= fetch('/api/hangar', { cache: 'no-store' })
+    .then(async (r) => {
+      if (r.status === 401) state = { ...EMPTY, status: 'signed-out' };
+      else if (!r.ok) state = { ...state, status: 'error' };
+      else {
+        const d = (await r.json()) as { hangar: HangarView; owned: Record<string, number> };
+        state = { status: 'ready', hangar: d.hangar, owned: d.owned };
+        try {
+          localStorage.setItem('uap-hangar', JSON.stringify({ savedAt: Date.now(), bestWave: d.hangar.best_wave, scrapEarned: d.hangar.scrap_earned }));
+          window.dispatchEvent(new Event('uap-sync-change'));
+        } catch {
+          /* ignore */
+        }
+      }
+      emit();
+    })
+    .catch(() => {
+      state = { ...state, status: 'error' };
+      emit();
+    })
+    .finally(() => {
+      inflight = null;
+    });
+  return inflight;
 }
-function write(s: HangarSave) {
-  cache = { ...s, savedAt: Date.now() };
-  raw = JSON.stringify(cache);
-  try {
-    localStorage.setItem(KEY, raw);
-  } catch {
-    /* ignore */
-  }
-  window.dispatchEvent(new Event(`${KEY}-change`));
-  window.dispatchEvent(new Event('uap-sync-change'));
-}
-const sub = (cb: () => void) => {
-  window.addEventListener(`${KEY}-change`, cb);
-  return () => window.removeEventListener(`${KEY}-change`, cb);
+
+const subscribe = (cb: () => void) => {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
 };
-export const useHangar = () => useSyncExternalStore(sub, read, () => START);
-export const getHangar = read;
-export const level = () => craftLevel(read().scrapEarned);
-
-export function addScrap(n: number, wave = 0) {
-  const s = read();
-  write({ ...s, scrap: s.scrap + n, scrapEarned: s.scrapEarned + n, bestWave: Math.max(s.bestWave, wave) });
+export function useHangar(): HangarState {
+  const s = useSyncExternalStore(subscribe, () => state, () => EMPTY);
+  useEffect(() => {
+    if (state.status === 'loading') void refreshHangar();
+  }, []);
+  return s;
 }
 
-/** Game drop: add a part to the collection. Returns whether it was new. */
-export function findPart(id: string): boolean {
-  const s = read();
-  if (!PART_BY_ID[id] || s.owned.includes(id)) return false;
-  write({ ...s, owned: [...s.owned, id] });
-  return true;
+/** Run a Hangar action; returns the JSON body and refreshes state. */
+export async function hangarAction<T = Record<string, unknown>>(action: string, extra: Record<string, unknown> = {}): Promise<T & { error?: string }> {
+  const r = await fetch('/api/hangar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, ...extra }) });
+  const d = (await r.json().catch(() => ({ error: 'Network error.' }))) as T & { error?: string };
+  await refreshHangar();
+  return d;
 }
-
-export function buyPart(id: string): boolean {
-  const s = read();
-  const p = PART_BY_ID[id];
-  if (!p || s.owned.includes(id)) return false;
-  const price = BUY_PRICE[p.rarity];
-  if (s.scrap < price) return false;
-  write({ ...s, scrap: s.scrap - price, owned: [...s.owned, id] });
-  return true;
-}
-
-export function equip(slot: Slot, id: string) {
-  const s = read();
-  if (!s.owned.includes(id) || PART_BY_ID[id]?.slot !== slot) return;
-  write({ ...s, craft: { ...s.craft, [slot]: id } });
-}
-
-export function setColor(color: string) {
-  const s = read();
-  write({ ...s, craft: { ...s.craft, color } });
-}
-
-export const partPrice = (rarity: Rarity) => BUY_PRICE[rarity];
+export type { Craft };

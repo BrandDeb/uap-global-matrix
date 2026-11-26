@@ -10,7 +10,6 @@
 import { xenoAudio } from '@/components/landing/audio';
 import { Fx, H, Starfield, W, clamp, drawSaucer, glow, loadBest, rand, saveBest, type Game, type HudState, type Input } from './engine';
 import { loadoutStats, drawShip, rollPart, RARITY, type Craft } from '@/lib/craft';
-import { addScrap, findPart } from '@/lib/hangarStore';
 
 interface Bullet { x: number; y: number; vx: number; vy: number; dmg: number; homing?: boolean; pierce?: boolean; }
 interface Enemy { x: number; y: number; vx: number; vy: number; hp: number; max: number; r: number; kind: string; t: number; cd: number; boss?: boolean; }
@@ -35,11 +34,26 @@ export class StarForge implements Game {
   private fx = new Fx();
   private stars = new Starfield(150);
   earned = 0;
-  found: string[] = [];
+  found = 0;
+  /** Raid state read by the Hangar wrapper. */
+  canExtract = false;
+  private extractT = 0;
+  outcome: { extracted: boolean; wave: number } | null = null;
 
   constructor(private craft: Craft) {
     this.hud.best = loadBest(this.id);
     this.s = loadoutStats(craft);
+  }
+
+  /** Player chose to extract (only valid during the post-boss window). */
+  extract() {
+    if (this.hud.phase !== 'playing' || !this.canExtract) return;
+    this.outcome = { extracted: true, wave: this.wave };
+    this.hud.phase = 'over';
+    this.hud.message = `Extracted at wave ${this.wave}. Securing your haul…`;
+    this.hud.best = saveBest(this.id, this.hud.score);
+    this.fx.hype('EXTRACTED', '#5effd8');
+    xenoAudio?.chime();
   }
 
   start() {
@@ -53,7 +67,10 @@ export class StarForge implements Game {
     this.motes = [];
     this.wave = 0;
     this.earned = 0;
-    this.found = [];
+    this.found = 0;
+    this.canExtract = false;
+    this.extractT = 0;
+    this.outcome = null;
     this.inv = 1;
     this.nextWave();
   }
@@ -90,6 +107,10 @@ export class StarForge implements Game {
     }
     if (this.fx.frozen(dt)) return;
     this.inv = Math.max(0, this.inv - dt);
+    if (this.extractT > 0) {
+      this.extractT -= dt;
+      if (this.extractT <= 0) this.canExtract = false;
+    }
 
     const k = input.keys;
     let ax = 0;
@@ -212,14 +233,12 @@ export class StarForge implements Game {
         if (m.kind === 'scrap') {
           this.earned += 5;
           this.hud.score += 20;
-          addScrap(5);
         } else if (m.kind === 'heal') {
           this.hp = Math.min(this.s.hp, this.hp + 1);
           xenoAudio?.chime();
-        } else if (m.kind === 'part' && m.part) {
-          const isNew = findPart(m.part);
-          if (isNew) this.found.push(m.part);
-          this.fx.hype(isNew ? 'NEW PART FOUND' : 'PART (owned)', m.color ?? '#ffd23f');
+        } else if (m.kind === 'part') {
+          this.found += 1;
+          this.fx.hype('SALVAGE', m.color ?? '#ffd23f');
           this.fx.flash(m.color ?? '#ffd23f', 0.8);
           xenoAudio?.chime();
         }
@@ -228,7 +247,7 @@ export class StarForge implements Game {
     this.motes = this.motes.filter((m) => m.y < H + 10);
 
     this.hud.meter = this.hp / this.s.hp;
-    this.hud.goal = `Wave ${this.wave} · ${this.earned} scrap${this.found.length ? ` · ${this.found.length} parts` : ''}`;
+    this.hud.goal = this.canExtract ? '◆ EXTRACT NOW — tap the beacon' : `Wave ${this.wave} · salvage ${this.found}`;
   }
 
   private shoot() {
@@ -268,9 +287,11 @@ export class StarForge implements Game {
     this.hud.score += f.boss ? 2000 : 100;
     this.fx.burst(f.x, f.y, '#ffd23f', f.boss ? 44 : 14, 260);
     if (f.boss) {
-      this.fx.hype('WARLORD DOWN', '#ffd23f');
+      this.fx.hype('WARLORD DOWN · EXTRACT AVAILABLE', '#ffd23f');
       this.fx.flash('#fff', 1.2);
       this.fx.shake = 16;
+      this.canExtract = true;
+      this.extractT = 9;
     }
     const scrapDrops = f.boss ? 10 : Math.random() < 0.5 ? 1 : 0;
     for (let i = 0; i < scrapDrops; i++) this.motes.push({ x: f.x + rand(-20, 20), y: f.y, vy: rand(60, 110), kind: 'scrap' });
@@ -291,14 +312,9 @@ export class StarForge implements Game {
     xenoAudio?.blip(0.1);
     if (this.hp <= 0) {
       this.hud.phase = 'over';
-      const extra = this.found.length ? ` Found ${this.found.length} new part${this.found.length === 1 ? '' : 's'}.` : '';
-      this.hud.message = `Reached wave ${this.wave}. ${this.earned} scrap banked.${extra}`;
+      this.outcome = { extracted: false, wave: this.wave };
+      this.hud.message = `Craft destroyed at wave ${this.wave}. Uninsured gear is lost…`;
       this.hud.best = saveBest(this.id, this.hud.score);
-      try {
-        addScrap(0, this.wave);
-      } catch {
-        /* standalone */
-      }
     }
   }
 

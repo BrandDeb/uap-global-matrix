@@ -80,3 +80,37 @@ export async function moderate(text: string): Promise<{ verdict: Verdict; ai: bo
 
 /** Severe verdicts ban immediately. */
 export const BAN_NOW: Verdict[] = ['sexual', 'hate', 'threat'];
+
+const IMAGE_PROMPT = `You screen images uploaded to a family-friendly website's crop-circle drawing gallery. Expected content: abstract glowing line drawings on a textured field (wheat, snow, sand, moon dust).
+Reply with exactly one label:
+ok — an abstract drawing, pattern, doodle, or harmless picture
+sexual — any nudity, sexual or suggestive content, including drawn
+violent — gore, weapons aimed at people, self-harm
+hate — hate symbols or slurs
+text — readable words, links, phone numbers or QR codes (spam / phishing risk)
+photo — a real photograph of a person or private document
+Reply with only the label.`;
+
+/**
+ * AI screening for uploaded images. Fails CLOSED: if the AI is unavailable
+ * the upload is refused, so nothing unchecked is ever published.
+ */
+export async function moderateImage(bytes: Buffer, mime: string): Promise<{ ok: boolean; label: string }> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return { ok: false, label: 'unavailable' };
+  const ai = new GoogleGenAI({ apiKey });
+  for (const model of MODELS) {
+    try {
+      const res = await ai.models.generateContent({
+        model,
+        contents: [{ role: 'user', parts: [{ inlineData: { mimeType: mime, data: bytes.toString('base64') } }, { text: 'Label this image.' }] }],
+        config: { systemInstruction: IMAGE_PROMPT, temperature: 0, maxOutputTokens: 5 },
+      });
+      const label = (res.text ?? '').trim().toLowerCase().replace(/[^a-z]/g, '');
+      return { ok: label === 'ok', label: label || 'unknown' };
+    } catch (e) {
+      if (!/not found|404|not supported|unavailable|deprecated/i.test(e instanceof Error ? e.message : '')) break;
+    }
+  }
+  return { ok: false, label: 'unavailable' };
+}

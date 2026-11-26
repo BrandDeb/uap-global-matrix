@@ -32,3 +32,28 @@ export async function readJson(req: Request): Promise<Record<string, unknown> | 
     return null;
   }
 }
+
+/* --- rate limiting ------------------------------------------------------------- */
+
+const buckets = new Map<string, number[]>();
+/**
+ * Sliding-window limiter (per server instance). First line of defence against
+ * floods and AI-quota burning; Vercel's edge firewall handles volumetric DDoS.
+ * Returns true when the caller is over the limit.
+ */
+export function limited(key: string, max: number, windowMs: number): boolean {
+  const now = Date.now();
+  const hits = (buckets.get(key) ?? []).filter((t) => now - t < windowMs);
+  if (hits.length >= max) {
+    buckets.set(key, hits);
+    return true;
+  }
+  hits.push(now);
+  buckets.set(key, hits);
+  if (buckets.size > 20_000) buckets.clear();
+  return false;
+}
+
+export function clientIp(req: Request): string {
+  return (req.headers.get('x-forwarded-for') ?? 'local').split(',')[0].trim();
+}

@@ -13,7 +13,6 @@ import { useEffect, useState } from 'react';
 import { Send } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import SignInButtons from '@/components/ui/SignInButtons';
-import { getOperatorId } from '@/lib/operatorId';
 
 interface ThreadRow {
   readonly id: string;
@@ -73,7 +72,7 @@ export default function CaseThread({ sightingId }: CaseThreadProps) {
     };
   }, [sightingId]);
 
-  const handle = profile?.operatorHandle ?? getOperatorId();
+  const handle = profile?.operatorHandle ?? null;
 
   const post = async (intelText: string, parentId: string | null) => {
     const t = intelText.trim();
@@ -98,11 +97,20 @@ export default function CaseThread({ sightingId }: CaseThreadProps) {
           Operator Discussion ({rows.length})
         </h3>
         <span className="font-mono text-[10px] text-zinc-500">
-          posting as <span className="text-emerald-400">@{handle}</span>
-          {!profile && <SignInButtons className="mt-2 justify-end" prefix="Verify with" />}
+          {handle ? (
+            <>
+              posting as <span className="text-emerald-400">@{handle}</span>
+            </>
+          ) : (
+            <>
+              Sign in to join (comments are moderated)
+              <SignInButtons className="mt-2 justify-end" prefix="Sign in with" />
+            </>
+          )}
         </span>
       </div>
 
+      {handle && (
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -126,6 +134,7 @@ export default function CaseThread({ sightingId }: CaseThreadProps) {
           <Send size={14} />
         </button>
       </form>
+      )}
 
       <div className="space-y-3">
         {tops.length === 0 && (

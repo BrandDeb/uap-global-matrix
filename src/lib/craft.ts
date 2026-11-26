@@ -261,3 +261,49 @@ export function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, sc
 }
 
 export const SHIP_COLORS = ["#5effd8", "#a58bff", "#ff5ec8", "#ffd23f", "#38e8ff", "#ff7a5c", "#c6ff6b"];
+
+/* --- Tarkov-style raid economy helpers ----------------------------------------- */
+
+export const INSURE_COST: Record<Rarity, number> = { common: 20, rare: 80, epic: 220, legendary: 600 };
+export const INSURE_RETURN_CHANCE = 0.8; // insured part survives death with this probability
+
+/** Parts always available from stock — never lost, so a player can't get stuck. */
+export const STOCK_PARTS = new Set(STARTER_PARTS);
+export const isStock = (id: string) => STOCK_PARTS.has(id);
+
+/** Scrap found per wave reached (what a run is worth on extraction). */
+export const raidScrap = (wave: number) => wave * 12 + Math.max(0, wave - 5) * 8;
+
+/**
+ * Deterministic loot roll for a completed raid. Given the server seed and the
+ * wave reached, returns the part ids found. More waves = more rolls and a shift
+ * toward rarer parts (depth bonus). Used server-side on extraction only.
+ */
+export function rollRaidLoot(seed: number, wave: number): string[] {
+  let t = seed >>> 0;
+  const rnd = () => {
+    t = (t + 0x6d2b79f5) >>> 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+  const rolls = 1 + Math.floor(wave / 2); // ~1 part per 2 waves
+  const depth = Math.min(0.5, wave * 0.03); // shifts odds toward rarer parts
+  const out: string[] = [];
+  for (let i = 0; i < rolls; i++) {
+    // depth-weighted rarity pick
+    const weights: [Rarity, number][] = [
+      ['common', RARITY.common.weight * (1 - depth)],
+      ['rare', RARITY.rare.weight],
+      ['epic', RARITY.epic.weight * (1 + depth)],
+      ['legendary', RARITY.legendary.weight * (1 + depth * 2)],
+    ];
+    const total = weights.reduce((s, [, w]) => s + w, 0);
+    let r = rnd() * total;
+    let rarity: Rarity = 'common';
+    for (const [k, w] of weights) if ((r -= w) < 0) { rarity = k; break; }
+    const pool = PARTS.filter((p) => p.rarity === rarity);
+    out.push(pool[Math.floor(rnd() * pool.length)].id);
+  }
+  return out;
+}

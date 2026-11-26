@@ -253,3 +253,14 @@ html[data-theme='light'] {
   --xeno-d: #ffa3dc;
   --xeno-a: #a8fff0;
 }
+
+/* Card showcase auras (Legendary / Ultra / Mythic) */
+@keyframes aura-spin { to { transform: rotate(360deg); } }
+@keyframes aura-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes aura-rise { from { transform: translateY(0) scale(1); opacity: 0.9; } to { transform: translateY(-260px) scale(0.3); opacity: 0; } }
+.aura-spin { animation: aura-spin 9s linear infinite; }
+.aura-bob { animation: aura-bob 3.2s ease-in-out infinite; }
+.aura-mote { animation: aura-rise 3.6s ease-in infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .aura-spin, .aura-bob, .aura-mote { animation: none; }
+}

@@ -19,6 +19,7 @@ export interface WalletView {
   last_daily: string | null;
   scan_day: string | null;
   scans: number;
+  series_claimed?: number[];
 }
 export interface CardsState {
   status: 'loading' | 'signed-out' | 'ready' | 'error';

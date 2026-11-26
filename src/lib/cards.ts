@@ -171,6 +171,49 @@ export function dropChance(def: CardDef): number {
   return (RARITY[def.rarity].weight / total / same) * 100;
 }
 
+/* --- binder series ------------------------------------------------------------- */
+
+export const SERIES = [
+  { n: 1, name: 'First Contact', from: 1 },
+  { n: 2, name: 'Blaze & Volt', from: 27 },
+  { n: 3, name: 'Volt & Void', from: 53 },
+  { n: 4, name: 'Void & Flora', from: 79 },
+  { n: 5, name: 'Flora & Tide', from: 105 },
+  { n: 6, name: 'Deep Space', from: 131 },
+].map((x) => ({ ...x, cards: CARDS.slice(x.from - 1, x.from + 25) }));
+export const SERIES_REWARD = 10;
+
+/* --- abilities ---------------------------------------------------------------- */
+
+export type Passive = 'guard' | 'ambush' | 'evade' | 'focus';
+export const PASSIVES: Record<Passive, { name: string; text: string }> = {
+  guard: { name: 'Thick Hide', text: 'Takes 12% less damage.' },
+  ambush: { name: 'First Strike', text: 'Its first attack deals 40% more damage.' },
+  evade: { name: 'Phase Step', text: '12% chance to dodge an attack completely.' },
+  focus: { name: 'Steady Mind', text: 'Signature move charges every 2 actions instead of 3.' },
+};
+const LEADER_PCT: Record<Rarity, number> = { C: 5, R: 8, E: 12, L: 18, U: 25, M: 30 };
+
+/** Archetype from base stats → passive. */
+export function passiveOf(d: CardDef): Passive {
+  const r = { hp: d.hp / 110, atk: d.atk / 34, def: d.def / 24, spd: d.spd / 19 };
+  const sorted = (Object.entries(r) as [keyof typeof r, number][]).sort((a, b) => b[1] - a[1]);
+  if (sorted[0][1] - sorted[3][1] < 0.22) return 'focus'; // balanced all-rounder
+  const top = sorted[0][0];
+  return top === 'def' || top === 'hp' ? 'guard' : top === 'atk' ? 'ambush' : top === 'spd' ? 'evade' : 'focus';
+}
+
+export function abilitiesOf(d: CardDef) {
+  const lp = LEADER_PCT[d.rarity];
+  const col = COLORS[d.color];
+  const pas = PASSIVES[passiveOf(d)];
+  return {
+    leader: { name: `${col.name} Command`, text: `As leader: +${lp}% attack and health to ${col.name} allies (including itself).` , pct: lp },
+    passive: { ...pas, key: passiveOf(d) },
+    skill: { name: col.skill, text: `${col.skillText} Fires every ${passiveOf(d) === 'focus' ? '2nd' : '3rd'} action.` },
+  };
+}
+
 /* --- battle ------------------------------------------------------------------------ */
 
 export interface Fighter {
@@ -184,6 +227,7 @@ export interface Fighter {
   spd: number;
   shield: boolean;
   acts: number;
+  passive: Passive;
 }
 export interface BattleLog {
   turn: number;
@@ -203,7 +247,11 @@ export function makeFighters(team: { id: string; o: Owned }[], side: 0 | 1): Fig
     .map((t, i) => {
       const d = CARD_BY_ID[t.id];
       const s = statsOf(d, t.o);
-      return { id: `${side}-${i}-${d.id}`, side, def: d, hp: s.hp, max: s.hp, atk: s.atk, dfn: s.def, spd: s.spd, shield: false, acts: 0 };
+      // Leader (slot 0) boosts allies of its colour.
+      const lead = CARD_BY_ID[team[0].id];
+      const boost = lead && lead.color === d.color ? 1 + LEADER_PCT[lead.rarity] / 100 : 1;
+      const hp = Math.round(s.hp * boost);
+      return { id: `${side}-${i}-${d.id}`, side, def: d, hp, max: hp, atk: Math.round(s.atk * boost), dfn: s.def, spd: s.spd, shield: false, acts: 0, passive: passiveOf(d) };
     });
 }
 
@@ -221,10 +269,13 @@ export function battle(a: Fighter[], b: Fighter[], seed: number) {
       // Prefer a target the attacker has type advantage over, else the weakest.
       const target = foes.find((x) => beats(f.def.color, x.def.color)) ?? foes.sort((x, y) => x.hp - y.hp)[0];
       f.acts++;
-      const useSkill = f.acts % 3 === 0;
+      const useSkill = f.acts % (f.passive === 'focus' ? 2 : 3) === 0;
       const mult = typeMult(f.def.color, target.def.color);
       const hit = (scale: number) => {
-        let d = Math.max(1, Math.round(f.atk * scale * mult * (100 / (100 + target.dfn * 2)) * (0.9 + rand() * 0.2)));
+        if (target.passive === 'evade' && rand() < 0.12) return 0;
+        const ambush = f.passive === 'ambush' && f.acts === 1 ? 1.4 : 1;
+        const guard = target.passive === 'guard' ? 0.88 : 1;
+        let d = Math.max(1, Math.round(f.atk * scale * mult * ambush * guard * (100 / (100 + target.dfn * 2)) * (0.9 + rand() * 0.2)));
         if (target.shield) {
           d = Math.round(d / 2);
           target.shield = false;

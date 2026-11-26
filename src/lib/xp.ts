@@ -19,6 +19,7 @@ export interface XpSource {
   daily?: { wins?: number; best?: number } | null;
   keeper?: { xp?: number } | null;
   hangar?: { xp?: number } | null;
+  cards?: { owned?: Record<string, { shards?: number; level?: number }>; wins?: number } | null;
 }
 
 export function xpOf(p: XpSource): number {
@@ -28,7 +29,9 @@ export function xpOf(p: XpSource): number {
   const daily = (p.daily?.wins ?? 0) * 60 + (p.daily?.best ?? 0) * 40;
   const keeper = Math.min(20000, p.keeper?.xp ?? 0);
   const hangar = Math.min(10000, p.hangar?.xp ?? 0);
-  return Math.floor(eggs + badges + arcade + daily + keeper + hangar);
+  const owned = Object.values(p.cards?.owned ?? {});
+  const cards = owned.length * 60 + owned.reduce((s, o) => s + (o.shards ?? 0) * 15 + (o.level ?? 1) * 4, 0) + (p.cards?.wins ?? 0) * 25;
+  return Math.floor(eggs + badges + arcade + daily + keeper + hangar + Math.min(30000, cards));
 }
 
 export function rankOf(xp: number) {

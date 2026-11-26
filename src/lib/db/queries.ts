@@ -587,3 +587,15 @@ export async function topTeams(limit = 20): Promise<{ handle: string; rating: nu
   if (!hasDb()) return [];
   return getDb()`SELECT handle, rating, power FROM card_teams ORDER BY rating DESC LIMIT ${limit}` as unknown as Promise<{ handle: string; rating: number; power: number }[]>;
 }
+
+/** Change a pilot's public handle. Returns false if taken. */
+export async function renameHandle(id: string, handle: string): Promise<boolean> {
+  if (!hasDb()) return true;
+  try {
+    const rows = await getDb()`UPDATE profiles SET operator_handle = ${handle} WHERE id = ${id} RETURNING id`;
+    return rows.length > 0;
+  } catch (err: unknown) {
+    if ((err as { code?: string }).code === '23505') return false;
+    throw err;
+  }
+}

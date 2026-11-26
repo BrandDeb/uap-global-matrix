@@ -50,6 +50,8 @@ import SiteMenu from '@/components/ui/SiteMenu';
 import { findEgg } from './eggs';
 import { SPECIES } from './voxelSpecies';
 import { SOCIALS } from '@/lib/site';
+import XenoCard from '@/components/cards/XenoCard';
+import { CARD_BY_ID } from '@/lib/cards';
 import { xenoAudio } from './audio';
 import CropCircleCanvas from './CropCircleCanvas';
 import SubmissionModal from '@/components/ui/SubmissionModal';
@@ -141,6 +143,25 @@ function SignInPopover() {
         </div>
       )}
     </div>
+  );
+}
+
+function PlayTile({ href, kicker, title, note, emoji, color }: { href: string; kicker: string; title: string; note: string; emoji: string; color: string }) {
+  return (
+    <Link href={href} data-cursor="PLAY" className="xeno-glass group flex flex-col justify-between gap-4 p-5 transition hover:-translate-y-1">
+      <div className="flex items-start justify-between">
+        <p className="font-mono text-[10px] uppercase tracking-[0.3em]" style={{ color }}>
+          {kicker}
+        </p>
+        <span className="grid h-11 w-11 place-items-center rounded-2xl text-xl transition-transform duration-500 group-hover:-rotate-12 group-hover:scale-110" style={{ background: `${color}22`, boxShadow: `inset 0 0 0 1px ${color}55` }}>
+          {emoji}
+        </span>
+      </div>
+      <div>
+        <h3 className="font-[family-name:var(--font-display)] text-xl font-extrabold uppercase">{title}</h3>
+        <p className="mt-1 text-sm leading-relaxed text-white/55">{note}</p>
+      </div>
+    </Link>
   );
 }
 
@@ -444,18 +465,20 @@ export default function Landing() {
           <Link href="/pilots" className="transition hover:text-white" data-cursor="READ">
             Pilots
           </Link>
-          <Link href="/arcade" className="transition hover:text-white" data-cursor="PLAY">
-            Arcade
+          <Link href="/play" className="transition hover:text-white" data-cursor="PLAY">
+            Play
           </Link>
         </nav>
         <div className="flex items-center gap-2">
-          <SoundToggle on={soundOn} onToggle={() => void toggleSound()} />
+          <div className="hidden sm:block">
+            <SoundToggle on={soundOn} onToggle={() => void toggleSound()} />
+          </div>
           <SiteMenu />
           <div className="hidden sm:block">
             <SignInPopover />
           </div>
           <UserChip />
-          <Link href="/matrix" className="xeno-btn" data-cursor="ENTER">
+          <Link href="/matrix" className="xeno-btn hidden sm:inline-flex" data-cursor="ENTER">
             Enter <ArrowUpRight size={12} />
           </Link>
         </div>
@@ -694,29 +717,35 @@ export default function Landing() {
           </section>
         )}
 
-        {/* ARCADE TEASER */}
-        <section className="relative px-4 py-[10vh] md:px-10">
-          <Link
-            href="/arcade"
-            data-cursor="PLAY"
-            className="xeno-glass group flex flex-col items-start justify-between gap-6 overflow-hidden p-8 md:flex-row md:items-center md:p-12"
-          >
-            <div>
-              <SectionLabel>Take a break from the truth</SectionLabel>
-              <h2 className="font-[family-name:var(--font-display)] text-[11vw] font-extrabold uppercase leading-[1] md:text-[5vw]">
-                The <span className="xeno-gradient-text">Arcade</span>
-              </h2>
-              <p className="mt-4 max-w-lg text-sm leading-relaxed text-white/55">
-                Three original games: abduct cows before dawn, recycle humanity’s space junk off your moon, and sling debris into a
-                very hungry black hole.
-              </p>
-            </div>
-            <span className="flex gap-4 text-6xl transition-transform duration-500 group-hover:scale-110 md:text-7xl">
-              <span className="inline-block group-hover:animate-bounce">🐄</span>
-              <span className="inline-block [animation-delay:0.1s] group-hover:animate-bounce">🛰️</span>
-              <span className="inline-block [animation-delay:0.2s] group-hover:animate-bounce">🕳️</span>
-            </span>
-          </Link>
+        {/* PLAY SHOWCASE */}
+        <section id="play" className="relative px-4 py-[10vh] md:px-10">
+          <SectionLabel>Take a break from the truth</SectionLabel>
+          <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
+            <h2 className="font-[family-name:var(--font-display)] text-4xl font-extrabold uppercase leading-[1] md:text-6xl">
+              Come <span className="xeno-gradient-text">play</span>
+            </h2>
+            <p className="max-w-sm text-sm text-white/55">Collect aliens, raise a family, crack a daily mystery and chase weekly prizes. All free.</p>
+          </div>
+          <div className="mt-8 grid gap-4 md:grid-cols-4 md:grid-rows-2">
+            <Link href="/cards" data-cursor="PLAY" className="xeno-glass group relative flex min-h-[340px] flex-col justify-between overflow-hidden p-6 md:col-span-2 md:row-span-2">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[var(--xeno-b)]">New · trading cards</p>
+                <h3 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-extrabold uppercase">Xeno Cards</h3>
+                <p className="mt-2 max-w-xs text-sm text-white/55">Summon 30 visitors across five rarities. Stack duplicates up to 14★, train them, and battle other pilots.</p>
+              </div>
+              <div className="pointer-events-none relative mx-auto mt-6 flex h-[230px] w-full max-w-[360px] items-end justify-center">
+                {['grey', 'ultra-void', 'flatwoods'].map((id, k) => (
+                  <div key={id} className="absolute bottom-0 transition-transform duration-500" style={{ transform: `translateX(${(k - 1) * 92}px) rotate(${(k - 1) * 9}deg) translateY(${k === 1 ? -14 : 0}px)`, zIndex: k === 1 ? 2 : 1 }}>
+                    <XenoCard def={CARD_BY_ID[id]} owned={{ shards: k === 1 ? 21 : 3, level: 20 }} size={k === 1 ? 160 : 140} />
+                  </div>
+                ))}
+              </div>
+            </Link>
+            <PlayTile href="/keeper" kicker="Daily care" title="Xeno Keeper" note="Rescue survivors from a new crash site every day. Feed them by learning about space." emoji="🛸" color="#5effd8" />
+            <PlayTile href="/daily" kicker="1 case a day" title="Daily Challenge" note="Plane, satellite, balloon or unexplained? Keep your streak." emoji="📅" color="#ffd23f" />
+            <PlayTile href="/arcade" kicker="Weekly prizes" title="Arcade" note="Moo-ve It, Junk Invaders, Gravity Janitor, Radar Ghost." emoji="🕹" color="#ff5ec8" />
+            <PlayTile href="/comms" kicker="Community" title="Comms" note="Describe what you saw. Talk to fellow skywatchers." emoji="💬" color="#4cb8ff" />
+          </div>
         </section>
 
         {/* REPORT A SIGHTING */}

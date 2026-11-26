@@ -19,6 +19,9 @@ interface Msg {
 
 const SUGGESTIONS = [
   'What are the 3 best-documented cases, and why?',
+  'How many alien civilisations might exist? (Drake equation)',
+  'If aliens exist, why haven’t we heard from them?',
+  'Where in our solar system could life exist?',
   'What really happened with the Nimitz “Tic Tac”?',
   'Which sightings were caught on radar AND by pilots?',
   'What were the WWII “foo fighters”?',
@@ -99,7 +102,7 @@ export default function Archivist() {
         data-cursor="ASK"
         className="fixed bottom-5 right-5 z-[60] flex items-center gap-2 rounded-full bg-[var(--xeno-a)] px-5 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-black shadow-[0_0_40px_rgba(94,255,216,0.5)] transition hover:scale-105"
       >
-        {open ? <X size={14} /> : <MessageCircle size={14} />} {open ? 'Close' : 'Ask the Archivist'}
+        {open ? <X size={14} /> : <MessageCircle size={14} />} <span className={open ? '' : 'hidden sm:inline'}>{open ? 'Close' : 'Ask the Archivist'}</span>{!open && <span className="sm:hidden">Ask AI</span>}
       </button>
 
       {open && (
@@ -109,7 +112,7 @@ export default function Archivist() {
           className="xeno-glass fixed bottom-20 right-3 z-[60] flex h-[min(620px,75svh)] w-[min(420px,calc(100vw-1.5rem))] flex-col overflow-hidden !bg-[#0a0818]/95"
         >
           <header className="border-b border-white/10 px-5 py-4">
-            <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-white/40">Grounded in the archive · free tier</p>
+            <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-white/40">UFO archive + space science · free AI</p>
             <h2 className="mt-1 flex items-center gap-2 font-[family-name:var(--font-display)] text-lg font-extrabold">
               <Sparkles size={16} className="text-[var(--xeno-a)]" /> The Archivist
             </h2>

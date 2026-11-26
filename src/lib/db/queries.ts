@@ -473,3 +473,29 @@ export async function nearbySince(lat: number, lon: number, km: number, since: s
     LIMIT 5
   ` as unknown as Promise<{ id: string; title: string; location_name: string; km: number }[]>;
 }
+
+/* --- public pilots ------------------------------------------------------- */
+
+export interface PilotRow {
+  id: string;
+  operator_handle: string;
+  avatar_url: string | null;
+  prefs: Record<string, unknown>;
+  created_at: string;
+}
+
+export async function pilotByHandle(handle: string): Promise<PilotRow | null> {
+  if (!hasDb()) return null;
+  const rows = await getDb()<PilotRow[]>`SELECT id, operator_handle, avatar_url, prefs, created_at FROM profiles WHERE lower(operator_handle) = lower(${handle})`;
+  return rows[0] ?? null;
+}
+
+export async function recentPilots(limit = 200): Promise<PilotRow[]> {
+  if (!hasDb()) return [];
+  return getDb()<PilotRow[]>`SELECT id, operator_handle, avatar_url, prefs, created_at FROM profiles ORDER BY created_at DESC LIMIT ${limit}`;
+}
+
+export async function cropsByHandle(handle: string, limit = 12): Promise<CropRow[]> {
+  if (!hasDb()) return [];
+  return getDb()<CropRow[]>`SELECT id, handle, field, likes, created_at FROM crop_circles WHERE lower(handle) = lower(${handle}) ORDER BY created_at DESC LIMIT ${limit}`;
+}

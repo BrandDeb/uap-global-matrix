@@ -12,11 +12,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ChevronRight, LogOut, MessageSquareHeart, RotateCcw, ShieldCheck, Trash2 } from 'lucide-react';
 import AlienAvatar, { ALIENS } from './AlienAvatar';
-import { AlertsToggle, AvatarPicker, LocationPermission, NameField, ThemePicker } from './Pickers';
+import { AlertsToggle, AlienBuilder, AvatarPicker, LocationPermission, NameField, ThemePicker } from './Pickers';
 import SignInButtons from '@/components/ui/SignInButtons';
 import { useAuth } from '@/hooks/useAuth';
 import { clearProfile, saveProfile, useLocalProfile } from '@/lib/profile';
 import { BADGES, useBadges } from '@/lib/achievements';
+import { RankCard, BioField } from './RankCard';
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -80,7 +81,7 @@ export default function SettingsView() {
 
         {/* identity */}
         <div className="mb-8 flex flex-col items-center text-center">
-          <AlienAvatar index={p.avatar} size={112} className="drop-shadow-[0_0_30px_rgba(94,255,216,0.35)]" />
+          <AlienAvatar index={p.avatar} spec={p.custom} size={112} className="drop-shadow-[0_0_30px_rgba(94,255,216,0.35)]" />
           <p className="mt-3 font-[family-name:var(--font-display)] text-2xl font-extrabold">{display}</p>
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/40">
             {ALIENS[p.avatar]?.name} · {profile ? 'verified pilot' : 'guest pilot'}
@@ -92,6 +93,15 @@ export default function SettingsView() {
             <NameField />
             <p className="mb-3 mt-6 font-mono text-[10px] uppercase tracking-[0.3em] text-white/45">Pick your alien</p>
             <AvatarPicker />
+            <BioField />
+          </Card>
+
+          <Card title="Rank">
+            <RankCard handle={profile?.operatorHandle ?? ''} />
+          </Card>
+
+          <Card title="Alien builder">
+            <AlienBuilder />
           </Card>
 
           <Card title="Badges">

@@ -18,6 +18,10 @@ export interface LocalProfile {
   avatar: number;
   theme: ThemePref;
   onboarded: boolean;
+  /** Short public bio shown on the pilot page. */
+  bio?: string;
+  /** Custom-built alien (overrides `avatar` when set). */
+  custom?: import('@/components/profile/AlienAvatar').Spec | null;
 }
 
 const KEY = 'uap-profile';

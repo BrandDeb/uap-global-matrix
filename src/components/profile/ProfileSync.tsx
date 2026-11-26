@@ -23,7 +23,21 @@ interface Prefs {
   badges?: string[];
   bests?: Record<string, number>;
   daily?: unknown;
+  keeper?: { savedAt?: number };
+  hangar?: { savedAt?: number };
+  bio?: string;
+  custom?: unknown;
 }
+
+/** Game saves synced whole; the newer save (by savedAt) wins. */
+const SAVES = { keeper: 'uap-keeper', hangar: 'uap-hangar' } as const;
+const readSave = (k: string) => {
+  try {
+    return JSON.parse(localStorage.getItem(k) ?? 'null') ?? undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 function local(): Prefs {
   let profile: Prefs = {};
@@ -36,7 +50,20 @@ function local(): Prefs {
   }
   const bests: Record<string, number> = {};
   for (const g of GAMES) bests[g] = Number(localStorage.getItem(`uap-arcade-best:${g}`) ?? 0) || 0;
-  return { name: profile.name, avatar: profile.avatar, theme: profile.theme, onboarded: profile.onboarded, eggs: readEggs(), badges: getBadges(), bests, daily: daily ?? undefined };
+  return {
+    name: profile.name,
+    avatar: profile.avatar,
+    theme: profile.theme,
+    onboarded: profile.onboarded,
+    bio: profile.bio,
+    custom: (profile as { custom?: unknown }).custom ?? undefined,
+    eggs: readEggs(),
+    badges: getBadges(),
+    bests,
+    daily: daily ?? undefined,
+    keeper: readSave(SAVES.keeper),
+    hangar: readSave(SAVES.hangar),
+  };
 }
 
 export default function ProfileSync() {
@@ -62,7 +89,7 @@ export default function ProfileSync() {
         const mine = local();
         applying = true;
         if (remote.onboarded && (!mine.onboarded || !mine.name)) {
-          saveProfile({ name: remote.name ?? '', avatar: remote.avatar ?? 0, theme: remote.theme ?? 'dark', onboarded: true });
+          saveProfile({ name: remote.name ?? '', avatar: remote.avatar ?? 0, theme: remote.theme ?? 'dark', onboarded: true, bio: remote.bio, custom: (remote.custom as never) ?? null });
         }
         if (remote.eggs?.length) mergeEggs(remote.eggs);
         if (remote.badges?.length) setBadges([...getBadges(), ...remote.badges]);
@@ -70,6 +97,14 @@ export default function ProfileSync() {
           if (v > (mine.bests?.[g] ?? 0)) localStorage.setItem(`uap-arcade-best:${g}`, String(v));
         }
         if (remote.daily && !mine.daily) localStorage.setItem('uap-daily', JSON.stringify(remote.daily));
+        for (const [field, key] of Object.entries(SAVES) as [keyof typeof SAVES, string][]) {
+          const r = remote[field];
+          const m = mine[field];
+          if (r && (!m || (r.savedAt ?? 0) > (m.savedAt ?? 0))) {
+            localStorage.setItem(key, JSON.stringify(r));
+            window.dispatchEvent(new Event(`${key}-change`));
+          }
+        }
         applying = false;
         push();
       })

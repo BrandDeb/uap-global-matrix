@@ -58,7 +58,7 @@ export default function Onboarding() {
             {step === 0 && (
               <>
                 <div className="mb-4 flex items-center gap-4">
-                  <AlienAvatar index={p.avatar} size={64} />
+                  <AlienAvatar index={p.avatar} spec={p.custom} size={64} />
                   <div>
                     <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-white/40">Step 1 · identify yourself</p>
                     <h2 className="font-[family-name:var(--font-display)] text-2xl font-extrabold">Welcome, pilot.</h2>

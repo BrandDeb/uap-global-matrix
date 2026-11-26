@@ -24,7 +24,6 @@ import { ARCHIVE, ERAS, MORPHOLOGY, type ArchiveCase, type EraTag, type Morpholo
 
 // WebGL is client-only; both pieces load lazily.
 const CraftView = dynamic(() => import('./CraftViews').then((m) => m.CraftView), { ssr: false });
-const Archivist = dynamic(() => import('./Archivist'), { ssr: false });
 const CraftStage = dynamic(() => import('./CraftViews').then((m) => m.CraftStage), { ssr: false });
 
 /** Tiny line glyph per craft shape. */
@@ -238,7 +237,6 @@ export default function ArchiveFiles({ only }: { only?: EraTag } = {}) {
   return (
     <main className="relative min-h-[100svh] pb-24 text-white">
       <CraftStage />
-      <Archivist />
       {/* top bar */}
       <header className="sticky top-0 z-30 border-b border-white/5 bg-[var(--xeno-void)]/80 px-4 py-3 backdrop-blur-xl md:px-10">
         <div className="flex items-center justify-between gap-3">

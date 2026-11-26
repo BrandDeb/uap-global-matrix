@@ -9,6 +9,7 @@ import ThemeSync, { THEME_BOOT_SCRIPT } from '@/components/profile/ThemeSync';
 import JsonLd from '@/components/JsonLd';
 import ProfileSync from '@/components/profile/ProfileSync';
 import SightingAlerts from '@/components/profile/SightingAlerts';
+import ArchivistMount from '@/components/archive/ArchivistMount';
 import { SITE_DESCRIPTION, SITE_URL, SOCIALS, X_HANDLE } from '@/lib/site';
 import type { Viewport } from 'next';
 
@@ -74,6 +75,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ThemeSync />
         <ProfileSync />
         <SightingAlerts />
+        <ArchivistMount />
         <SmoothScroll />
         {children}
         <Toaster

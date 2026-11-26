@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import { H, W, type Game, type HudState, type Input } from './engine';
 import Leaderboard from './Leaderboard';
 
@@ -94,6 +95,42 @@ const BLOCK = new Set([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 export default function GameCanvas({ create, meta, gameId }: { create: () => Game; meta: GameMeta; gameId: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [hud, setHud] = useState<HudState>({ phase: 'title', score: 0, best: 0 });
+  const wrap = useRef<HTMLDivElement>(null);
+  const [immersive, setImmersive] = useState(false);
+
+  // Full-screen: real Fullscreen API where supported (Android), plus a fixed
+  // overlay that also works on iPhone (which blocks element fullscreen).
+  const toggleFull = () => {
+    const el = wrap.current;
+    const next = !immersive;
+    setImmersive(next);
+    try {
+      if (next) void el?.requestFullscreen?.();
+      else if (document.fullscreenElement) void document.exitFullscreen();
+    } catch {
+      /* iOS / unsupported: the overlay handles it */
+    }
+  };
+  useEffect(() => {
+    const onFs = () => {
+      if (!document.fullscreenElement) setImmersive((v) => (document.fullscreenElement ? v : false));
+    };
+    document.addEventListener('fullscreenchange', onFs);
+    return () => document.removeEventListener('fullscreenchange', onFs);
+  }, []);
+  useEffect(() => {
+    if (!immersive) return;
+    const prev = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setImmersive(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.documentElement.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [immersive]);
 
   useEffect(() => {
     const c = canvas.current;
@@ -177,14 +214,28 @@ export default function GameCanvas({ create, meta, gameId }: { create: () => Gam
   }, [create]);
 
   return (
-    <div className="relative mx-auto w-full max-w-[1100px]">
+    <div ref={wrap} className={immersive ? "fixed inset-0 z-[90] flex items-center justify-center bg-black p-2" : "relative mx-auto w-full max-w-[1100px]"}>
       {/* cabinet bezel */}
-      <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-black p-2 shadow-[0_0_120px_rgba(94,255,216,0.15)] md:p-3">
+      <div className={`relative overflow-hidden border border-white/10 bg-black shadow-[0_0_120px_rgba(94,255,216,0.15)] ${immersive ? "max-h-full max-w-full rounded-[14px] p-1" : "w-full rounded-[28px] p-2 md:p-3"}`} style={immersive ? { aspectRatio: "8 / 5", height: "min(100dvh, 62.5dvw)", width: "min(160dvh, 100dvw)" } : undefined}>
         <canvas
           ref={canvas}
           className="block aspect-[8/5] w-full touch-none rounded-[20px]"
           aria-label={`${meta.title} game`}
         />
+        {/* fullscreen toggle */}
+        <button
+          type="button"
+          onClick={toggleFull}
+          aria-label={immersive ? 'Exit full screen' : 'Full screen'}
+          className="pointer-events-auto absolute right-3 top-3 z-20 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-black/55 text-white backdrop-blur md:right-4 md:top-4"
+        >
+          {immersive ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+        </button>
+        {immersive && (
+          <p className="pointer-events-none absolute inset-x-0 top-14 z-10 text-center font-mono text-[9px] uppercase tracking-[0.3em] text-white/35 md:hidden">
+            rotate for landscape
+          </p>
+        )}
         {/* scanlines + vignette */}
         <div
           aria-hidden

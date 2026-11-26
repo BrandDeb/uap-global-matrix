@@ -6,7 +6,7 @@
  *     battle · scan · catch {caught} · quiz
  */
 import { verifiedHandle, verifiedOperatorId } from '@/auth';
-import { claimDaily, doSummon, keeperCatch, keeperScan, quizReward, rankedBattle, setTeam, state, trainCard } from '@/lib/db/cardEconomy';
+import { claimDaily, claimSeries, doSummon, keeperCatch, keeperScan, quizReward, rankedBattle, setTeam, state, trainCard } from '@/lib/db/cardEconomy';
 import { hasDb } from '@/lib/db';
 import { jsonError, readJson } from '@/lib/apiHelpers';
 
@@ -59,6 +59,10 @@ export async function POST(req: Request): Promise<Response> {
       }
       case 'catch': {
         const r = await keeperCatch(u.id, Boolean(body.caught));
+        return 'error' in r ? jsonError(400, String(r.error)) : Response.json(r);
+      }
+      case 'series': {
+        const r = await claimSeries(u.id, Number(body.n));
         return 'error' in r ? jsonError(400, String(r.error)) : Response.json(r);
       }
       case 'quiz':

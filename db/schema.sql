@@ -292,3 +292,4 @@ CREATE TABLE IF NOT EXISTS card_trades (
 );
 CREATE INDEX IF NOT EXISTS card_trades_to_idx ON card_trades (to_user, status);
 CREATE INDEX IF NOT EXISTS card_trades_from_idx ON card_trades (from_user, status);
+ALTER TABLE card_wallets ADD COLUMN IF NOT EXISTS series_claimed integer[] NOT NULL DEFAULT '{}';

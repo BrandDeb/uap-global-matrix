@@ -9,7 +9,7 @@
 import 'server-only';
 import { randomInt } from 'node:crypto';
 import { getDb } from './index';
-import { battle, CARD_BY_ID, levelCap, makeFighters, powerOf, starsFor, summon, type Owned } from '@/lib/cards';
+import { battle, CARD_BY_ID, levelCap, makeFighters, powerOf, SERIES, SERIES_REWARD, starsFor, summon, type Owned } from '@/lib/cards';
 
 import type { Sql, TransactionSql } from 'postgres';
 type Tx = TransactionSql;
@@ -31,6 +31,7 @@ export interface Wallet {
   quiz_day: string | null;
   quiz_count: number;
   team: string[];
+  series_claimed: number[];
 }
 
 async function wallet(tx: Tx, userId: string): Promise<Wallet> {
@@ -262,5 +263,20 @@ export async function respondTrade(userId: string, id: number, action: 'accept' 
     await giveCard(tx, from, want);
     await tx`UPDATE card_trades SET status = 'accepted' WHERE id = ${id}`;
     return { status: 'accepted' };
+  });
+}
+
+/** Claim the completion reward for a binder series (once). */
+export async function claimSeries(userId: string, n: number) {
+  return getDb().begin(async (tx) => {
+    const w = await wallet(tx, userId);
+    const series = SERIES.find((x) => x.n === n);
+    if (!series) return { error: 'Unknown series.' as const };
+    if ((w.series_claimed ?? []).includes(n)) return { error: 'Already claimed.' as const };
+    const mine = await owned(tx, userId);
+    const missing = series.cards.filter((c) => !mine[c.id]).length;
+    if (missing) return { error: `${missing} more card${missing === 1 ? '' : 's'} to complete this series.` as const };
+    await tx`UPDATE card_wallets SET series_claimed = array_append(series_claimed, ${n}), signals = signals + ${SERIES_REWARD} WHERE user_id = ${userId}`;
+    return { granted: SERIES_REWARD };
   });
 }

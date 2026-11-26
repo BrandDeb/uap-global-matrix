@@ -6,21 +6,24 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Swords, Zap } from 'lucide-react';
+import { ArrowLeft, Swords } from 'lucide-react';
 import { toast } from 'sonner';
 import XenoCard from './XenoCard';
 import { xenoAudio } from '@/components/landing/audio';
-import { battle, CARD_BY_ID, CARDS, COLORS, dropChance, levelCap, statsOf, makeFighters, powerOf, RARITY, shardsToNext, starsFor, WHEEL, type BattleLog, type CardDef, type Fighter, type Owned, type Rarity } from '@/lib/cards';
+import { battle, CARD_BY_ID, CARDS, COLORS, statsOf, makeFighters, powerOf, RARITY, starsFor, WHEEL, type BattleLog, type CardDef, type Fighter, type Owned, type Rarity } from '@/lib/cards';
 import { cardAction, useCollection } from '@/lib/collection';
 import TradesView from './TradesView';
+import CardShowcase from './CardShowcase';
+import Binder from './Binder';
 import SortFilter, { DEFAULT_VIEW, type View } from './SortFilter';
 
-type Tab = 'summon' | 'collection' | 'arena' | 'trades';
+type Tab = 'summon' | 'collection' | 'binder' | 'arena' | 'trades';
 
 export default function CardsApp() {
   const c = useCollection();
   const [tab, setTab] = useState<Tab>('summon');
   const ready = c.status === 'ready';
+  const [preview, setPreview] = useState<CardDef | null>(null);
   useEffect(() => {
     if (!ready) return;
     void cardAction<{ claimed?: boolean }>('daily').then((d) => d.claimed && toast('🎁 Daily supply drop', { description: '+1 Signal and +5 Energy. Come back tomorrow for more.' }));
@@ -43,7 +46,7 @@ export default function CardsApp() {
         156 visitors across six rarities. Stack duplicates into stars (up to 14★), train them, battle and trade with other pilots. Colours beat each other in a wheel: 🔥 → ⚡ → 🌀 → 🌿 → 💧 → 🔥.
       </p>
       <nav className="mt-6 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-        {(['summon', 'collection', 'arena', 'trades'] as Tab[]).map((t) => (
+        {(['summon', 'collection', 'binder', 'arena', 'trades'] as Tab[]).map((t) => (
           <button key={t} type="button" onClick={() => setTab(t)} aria-pressed={tab === t} className={`shrink-0 rounded-full border px-4 py-2 font-mono text-[11px] uppercase tracking-[0.2em] ${tab === t ? 'border-[var(--xeno-a)] bg-[var(--xeno-a)]/15 text-white' : 'border-white/15 text-white/55'}`}>
             {t}
           </button>
@@ -55,14 +58,15 @@ export default function CardsApp() {
           <Link href="/signin?callbackUrl=/cards" className="rounded-full bg-[var(--xeno-a)] px-6 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-black">Sign in and get 10 free summons</Link>
           <div className="mt-4 flex flex-wrap justify-center gap-3">
             {['mythic-first-contact', 'ultra-void', 'flatwoods', 'grey'].map((id) => (
-              <XenoCard key={id} def={CARD_BY_ID[id]} size={130} />
+              <XenoCard key={id} def={CARD_BY_ID[id]} size={130} onClick={() => setPreview(CARD_BY_ID[id])} />
             ))}
+            {preview && <CardShowcase def={preview} onClose={() => setPreview(null)} />}
           </div>
         </div>
       ) : c.status === 'loading' ? (
         <p className="mt-10 text-white/45">Tuning the array…</p>
       ) : (
-        <div className="mt-8">{tab === 'summon' ? <Summon /> : tab === 'collection' ? <CollectionView /> : tab === 'arena' ? <Arena /> : <TradesView />}</div>
+        <div className="mt-8">{tab === 'summon' ? <Summon /> : tab === 'collection' ? <CollectionView /> : tab === 'binder' ? <BinderTab /> : tab === 'arena' ? <Arena /> : <TradesView />}</div>
       )}
     </main>
   );
@@ -194,57 +198,19 @@ function CollectionView() {
           <XenoCard key={d.id} def={d} owned={c.owned[d.id]} size={168} dim={!c.owned[d.id]} onClick={() => setSel(d)} />
         ))}
       </div>
-      {sel && <CardDetail def={sel} o={c.owned[sel.id]} onClose={() => setSel(null)} />}
+      {sel && <CardShowcase def={sel} o={c.owned[sel.id]} onClose={() => setSel(null)} />}
     </section>
   );
 }
 
-function CardDetail({ def, o, onClose }: { def: CardDef; o?: Owned; onClose: () => void }) {
+function BinderTab() {
   const c = useCollection();
-  const stars = o ? starsFor(o.shards) : 0;
-  const next = o ? shardsToNext(o.shards) : null;
-  const col = COLORS[def.color];
-  const strongVs = WHEEL[(WHEEL.indexOf(def.color) + 1) % 5];
-  const weakVs = WHEEL[(WHEEL.indexOf(def.color) + 4) % 5];
+  const [sel, setSel] = useState<CardDef | null>(null);
   return (
-    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur" onClick={onClose} data-lenis-prevent>
-      <div className="xeno-glass flex max-h-[92svh] w-full max-w-3xl flex-col items-center gap-6 overflow-y-auto p-6 md:flex-row md:items-start" onClick={(e) => e.stopPropagation()}>
-        <XenoCard def={def} owned={o} size={240} dim={!o} />
-        <div className="w-full flex-1">
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em]" style={{ color: col.hex }}>
-            #{String(def.no ?? 0).padStart(3, '0')} · {RARITY[def.rarity].name} · {col.icon} {col.name} · {dropChance(def) < 0.1 ? dropChance(def).toFixed(2) : dropChance(def).toFixed(1)}% per summon
-          </p>
-          <h2 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-extrabold uppercase">{def.name}</h2>
-          <p className="mt-2 text-sm italic text-white/60">“{def.lore}”</p>
-          <p className="mt-4 text-sm text-white/75">
-            <b>{col.skill}</b> (every 3rd action): {col.skillText}
-          </p>
-          <p className="mt-2 text-sm text-white/60">
-            Strong vs {COLORS[strongVs].icon} {COLORS[strongVs].name} · Weak vs {COLORS[weakVs].icon} {COLORS[weakVs].name}
-          </p>
-          {o ? (
-            <>
-              <p className="mt-4 font-mono text-xs text-white/60">
-                {stars}★ · {next === null ? 'MAX stars' : `${next} more duplicate${next === 1 ? '' : 's'} to ${stars + 1}★`} · Level {o.level}/{levelCap(stars)} · Power {powerOf(def, o)}
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button type="button" disabled={c.wallet.energy < 1 || o.level >= levelCap(stars)} onClick={() => void cardAction('train', { id: def.id, levels: 1 }).then(() => xenoAudio?.blip(0.8))} className="xeno-btn disabled:opacity-40">
-                  <Zap size={12} /> Train +1 (⚡1)
-                </button>
-                <button type="button" disabled={c.wallet.energy < 1 || o.level >= levelCap(stars)} onClick={() => void cardAction('train', { id: def.id, levels: 10 }).then(() => xenoAudio?.chime())} className="xeno-btn disabled:opacity-40">
-                  Train +10
-                </button>
-              </div>
-            </>
-          ) : (
-            <p className="mt-4 text-sm text-white/45">Not discovered yet. Summon or catch it in Xeno Keeper.</p>
-          )}
-          <button type="button" onClick={onClose} className="mt-6 font-mono text-[10px] uppercase tracking-[0.3em] text-white/45 hover:text-white">
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+    <>
+      <Binder onOpen={setSel} />
+      {sel && <CardShowcase def={sel} o={c.owned[sel.id]} onClose={() => setSel(null)} />}
+    </>
   );
 }
 

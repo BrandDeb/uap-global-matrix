@@ -219,3 +219,37 @@ CREATE TABLE IF NOT EXISTS crop_circles (
 );
 CREATE INDEX IF NOT EXISTS crop_circles_likes_idx ON crop_circles (likes DESC, created_at DESC);
 CREATE INDEX IF NOT EXISTS crop_circles_new_idx ON crop_circles (created_at DESC);
+
+-- --- comms (moderated chat) --------------------------------------------------
+CREATE TABLE IF NOT EXISTS comms_messages (
+  id         bigserial PRIMARY KEY,
+  room       text NOT NULL,
+  user_id    text NOT NULL,
+  handle     text NOT NULL,
+  body       text NOT NULL,
+  hidden     boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS comms_room_idx ON comms_messages (room, id DESC);
+CREATE TABLE IF NOT EXISTS comms_reports (
+  message_id bigint NOT NULL,
+  reporter   text NOT NULL,
+  PRIMARY KEY (message_id, reporter)
+);
+CREATE TABLE IF NOT EXISTS user_standing (
+  user_id    text PRIMARY KEY,
+  strikes    integer NOT NULL DEFAULT 0,
+  banned     boolean NOT NULL DEFAULT false,
+  reason     text,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- --- card battles: each pilot's defence team (for async PvP) -----------------
+CREATE TABLE IF NOT EXISTS card_teams (
+  user_id    text PRIMARY KEY,
+  handle     text NOT NULL,
+  team       jsonb NOT NULL,
+  power      integer NOT NULL DEFAULT 0,
+  rating     integer NOT NULL DEFAULT 1000,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);

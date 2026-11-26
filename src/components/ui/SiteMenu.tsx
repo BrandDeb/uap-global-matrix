@@ -10,6 +10,7 @@ import { Menu, X } from 'lucide-react';
 
 export const SITE_LINKS = [
   { href: '/matrix', label: 'The Globe', note: 'Every sighting on a live 3D Earth' },
+  { href: '/comms', label: 'Comms', note: 'Describe sightings, talk to skywatchers' },
   { href: '/daily', label: 'Daily Challenge', note: 'One real case a day. Keep your streak' },
   { href: '/arcade', label: 'Arcade', note: 'Five games, weekly prizes' },
   { href: '/archive', label: 'The Files', note: 'Declassified cases, 1942 to now' },

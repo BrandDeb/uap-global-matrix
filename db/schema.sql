@@ -293,3 +293,25 @@ CREATE TABLE IF NOT EXISTS card_trades (
 CREATE INDEX IF NOT EXISTS card_trades_to_idx ON card_trades (to_user, status);
 CREATE INDEX IF NOT EXISTS card_trades_from_idx ON card_trades (from_user, status);
 ALTER TABLE card_wallets ADD COLUMN IF NOT EXISTS series_claimed integer[] NOT NULL DEFAULT '{}';
+
+-- --- Hangar: server-authoritative craft stash + Tarkov-style raids -----------
+CREATE TABLE IF NOT EXISTS hangar (
+  user_id      text PRIMARY KEY,
+  color        text NOT NULL DEFAULT '#5effd8',
+  frame        text NOT NULL DEFAULT 'f-falcon',
+  thrusters    text NOT NULL DEFAULT 't-ion',
+  wings        text NOT NULL DEFAULT 'w-stub',
+  weapon       text NOT NULL DEFAULT 'g-blaster',
+  secure       text,                         -- part id in the secure slot (survives death)
+  scrap        integer NOT NULL DEFAULT 0,
+  scrap_earned integer NOT NULL DEFAULT 0,
+  best_wave    integer NOT NULL DEFAULT 0,
+  raid         jsonb,                         -- active raid { seed, startedAt, insured, loadout } or null
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS hangar_parts (
+  user_id text NOT NULL,
+  part_id text NOT NULL,
+  qty     integer NOT NULL DEFAULT 1,
+  PRIMARY KEY (user_id, part_id)
+);

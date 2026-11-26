@@ -487,6 +487,7 @@ export default function Landing() {
       <main className="relative z-10">
         {/* 01 HERO */}
         <section className="sec-hero pointer-events-none relative flex min-h-[100svh] flex-col justify-end px-4 pb-28 md:px-10 md:pb-14">
+          <div aria-hidden className="pointer-events-none absolute inset-0 -z-[1] bg-[linear-gradient(to_top,rgba(2,2,8,0.92)_0%,rgba(2,2,8,0.72)_32%,rgba(2,2,8,0.35)_55%,transparent_80%)]" />
           <div className="hero-title">
             <p className="hero-fade mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.3em] text-white/60 backdrop-blur">
               <span className="relative flex h-1.5 w-1.5">
@@ -495,7 +496,7 @@ export default function Landing() {
               </span>
               Live UFO atlas · since 1947
             </p>
-            <h1 className="font-[family-name:var(--font-display)] font-extrabold uppercase leading-[0.92] tracking-tight">
+            <h1 className="font-[family-name:var(--font-display)] font-extrabold uppercase leading-[0.92] tracking-tight [text-shadow:0_2px_24px_rgba(0,0,0,0.75)]">
               <span className="hero-line block text-[clamp(2.5rem,10.5vw,7rem)]">We come</span>
               <span className="hero-line block text-[clamp(2.5rem,10.5vw,7rem)] text-[var(--xeno-a)]">
                 in peace<span className="text-[var(--xeno-d)]">*</span>
@@ -512,18 +513,18 @@ export default function Landing() {
                 }
               }}
               aria-label="Mostly. (tap me)"
-              className="hero-sticker pointer-events-auto absolute right-6 top-[24vh] rotate-12 rounded-full bg-[var(--xeno-d)] px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-black shadow-[0_0_40px_rgba(255,94,200,0.6)] md:right-[12vw] md:top-[30vh] md:text-xs">
+              className="hero-sticker pointer-events-auto absolute right-4 top-[14vh] rotate-12 rounded-full bg-[var(--xeno-d)] px-3 py-1.5 font-mono text-[9px] font-bold uppercase tracking-widest text-black shadow-[0_0_40px_rgba(255,94,200,0.6)] md:right-[12vw] md:top-[30vh] md:px-4 md:py-2 md:text-xs">
               *mostly
             </button>
           </div>
           <div className="mt-6 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div className="hero-fade pointer-events-auto max-w-md">
-              <p className="text-sm leading-relaxed text-white/60 md:text-base">
+              <p className="max-w-md text-sm leading-relaxed text-white/80 [text-shadow:0_2px_12px_rgba(0,0,0,0.9)] md:text-base">
                 The world’s live atlas of unidentified anomalous phenomena, 1947 to tonight. Geotagged, forensically
                 scored, and very slightly unhinged.
               </p>
               {!profile && providers.length > 0 && (
-                <SignInButtons prefix="Join with" redirectTo="/matrix" className="mt-5" />
+                <SignInButtons prefix="Join with" redirectTo="/matrix" className="mt-5 hidden sm:flex" />
               )}
             </div>
             <div className="hero-fade pointer-events-auto flex flex-wrap items-center gap-3">

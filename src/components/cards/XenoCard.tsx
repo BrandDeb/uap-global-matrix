@@ -7,9 +7,8 @@
  * alien placeholder.
  */
 import { useRef } from 'react';
-import AlienAvatar from '@/components/profile/AlienAvatar';
+import CardArt from './CardArt';
 import { COLORS, RARITY, statsOf, type CardDef, type Owned } from '@/lib/cards';
-import { ILLUSTRATED } from '@/lib/cardArt';
 
 export default function XenoCard({ def, owned, size = 220, onClick, dim = false }: { def: CardDef; owned?: Owned; size?: number; onClick?: () => void; dim?: boolean }) {
   const el = useRef<HTMLButtonElement>(null);
@@ -61,12 +60,7 @@ export default function XenoCard({ def, owned, size = 220, onClick, dim = false 
         </div>
         {/* art */}
         <div className="relative mx-2.5 mt-1.5 flex flex-1 items-center justify-center overflow-hidden rounded-[10px] border border-white/10" style={{ background: `radial-gradient(circle at 50% 60%, ${col.glow}55, ${def.art.bg} 75%)` }}>
-          {ILLUSTRATED.has(def.id) ? (
-            // eslint-disable-next-line @next/next/no-img-element -- local static artwork
-            <img src={`/cards/${def.id}.webp`} alt={def.name} className="h-full w-full object-cover" draggable={false} />
-          ) : (
-            <AlienAvatar index={0} spec={{ ...def.art, bg: 'transparent' }} size={size * 0.72} className="drop-shadow-[0_8px_18px_rgba(0,0,0,0.6)] transition-transform duration-300 group-hover:scale-105" />
-          )}
+          <CardArt def={def} size={size * 0.86} glow={col.glow} foil={def.rarity !== 'C'} />
           <span className="absolute bottom-1 left-1.5 font-mono text-white/70" style={{ fontSize: size * 0.045 }}>
             Lv {o.level}
           </span>

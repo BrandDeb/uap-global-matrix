@@ -264,3 +264,10 @@ html[data-theme='light'] {
 @media (prefers-reduced-motion: reduce) {
   .aura-spin, .aura-bob, .aura-mote { animation: none; }
 }
+
+/* Card foil sheen (rare+ creatures) */
+@keyframes xeno-sheen {
+  0%, 100% { background-position: 150% 0; }
+  50% { background-position: -50% 0; }
+}
+@media (prefers-reduced-motion: reduce) { [style*="xeno-sheen"] { animation: none !important; } }

@@ -306,9 +306,12 @@ CREATE TABLE IF NOT EXISTS hangar (
   scrap        integer NOT NULL DEFAULT 0,
   scrap_earned integer NOT NULL DEFAULT 0,
   best_wave    integer NOT NULL DEFAULT 0,
-  raid         jsonb,                         -- active raid { seed, startedAt, insured, loadout } or null
+  raid         jsonb,                         -- active raid { seed, startedAt, insured, atRisk } or null
+  craft        jsonb,                         -- Spore-style blueprint { hull, color, modules[] }
   created_at   timestamptz NOT NULL DEFAULT now()
 );
+-- Blueprint column for existing deployments (4-slot columns above are now legacy).
+ALTER TABLE hangar ADD COLUMN IF NOT EXISTS craft jsonb;
 CREATE TABLE IF NOT EXISTS hangar_parts (
   user_id text NOT NULL,
   part_id text NOT NULL,

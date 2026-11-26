@@ -307,3 +307,99 @@ export function rollRaidLoot(seed: number, wave: number): string[] {
   }
   return out;
 }
+
+/* --- Spore-style blueprint model ------------------------------------------------ */
+/**
+ * A craft is now a HULL (a frame part) plus freely-placed MODULES (thrusters,
+ * wings, weapons) at blueprint coordinates, with left/right mirror symmetry in
+ * the editor. More/better modules = more power, with diminishing returns, and
+ * the hull's slot budget caps how many you can attach. The distinct non-stock
+ * parts placed are what you risk in a raid.
+ */
+export interface Module {
+  part: string;
+  x: number; // -1 (left) .. 1 (right)
+  y: number; // -1 (tail) .. 1 (nose)
+}
+export interface Blueprint {
+  hull: string;
+  color: string;
+  modules: Module[];
+}
+export const HULL_SLOTS: Record<string, number> = { 'f-dart': 4, 'f-falcon': 6, 'f-phantom': 7, 'f-manta': 6, 'f-juggernaut': 9, 'f-titan': 12 };
+export const hullSlots = (hull: string) => HULL_SLOTS[hull] ?? 6;
+export const DEFAULT_BLUEPRINT: Blueprint = {
+  hull: 'f-falcon',
+  color: '#5effd8',
+  modules: [
+    { part: 't-ion', x: -0.35, y: -0.72 },
+    { part: 't-ion', x: 0.35, y: -0.72 },
+    { part: 'w-stub', x: -0.7, y: -0.1 },
+    { part: 'w-stub', x: 0.7, y: -0.1 },
+    { part: 'g-blaster', x: 0, y: 0.6 },
+  ],
+};
+
+/** Validate + clamp a blueprint against what the player owns and the hull budget. */
+export function sanitizeBlueprint(bp: Partial<Blueprint> | null | undefined, owned: Record<string, number>): Blueprint {
+  const hull = bp?.hull && PART_BY_ID[bp.hull]?.slot === 'frame' && (owned[bp.hull] || isStock(bp.hull)) ? bp.hull : 'f-falcon';
+  const color: string = /^#[0-9a-fA-F]{6}$/.test(bp?.color ?? '') ? bp!.color! : '#5effd8';
+  const slots = hullSlots(hull);
+  const modules: Module[] = [];
+  for (const m of bp?.modules ?? []) {
+    if (modules.length >= slots) break;
+    const p = PART_BY_ID[m?.part];
+    if (!p || p.slot === 'frame') continue;
+    if (!(owned[m.part] || isStock(m.part))) continue;
+    modules.push({ part: m.part, x: Math.max(-1, Math.min(1, +m.x || 0)), y: Math.max(-1, Math.min(1, +m.y || 0)) });
+  }
+  return { hull, color, modules };
+}
+
+/** Distinct non-stock part ids on a craft — the gear at risk in a raid. */
+export function partsAtRisk(bp: Blueprint): string[] {
+  const ids = new Set<string>();
+  if (!isStock(bp.hull)) ids.add(bp.hull);
+  for (const m of bp.modules) if (!isStock(m.part)) ids.add(m.part);
+  return [...ids];
+}
+
+/** Stats from a blueprint: more parts help, with diminishing returns + soft caps. */
+export function blueprintStats(bp: Blueprint): LoadoutStats {
+  const hull = PART_BY_ID[bp.hull] ?? PART_BY_ID['f-falcon'];
+  const mods = bp.modules.map((m) => PART_BY_ID[m.part]).filter(Boolean);
+  const thrusters = mods.filter((p) => p.slot === 'thrusters');
+  const weapons = mods.filter((p) => p.slot === 'weapon');
+  const wingMods = mods.filter((p) => p.slot === 'wings');
+
+  // speed: each thruster adds, best first, diminishing
+  const factors = thrusters.map((p) => p.speed ?? 1).sort((a, b) => b - a);
+  let speedMul = factors.length ? 1 : 0.7; // no thrusters = sluggish
+  factors.forEach((f, i) => (speedMul += (f - 1 + 0.3) * Math.pow(0.6, i)));
+  const speed = Math.min(540, 215 * speedMul);
+
+  // weapons: primary pattern + extras add firepower
+  const best = weapons.slice().sort((a, b) => (b.damage ?? 1) - (a.damage ?? 1))[0];
+  const extraW = Math.max(0, weapons.length - 1);
+  const shot = best?.shot ?? 'blaster';
+  const damage = (best?.damage ?? 0.6) * (1 + 0.12 * extraW);
+  const fireRate = Math.min(8, (best?.fireRate ?? 2) + 0.25 * extraW);
+
+  const wingGuns = Math.min(4, wingMods.reduce((s, p) => s + 1 + (p.wingGuns ?? 0), 0) + extraW);
+  const hp = (hull.hp ?? 4) + wingMods.reduce((s, p) => s + (p.hp ?? 0), 0);
+  const size = hull.size ?? 1;
+  const power = Math.round(hp * 42 + speed / 4 + fireRate * 22 + damage * 70 + wingGuns * 45 + mods.reduce((s, p) => s + RARITY[p.rarity].weight, 0));
+  return { hp, speed, fireRate, damage, shot, wingGuns, size, power };
+}
+
+/** Bridge a blueprint to the simple Craft the renderers/game expect. */
+export function blueprintToCraft(bp: Blueprint): Craft {
+  const first = (slot: Slot) => bp.modules.find((m) => PART_BY_ID[m.part]?.slot === slot)?.part;
+  return {
+    frame: bp.hull,
+    thrusters: first('thrusters') ?? 't-ion',
+    wings: first('wings') ?? 'w-stub',
+    weapon: first('weapon') ?? 'g-blaster',
+    color: bp.color,
+  };
+}

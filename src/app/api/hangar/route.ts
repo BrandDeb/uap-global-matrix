@@ -1,14 +1,14 @@
 /**
  * /api/hangar, server-authoritative Hangar + Tarkov-style raids (signed in).
  *   GET  → { hangar, owned }
- *   POST { action } : equip {slot,id} · color {color} · secure {id|null}
+ *   POST { action } : craft {craft} · secure {id|null}
  *     · buy {id} · launch {insure} · resolve {extracted,wave} · abort
  */
 import { verifiedOperatorId } from '@/auth';
-import { abortRaid, buyPart, equip, launchRaid, resolveRaid, setColor, setSecure, state } from '@/lib/db/hangarEconomy';
+import { abortRaid, buyPart, launchRaid, resolveRaid, setCraft, setSecure, state } from '@/lib/db/hangarEconomy';
 import { hasDb } from '@/lib/db';
 import { clientIp, jsonError, limited, readJson } from '@/lib/apiHelpers';
-import type { Slot } from '@/lib/craft';
+import type { Blueprint } from '@/lib/craft';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,11 +30,8 @@ export async function POST(req: Request): Promise<Response> {
   try {
     let r: { error?: string } & Record<string, unknown>;
     switch (b.action) {
-      case 'equip':
-        r = await equip(id, String(b.slot) as Slot, String(b.id ?? ''));
-        break;
-      case 'color':
-        r = await setColor(id, String(b.color ?? ''));
+      case 'craft':
+        r = await setCraft(id, (b.craft ?? null) as Partial<Blueprint> | null);
         break;
       case 'secure':
         r = await setSecure(id, b.id == null ? null : String(b.id));

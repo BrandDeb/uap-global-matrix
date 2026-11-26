@@ -138,8 +138,8 @@ export async function resolveRaid(userId: string, extracted: boolean, waveRaw: n
     // Clamp the client-reported wave to bound fakery.
     const wave = Math.max(0, Math.min(Number(waveRaw) || 0, h.best_wave + 4, 60));
     const loadout = h.raid.loadout;
-    let lostParts: string[] = [];
-    let keptParts: string[] = [];
+    const lostParts: string[] = [];
+    const keptParts: string[] = [];
     let loot: string[] = [];
     let scrap = 0;
 

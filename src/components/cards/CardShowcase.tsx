@@ -8,10 +8,9 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Zap } from 'lucide-react';
-import AlienAvatar from '@/components/profile/AlienAvatar';
+import CardArt from './CardArt';
 import { xenoAudio } from '@/components/landing/audio';
 import { abilitiesOf, COLORS, dropChance, levelCap, powerOf, RARITY, shardsToNext, starsFor, statsOf, WHEEL, type CardDef, type Owned } from '@/lib/cards';
-import { ILLUSTRATED } from '@/lib/cardArt';
 import { cardAction, useCollection } from '@/lib/collection';
 
 export default function CardShowcase({ def, o, onClose }: { def: CardDef; o?: Owned; onClose: () => void }) {
@@ -44,12 +43,7 @@ export default function CardShowcase({ def, o, onClose }: { def: CardDef; o?: Ow
             </>
           )}
           <div className={`relative ${epic ? 'aura-bob' : ''}`}>
-            {ILLUSTRATED.has(def.id) ? (
-              // eslint-disable-next-line @next/next/no-img-element -- local artwork
-              <img src={`/cards/${def.id}.webp`} alt={def.name} className="max-h-[70svh] w-auto drop-shadow-[0_20px_60px_rgba(0,0,0,0.7)]" />
-            ) : (
-              <AlienAvatar index={0} spec={{ ...def.art, bg: 'transparent' }} size={300} className="drop-shadow-[0_20px_50px_rgba(0,0,0,0.7)]" />
-            )}
+            <CardArt def={def} size={340} glow={col.glow} foil={def.rarity !== 'C'} />
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur md:left-4 md:right-auto">
             <X size={18} />
